@@ -1,0 +1,53 @@
+% rebase('base.html', title='category')
+<input type="hidden" id="dataset-id" value="{{dataset_id}}">
+<input type="hidden" id="dataset-path" value="{{dataset_path}}">
+<nav class="navbar navbar-inverse navbar-fixed-top">
+    <div class="container">
+        <div class="navbar-header">
+            <a href="/" class="navbar-brand">
+                <img src="/statics/img/logo.png" alt="">
+            </a>
+        </div>
+        <div class="navbar-right">
+            <a href="#" class="navbar-brand">
+                <img src="/statics/img/arc.png" height="40px">
+            </a>
+        </div>
+    </div>
+</nav>
+
+<div class="container">
+    <h2>Dataset</h2>
+    <div class="dataset_detail">
+        <div class="subtitle">
+            <h3><a href="/dataset/show/{{dataset_id}}">{{name}}</a> - {{category}} ({{count}})</h3>
+            <div class="button_div right">
+                <button class="btn btn-cyber" id="btn_delete_category" data-path="{{dataset_path}}">Delete Category</button>
+                <button class="btn btn-cyber" data-toggle="modal" data-target="#file_upload_modal"><span class="glyphicon glyphicon-plus"></span>New</button>
+            </div>
+        </div>
+        % for image in images:
+            <img src="/uploaded_images/{{image}}" class="img-responsive img-rounded category-image" data-path="{{image}}">
+        % end
+    </div>
+</div>
+
+<div class="modal fade" id="file_upload_modal" tabindex="-1" role="dialog" aria-labelledby="file_upload_modal">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h4 class="modal-title" id="upload_modal_title">Add a New Image</h4>
+            </div>
+            <div class="modal-body">
+                <form action="/dataset/upload/{{dataset_id}}/{{dataset_path}}" method="POST" enctype="multipart/form-data">
+                    <div class="form-group">
+                        <input type="file" id="fileInput" name="fileInput">
+                        <p class="help-block">Slect image(.jpg) to add to category.</p>
+                    </div>
+                    <button type="submit" class="btn btn-cyber">Submit</button>
+                    <button type="cancel" class="btn btn-cyber" data-dismiss="modal">Cancel</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>

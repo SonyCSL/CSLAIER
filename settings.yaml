@@ -1,0 +1,20 @@
+# Server Settings
+host: localhost
+port: 8080
+debug: True
+
+# All paths must be absolute path.
+
+# Path for upload images.
+uploaded_images: ~/deepstation/uploaded_images
+# Path for upload zip files.
+uploaded_raw_files: ~/deepstation/uploaded_raw_files
+# Path for upload images to inspect.
+inspection_raw_image: ~/deepstation/inspection_raw_image
+# Path to save temporary file for inspection
+inspection_temp_image: ~/deepstation/tmp_image
+
+# Path to save prepared data for training 
+prepared_data: ~/deepstation/prepared_data
+# Path to save trained data
+trained_data: ~/deepstation/trained_data

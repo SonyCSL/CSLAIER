@@ -1,0 +1,380 @@
+html, body {
+    height: 100%;
+}
+
+body {
+    color:#ccc;
+    background-color:#010;
+    padding-top: 70px;
+    margin-left:30px;
+}
+
+body.noscroll {
+    top: 70px;
+    position: fixed;
+    overflow-y: scroll;
+}
+
+.modal-content {
+    background-color: #010;
+    border: 1px solid #0c0;
+}
+
+.modal-header {
+    border-bottom-color: #0c0;
+}
+
+.modal-content input.form-control {
+    border-color: #0c0;
+}
+
+.modal-content p.help-block {
+    font-weight: bold;
+}
+
+.modal-content .btn-cyber {
+    border:solid 1px #060;
+    background-color: #040;
+    font-weight: bold;
+}
+
+input.form-control, textarea.form-control, select.form-control,
+pre#network_edit_area, .CodeMirror {
+    background-color: #020;
+    color: #0c0;
+    border-color: #060;
+}
+
+select.form-control {
+    box-shadow: none;
+    transition: none;
+}
+
+.nav-tabs {
+    border-bottom: #060;
+}
+
+.nav-tabs > li > a {
+    background-color: #010;
+    color:#0c0;
+    border-bottom: #060;
+}
+
+.nav-tabs > li.active > a {
+    background-color: #010;
+    border:solid 1px #060;
+    color:#0c0;
+}
+
+.nav-tabs > li.active > a:hover,
+.nav-tabs > li > a:hover {
+    background-color: #060;
+    color:#0f0;
+}
+
+.desc {
+    color:#c80;
+}
+ul {
+    color:#c80;
+}
+
+h3 {
+    color:#fc0;
+}
+
+.container {
+    height: 100%;
+}
+
+.subtitle {
+    width: 100%;
+    border-bottom: 1px solid #0e0;
+    margin-bottom: 10px;
+}
+
+.subtitle > h2, .subtitle > h3 {
+    width:75%;
+    color:#0d0;
+    display: inline-block;
+}
+
+.subtitle > .button_div {
+    width:20%;
+    display: inline-block;
+}
+
+.btn-cyber{
+    background-color: #010;
+    border:solid 1px #060;
+    color:#0c0;
+}
+
+.btn-cyber:hover{
+    background-color: #060;
+    color:#0f0;
+}
+
+.label-trained{
+    background-color: #040;
+    border:solid 1px #0f0;
+    color:#0c0;
+}
+.label-progress{
+    background-color: #400;
+    border:solid 1px #f00;
+    color:#c00;
+}
+.label-nottrained{
+    background-color: #210;
+    border:solid 1px #a60;
+    color:#a60;
+}
+
+.right {
+    margin-left:auto;
+    text-align:right;
+}
+
+.left {
+    margin-right: auto;
+    text-align: left;
+}
+
+.datasets, .models {
+    vertical-align: top;
+    color:#333;
+    padding-top: 10px;
+    margin-bottom: 30px;
+    margin-top: 10px;
+}
+
+.dataset, .model,.gpu {
+    width: 250px;
+    height: 250px;
+    border-radius: 5px;
+    border:solid 1px #0c0;
+    background-color: #020;
+    color:#0c0;
+    padding: 0px 10px;
+    margin: 5px;
+    display: inline-block;
+    overflow: hidden;
+}
+
+.gpu{
+    border:solid 1px #0c0;    
+    height: 180px;
+}
+
+.gpu th{
+    color:#0f0;
+}
+
+.gpu.error{
+    border:solid 1px #f00;
+    color:#c00;
+}
+
+.model {
+    width: 300px;
+    height: 200px;
+}
+
+
+.model-progress{
+    border:solid 1px #a00;
+    background-color: #300;
+    width: 300px;
+    height: 200px;
+}
+.model-nottrained{
+    border:solid 1px #a60;
+    background-color: #320;
+    width: 300px;
+    height: 200px;
+}
+
+.dataset:hover, .model:hover {
+    border:solid 1px #fff;
+}
+
+.dataset_detail {
+    background-color:#020;
+    border: 1px solid #0c0;
+    border-radius: 5px;
+    padding: 0px 3px;
+}
+
+.category {
+    width: 220px;
+    height: 200px;
+    display: inline-block;
+    padding: 5px;
+    vertical-align: top;
+}
+
+.category:hover {
+    border: 1px solid white;
+    border-radius: 5px;
+}
+
+.thumbnail-30 {
+    vertical-align: top;
+    padding-top: 2px;
+    max-width: 100px;
+    max-height: 75px;
+    display: inline-block;
+}
+
+.category-image {
+    margin: 5px;
+    display: inline-block;
+    max-width: 200px;
+}
+
+.category-image:hover {
+    border: 1px solid white;
+    box-shadow: 10px 10px 10px rgba(0,0,0,0.4);
+    -moz-box-shadow: 10px 10px 10px rgba(0,0,0,0.4);
+    -webkit-box-shadow: 10px 10px 10px rgba(0,0,0,0.4);
+    -o-box-shadow: 10px 10px 10px rgba(0,0,0,0.4);
+    -ms-box-shadow: 10px 10px 10px rgba(0,0,0,0.4);
+}
+
+#network_edit_area {
+    height: 100%;
+    width: 100%;
+}
+
+#network_edit_area_div {
+    height: 76%;
+}
+
+#create_model_form {
+    height: 100%;
+}
+
+#create_model_div_buttons {
+    padding-top: 20px;
+}
+
+#create_network_buttons {
+    margin-top: -20px;
+}
+
+#processing_screen, #uploading_progress_div {
+    background-color: rgba(0, 0, 0, 0.7);
+    width: 100%;
+    height: 100%;
+    position: absolute;
+    top: 0;
+    right: 0;
+    display: table;
+    z-index: 100;
+}
+
+#uploading_progress_div > .progress-wrap,
+#processing_screen > .progress-wrap {
+    height: 20px;
+    display: table-cell;
+    vertical-align: middle;
+    text-align: center;
+    margin: 0 auto;
+    color: white;
+    z-index: 200;
+}
+
+#uploading_progress_div > .progress-wrap > .progress,
+#processing_screen > .progress-wrap > .progress {
+    width: 60%;
+    margin: 0 auto;
+}
+
+#progress_rate,
+#processing_screen > .progress-wrap > h4 {
+    color:white;
+    font-weight: bold;
+}
+
+.full-height{
+    height: 100%;
+}
+
+.has-textarea {
+    height:71%;
+}
+
+textarea.form-control {
+    height:100%;
+    border-color: #060;
+}
+
+.CodeMirror {
+    height: 100%;
+    border-color: #060;
+}
+
+.CodeMirror-cursor {
+  border-left: 1px solid white;
+  border-right: none;
+  width: 0;
+}
+
+.CodeMirror-gutters {
+  border-right: 1px solid #000;
+  background-color: #000;
+  white-space: nowrap;
+}
+
+.cm-s-default .cm-keyword {color: #ff6347;}
+.cm-s-default .cm-def {color: #8470FF;}
+.cm-s-default .cm-builtin {color: #778899;}
+
+#network_edit_area.form-control {
+    border-radius: 0px 0px 4px 4px;
+}
+
+.axis text {
+   font-family: sans-serif;
+   font-size: 11px;
+}
+
+.axis path,
+.axis line {
+    fill: none;
+    stroke: #fff;
+    shape-rendering: crispEdges;
+}
+
+.x.axis path {
+    display: none;
+}
+
+.line-loss {
+    fill: none;
+    stroke: steelblue;
+    stroke-width: 1.5px;
+}
+
+.line-accuracy {
+    fill: none;
+    stroke: orange;
+    stroke-width: 1.5px;
+}
+
+.line-val-loss {
+    fill: none;
+    stroke: #0c0;
+    stroke-width: 1.5px;
+}
+
+.line-val-accuracy {
+    fill: none;
+    stroke: red;
+    stroke-width: 1.5px;
+}
+
+.tick line {
+    opacity: 0.4;
+}

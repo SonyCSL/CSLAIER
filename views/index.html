@@ -1,0 +1,179 @@
+% rebase('base.html', title='index')
+<div id="index" class="hidden">true</div>
+<nav class="navbar navbar-inverse navbar-fixed-top">
+    <div class="container">
+        <div class="navbar-header">
+            <a href="/" class="navbar-brand">
+                <img src="/statics/img/logo.png" alt="">
+            </a>
+        </div>
+        <div class="navbar-right">
+            <a href="#" class="navbar-brand">
+                <img src="/statics/img/arc.png" height="40px">
+            </a>
+        </div>
+    </div>
+</nav>
+<div class="container" id="main">
+    <div class="row">
+        <div class="col-md-9">
+            <div class="subtitle">
+                <h2>Dataset</h2>
+                <div class="button_div right">
+                    <a href="#">
+                        <button class="btn btn-cyber" id="btn_new_dataset" data-toggle="modal" data-target="#upload_modal"><span class="glyphicon glyphicon-plus"></span>New</button>
+                    </a>    
+                </div>
+            </div>
+            <div class="datasets">
+                % for dataset in datasets:
+                    <div class="dataset" id="dataset_{{dataset['id']}}" data-id="{{dataset['id']}}">
+                        <h3>
+                            {{dataset["name"]}}
+                        </h3>
+                        <span class="desc">Total {{dataset["category_num"]}} Classes, {{dataset["file_num"]}} Images</span>
+                        % for img in dataset['thumbnails']:
+                            <img src="/uploaded_images{{img}}" class="img-responsive img-rounded thumbnail-30">
+                        % end
+                    </div>
+                % end
+            </div>
+            <div class="subtitle">
+                <h2>Models</h2>
+                <div class="button_div right">
+                    <a href="/models/new">
+                        <button class="btn btn-cyber" id="btn_new_model"><span class="glyphicon glyphicon-plus"></span>New</button>
+                    </a>    
+                </div>
+            </div>
+            <div class="models">
+                % for model in models:
+                    % if model[3] == 1:
+                    <div class="model model-progress" id="model_{{model[0]}}" data-modelid="{{model[0]}}">
+                    % elif model[3] == 2:
+                    <div class="model" id="model_{{model[0]}}" data-modelid="{{model[0]}}">
+                    % else:
+                    <div class="model model-nottrained" id="model_{{model[0]}}" data-modelid="{{model[0]}}">
+                    % end
+                        <h3>{{model[1]}}
+                            <div class="progress-info">
+                            % if model[3] == 1:
+                                <span class="label label-progress">In Progress</span>
+                            % elif model[3] == 2:
+                                <span class="label label-trained">Trained</span>
+                            % else:
+                                <span class="label label-nottrained">Not Trained</span>
+                            % end
+                            </div>
+                        </h3>
+                        <ul>
+                            <li>Date: {{model[4]}}</li>
+                            <li>Epoch: {{model[2]}}</li>
+                            <li>Dataset: 
+                                % if model[7]:
+                                    {{model[7]}}
+                                % else:
+                                    ---
+                                % end
+                            </li>
+                            <li>Network: 
+                                % if model[5]:
+                                    {{model[5]}}
+                                % else:
+                                    ---
+                                % end
+                            </li>
+                            <li>Algorithm:
+                                % if model[6]:
+                                    {{model[6]}}
+                                % else:
+                                    ---
+                                % end
+                            </li>
+                        </ul>
+                    </div>
+                % end
+            </div>
+        </div>
+        <div class="col-md-3">
+            <table border="0">
+                <tr>
+                    <th>Graphic Board Driver Version:</th>
+                    <td>
+                        % if 'driver_version' in gpu_info:
+                            {{gpu_info['driver_version']}}
+                        % else:
+                            ---
+                        % end
+                    </td>
+                </tr>
+                <tr>
+                    <th>Chainer Version:</th>
+                    <td>{{chainer_version}}</td>
+                </tr>
+                <tr>
+                    <th>Python Version:</th>
+                    <td>{{python_version}}</td>
+                </tr>
+            </table>
+            % if 'error' in gpu_info:
+                    <div class="gpu error" >
+                        <p>GPU Info Not Available</p>
+                    </div>
+            % else:
+                % for g in gpu_info['gpus']:
+                    <div class="gpu" >
+                        <h4>{{g['minor_number']}}:{{g['product_name']}}</h4>
+                        <table class="gpu_table">
+                            <tr><th>UUID</th><td>{{g['uuid']}}</td></tr>
+                            <tr><th>FAN</th><td>{{g['fan']}}</td></tr>
+                            <tr><th>Temp</th><td>{{g['temperature']}}</td></tr>
+                            <tr><th>Power</th><td>{{g['power_draw']}} / {{g['power_limit']}}</td></tr>
+                            <tr><th>Memory</th><td>{{g['memory_used']}} / {{g['memory_total']}}</td></tr>
+                        </table>
+                    </div>
+                % end
+            % end
+        </div>
+    </div>
+</div>
+
+
+<!-- ## modals ############################################################## -->
+
+<div class="modal fade" id="upload_modal" tabindex="-1" role="dialog" aria-labelledby="upload_modal">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h4 class="modal-title" id="upload_modal_title">Dataset Upload</h4>
+            </div>
+            <div class="modal-body">
+                <div id="uploadDataset">
+                    <div class="form-group">
+                        <label for="dataset_name_input">Dataset Name</label>
+                        <input type="text" class="form-control" id="dataset_name_input" name="dataset_name" placeholder="input dataset name">
+                    </div>
+                    <div class="form-group">
+                        <input type="file" id="fileInput" name="fileInput">
+                        <p class="help-block">Select image set which is compressed by zip.</p>
+                    </div>
+                    <button type="submit" class="btn btn-cyber disabled" id="submit_dataset">Submit</button>
+                    <button type="cancel" class="btn btn-cyber" data-dismiss="modal">Cancel</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div id="uploading_progress_div" class="hidden">
+    <div class="progress-wrap">
+        <h4>Uploading Dataset <small id="progress_rate"></small></h4>
+        <div class="progress">
+            <div id="progress-bar" class="progress-bar" role="progressbar" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100" style="width: 0%;"></div>
+        </div>    
+    </div>
+</div>
+
+
+
+
