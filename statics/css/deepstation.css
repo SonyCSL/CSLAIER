@@ -395,3 +395,7 @@ textarea.form-control {
 .progress-bar {
     background-color: #fc0;
 }
+
+.form-control:focus {
+    border-color: #0c0;
+}
