@@ -16,7 +16,7 @@ import numpy
 import time
 import threading
 import sqlite3
-import commands
+import subprocess
 import chainer
 from xml.etree.ElementTree import *
 import six
@@ -533,7 +533,7 @@ def count_categories(path):
 def get_gpu_info():
     ret = {}
     try:
-        xml = commands.getoutput('nvidia-smi -q -x')
+        xml = subprocess.check_output(['nvidia-smi', '-q', '-x'])
     except:
         return {'error': 'command_not_available'}
     elem = fromstring(xml)
