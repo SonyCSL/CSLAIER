@@ -387,3 +387,11 @@ textarea.form-control {
 .tick line {
     opacity: 0.4;
 }
+
+.progress {
+    background-color: #c80;
+}
+
+.progress-bar {
+    background-color: #fc0;
+}
