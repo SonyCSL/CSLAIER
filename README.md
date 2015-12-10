@@ -3,7 +3,27 @@ DEEPstation
 
 DEEPstation version 0.1.0
 
-Browser based GUI for learning and trying chainer.
+Browser based GUI deep learning tool.
+
+Screenshots
+-------------
+
+### Top page
+#### Datasets
+![dataset top](./docs/img/ss/top_datasets.png)
+
+#### Modes
+![models top](./docs/img/ss/top_models.png)
+
+### Model detail page 
+#### Train result
+![train result](./docs/img/ss/train_result.png)
+
+#### View and Edit model
+![model detail](./docs/img/ss/model_detail.png)
+
+### Dataset page
+![Dataset](./docs/img/ss/dataset.png)
 
 Requirement
 ------------
@@ -88,7 +108,7 @@ License
 DEEPstation
 ============
 
-Chainerの学習とお試しのためのブラウザベースのGUIツール
+ブラウザベースのGUI深層学習ツール
 
 Requirement
 ------------
