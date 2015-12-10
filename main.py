@@ -244,7 +244,7 @@ def create_new_model(db):
     my_network = bottle.request.forms.get('my_network')
     model_template = bottle.request.forms.get('model_template')
     network_type = bottle.request.forms.get('network_type').strip()
-    algorithm = bottle.request.forms.get('algorithm').strip()
+    algorithm = None
     
     if not re.match(r".+\.py", model_name):
         model_name += '.py'

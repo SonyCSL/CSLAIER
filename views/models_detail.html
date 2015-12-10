@@ -45,13 +45,6 @@
                                     ---
                                 % end
                             </li>
-                            <li>Algorithm:
-                                % if model_info['algorithm'] is not None: 
-                                    {{model_info["algorithm"]}}
-                                % else:
-                                    ---
-                                % end
-                            </li>
                         </ul>
                     </div>
                     <div>
@@ -231,16 +224,8 @@
                         % end
                     </div>
                     <div class="form-group">
-                        <label for="">Algorithm</label>
-                        % if model_info['algorithm'] is not None:
-                            <input type="text" name="algorithm" id="modal_create_network_algorithm" class="form-control" value="{{model_info['algorithm']}}">
-                        % else:
-                            <input type="text" name="algorithm" id="modal_create_network_algorithm" class="form-control" value="">
-                        % end
-                    </div>
-                    <div class="form-group">
-                        <button class="btn btn-cyber" id="modal_create_network_btn" type="submit">作成</button>
-                        <button class="btn btn-cyber" id="model_edit_cancel" data-dismiss="modal">キャンセル</button>
+                        <button class="btn btn-cyber" id="modal_create_network_btn" type="submit">Create</button>
+                        <button class="btn btn-cyber" id="model_edit_cancel" data-dismiss="modal">Cancel</button>
                     </div>
                 </form>
             </div>
