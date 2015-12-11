@@ -213,6 +213,7 @@ $('#start_train_btn').on('click', function(e){
         }, function(ret){
         if(ret.status === "OK") {
             $('#processing_screen').addClass('hidden');
+            $('#start_train_p').addClass('hidden');
             $('span.label.label-nottrained')
                 .removeClass('label-nottrained')
                 .addClass('label-progress')
