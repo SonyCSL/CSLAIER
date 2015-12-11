@@ -51,8 +51,7 @@ def read_image(path, model_insize, mean_image, center=False, flip=False):
     else:
         return image
  
-def feed_data(train_list, val_list, mean_image, batchsize, val_batchsize, model, loaderjob, epoch, optimizer):
-    global epoch_count
+def feed_data(train_list, val_list, mean_image, batchsize, val_batchsize, model, loaderjob, epoch, optimizer, data_q):
     i = 0
     count = 0
     x_batch = np.ndarray((batchsize, 3, model.insize, model.insize), dtype=np.float32)
@@ -65,7 +64,6 @@ def feed_data(train_list, val_list, mean_image, batchsize, val_batchsize, model,
     pool = multiprocessing.Pool(loaderjob)
     data_q.put('train')
     for epoch in six.moves.range(1, 1 + epoch):
-        epoch_count = epoch
         print('epoch', epoch, file=sys.stderr)
         print('learning rate', optimizer.lr, file=sys.stderr)
         perm = np.random.permutation(len(train_list))
@@ -78,7 +76,7 @@ def feed_data(train_list, val_list, mean_image, batchsize, val_batchsize, model,
             if i == batchsize:
                 for j, x in enumerate(batch_pool):
                     x_batch[j] = x.get()
-                data_q.put((x_batch.copy(), y_batch.copy()))
+                data_q.put((x_batch.copy(), y_batch.copy(), epoch))
                 i= 0
             
             count += 1
@@ -93,7 +91,7 @@ def feed_data(train_list, val_list, mean_image, batchsize, val_batchsize, model,
                     if j == val_batchsize:
                         for k, x in enumerate(val_batch_pool):
                             val_x_batch[k] = x.get()
-                        data_q.put((val_x_batch.copy(), val_y_batch.copy()))
+                        data_q.put((val_x_batch.copy(), val_y_batch.copy(), epoch))
                         j = 0
                 data_q.put('train')
                 
@@ -103,7 +101,7 @@ def feed_data(train_list, val_list, mean_image, batchsize, val_batchsize, model,
     data_q.put('end')
     return
     
-def log_result(batchsize, val_batchsize, log_file):
+def log_result(batchsize, val_batchsize, log_file, res_q):
     f = open(log_file, 'w')
     f.write("count\tepoch\taccuracy\tloss\taccuracy(val)\tloss(val)\n")
     f.flush()
@@ -131,7 +129,7 @@ def log_result(batchsize, val_batchsize, log_file):
             val_count = val_loss = val_accuracy = 0
             val_begin_at = time.time()
             continue
-        loss, accuracy = result
+        loss, accuracy, epoch = result
         if train:
             train_count += 1
             duration = time.time() - begin_at
@@ -139,7 +137,7 @@ def log_result(batchsize, val_batchsize, log_file):
             sys.stderr.write(
                 '\rtrain {} updates ({} samples) time: {} ({} images/sec)'
                 .format(train_count, train_count * batchsize, datetime.timedelta(seconds=duration), throughput))
-            f.write(str(count) + "\t" + str(epoch_count) + "\t" + str(accuracy) + "\t" + str(loss) + "\t\t\n")
+            f.write(str(count) + "\t" + str(epoch) + "\t" + str(accuracy) + "\t" + str(loss) + "\t\t\n")
             f.flush()
             count += 1
             train_cur_loss += loss
@@ -167,13 +165,13 @@ def log_result(batchsize, val_batchsize, log_file):
                 mean_accuracy = val_accuracy * val_batchsize / VALIDATION_TIMING
                 print(file=sys.stderr)
                 print(json.dumps({'type': 'val', 'iteration': train_count, 'error': (1 - mean_accuracy), 'loss': mean_loss}))
-                f.write(str(count) + "\t" + str(epoch_count) + "\t\t\t" + str(mean_accuracy) + "\t" + str(mean_loss) + "\n")
+                f.write(str(count) + "\t" + str(epoch) + "\t\t\t" + str(mean_accuracy) + "\t" + str(mean_loss) + "\n")
                 count += 1
                 f.flush()
                 sys.stdout.flush()
     f.close()    
     
-def train_loop(model, output_dir, xp, optimizer):
+def train_loop(model, output_dir, xp, optimizer, res_q, data_q):
     graph_generated = False
     while True:
         while data_q.empty():
@@ -203,9 +201,9 @@ def train_loop(model, output_dir, xp, optimizer):
         else:
             model(x, t)
             
-        serializers.save_hdf5(output_dir + os.sep + 'model%04d'%epoch_count, model)
-        #serializers.save_hdf5(output_dir + os.sep + 'optimizer%04d'%epoch_count, optimizer)
-        res_q.put((float(model.loss.data), float(model.accuracy.data)))
+        serializers.save_hdf5(output_dir + os.sep + 'model%04d'%inp[2], model)
+        #serializers.save_hdf5(output_dir + os.sep + 'optimizer%04d'%inp[2], optimizer)
+        res_q.put((float(model.loss.data), float(model.accuracy.data), inp[2]))
         del x, t
             
 def load_module(dir_name, symbol):
@@ -239,8 +237,6 @@ def do_train(db_path, train, test, mean, root_output_dir, model_dir, model_id, b
     optimizer = optimizers.MomentumSGD(lr=0.01, momentum=0.9)
     optimizer.setup(model)
     
-    global res_q
-    global data_q 
     data_q = queue.Queue(maxsize=1)
     res_q = queue.Queue()
 
@@ -249,19 +245,17 @@ def do_train(db_path, train, test, mean, root_output_dir, model_dir, model_id, b
     if not os.path.exists(output_dir):
         os.mkdir(output_dir)
         
-    global epoch_count
-    epoch_count = 0
     db.execute('update Model set epoch = ?, trained_model_path = ?, graph_data_path = ?, is_trained = 1, line_graph_data_path = ? where id = ?', (epoch, output_dir, output_dir + os.sep + 'graph.dot', output_dir + os.sep + 'line_graph.tsv', model_id))
     conn.commit()
     
     # Invoke threads
-    feeder = threading.Thread(target=feed_data, args=(train_list, val_list, mean_image, batchsize, val_batchsize, model, loaderjob, epoch, optimizer))
+    feeder = threading.Thread(target=feed_data, args=(train_list, val_list, mean_image, batchsize, val_batchsize, model, loaderjob, epoch, optimizer, data_q))
     feeder.daemon = True
     feeder.start()
-    logger = threading.Thread(target=log_result, args=(batchsize, val_batchsize, output_dir + os.sep + 'line_graph.tsv'))
+    logger = threading.Thread(target=log_result, args=(batchsize, val_batchsize, output_dir + os.sep + 'line_graph.tsv', res_q))
     logger.daemon = True
     logger.start()
-    train_loop(model, output_dir, xp, optimizer)
+    train_loop(model, output_dir, xp, optimizer, res_q, data_q)
     feeder.join()
     logger.join()
     db.execute('update Model set is_trained = 2 where id = ?', (model_id,))
