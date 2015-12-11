@@ -7,6 +7,12 @@ $(function(){
     if($('#model_detail').text() !== "" || $('#new_model').text() !== "") {
         createEditor();
     }
+    if($('#model_detail').text() !== '') {
+        var hash = location.hash;
+        if(hash == '#result') {
+            showResultScreen();
+        }
+    }
 });
 
 $('#uploadDataset #submit_dataset').on('click', function(e){
@@ -165,7 +171,11 @@ $('#create_model_reset').on('click',function(e){
 });
 
 $('.model').on('click', function(e){
-    location.href = '/models/show/' + $(this).data('modelid');
+    if($(this).hasClass('model-nottrained')) {
+        location.href = '/models/show/' + $(this).data('modelid');
+    } else {
+        location.href = '/models/show/' + $(this).data('modelid') + '#result';
+    }
 });
 
 $('#epoch_select').on('keypress, change', function(e){
@@ -202,7 +212,17 @@ $('#start_train_btn').on('click', function(e){
             gpu_num: gpu_num
         }, function(ret){
         if(ret.status === "OK") {
-            location.href="/";
+            $('#processing_screen').addClass('hidden');
+            $('span.label.label-nottrained')
+                .removeClass('label-nottrained')
+                .addClass('label-progress')
+                .text('In Progress');
+            $('span.label.label-trained')
+                .removeClass('label-trained')
+                .addClass('label-progress')
+                .text('In Progress');
+            showResultScreen();
+            location.hash = "result";
             return;
         }
         console.log(res.traceback);
@@ -476,5 +496,14 @@ var createEditor = function(){
         $('#create_network_buttons').removeClass('hidden');
     });
     if(editor.save) editor.save();
+};
+
+var showResultScreen = function(){
+        $('#network_tab').removeClass('active');
+        $('#graph_tab').addClass('active');
+        $('#model_detail_network').addClass('hidden');
+        $('#model_detail_graph').removeClass('hidden');
+        draw_train_graph();
+        setInterval("draw_train_graph()", 30000);
 };
 
