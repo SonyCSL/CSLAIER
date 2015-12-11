@@ -389,13 +389,17 @@ textarea.form-control {
 }
 
 .progress {
-    background-color: #c80;
+    background-color: #fc0;
 }
 
 .progress-bar {
-    background-color: #fc0;
+    background-color: #c80;
 }
 
 .form-control:focus {
     border-color: #0c0;
+}
+
+.navbar-right > .navbar-brand > img {
+    height: 38px;
 }
