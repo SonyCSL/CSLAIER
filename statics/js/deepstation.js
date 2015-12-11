@@ -213,7 +213,8 @@ $('#start_train_btn').on('click', function(e){
         }, function(ret){
         if(ret.status === "OK") {
             $('#processing_screen').addClass('hidden');
-            $('#start_train_p').addClass('hidden');
+            $('#start_train_div').addClass('hidden');
+            $('#model_detail_buttons').addClass('hidden');
             $('span.label.label-nottrained')
                 .removeClass('label-nottrained')
                 .addClass('label-progress')
@@ -226,7 +227,7 @@ $('#start_train_btn').on('click', function(e){
             location.hash = "result";
             return;
         }
-        console.log(res.traceback);
+        console.log(ret.traceback);
         alert('Failed to start train.');
         $('#processing_screen').addClass('hidden');
         return;

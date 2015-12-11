@@ -48,20 +48,20 @@
                         </ul>
                     </div>
                     <div>
-                        <p id="start_train_p">
+                        <div id="start_train_div">
                             % if model_info['is_trained'] is not 1:
                                 <button class="btn btn-cyber btn-block" data-toggle="modal" data-target="#start_train_modal">Start Train</button>
                             % end
-                        </p>
+                        </div>
                         % if model_info['is_trained'] is 2:
-                            <p id="model_detail_buttons">
+                            <div id="model_detail_buttons">
                                 <div class="form-group">
                                     <label for="epoch_select" describedby="epoch_select">Epoch (1 〜 {{model_info['epoch']}})</label>
                                     <input id="epoch_select" type="number" min="1" max="{{model_info['epoch']}}" class="form-control" value="{{model_info['epoch']}}">
                                 </div>
                                 <button class="btn btn-cyber btn-block need-epoch" id="model_dl_btn">Download</button>
                                 <button class="btn btn-cyber btn-block need-epoch" data-toggle="modal" data-target="#inspection_modal">Inspect</button>
-                            </p>
+                            </div>
                         % end
                     </div>
                 </div>
