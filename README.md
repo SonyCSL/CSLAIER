@@ -41,6 +41,7 @@ DEEPstation is tested on Ubuntu 14.04. We recommend them to use DEEPstation, tho
 * bottle
 * bottle_sqlite
 * cv2
+* PyYAML
 
 Setup
 ------
@@ -89,10 +90,6 @@ It removes temporary images **IMMEDIATELY**.
 
 ### Running on Windows
 
-To run DEEPstation on Windows platform, you need to install these additional python libraries.
-
-* PyYAML
-
 If you cannot find necessary python libraries using `pip` command, you can find some whl file on [Python Extension Packages for Windows - Christoph Gohlke](http://www.lfd.uci.edu/~gohlke/pythonlibs/).
 
 Please make sure that you are using Windows style separetor on your `settings.yaml` like below. 
@@ -126,6 +123,7 @@ DEEPstationはUbuntu14.04でテストしています。 Ubuntu上で動かすこ
 * bottle
 * bottle_sqlite
 * cv2
+* PyYAML
 
 Setup
 ------
@@ -173,10 +171,6 @@ Tips
 すると、作成された一時ファイルが **ただちに** 削除されます。
 
 ### Windowsで動かす場合
-
-Windows上でDEEPstationを動かす場合、下記のPythonライブラリを追加でインストールする必要があります。
-
-* PyYAML
 
 `pip`を使って必要なPythonライブラリをインストールする場合、幾つかのライブラリが見つからない場合があります。  
 この場合[Python Extension Packages for Windows - Christoph Gohlke](http://www.lfd.uci.edu/~gohlke/pythonlibs/)こちらのサイトにwhlファイルがあるので、そちらをご利用ください。
