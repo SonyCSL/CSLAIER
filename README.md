@@ -107,7 +107,7 @@ Please make sure that you are using Windows style separetor on your `settings.ya
 #### Set nvidia-smi.exe path
 
 If you want to use gpus on Windows platform, DEEPstation need to set `nvidia-smi.exe` path on `settings.yaml`.  
-`nvidia-smi.exe` is basically in the following directory `C:¥Program Files¥¥NVIDIA Corporation¥¥NVSMI¥¥nvidia-smi.exe`.  
+`nvidia-smi.exe` is basically in the following directory `C:¥¥Program Files¥¥NVIDIA Corporation¥¥NVSMI¥¥nvidia-smi.exe`.  
 
 License
 --------
@@ -201,7 +201,7 @@ Windows上でDEEPstationを動かす場合、下記のPythonライブラリを�
 #### Set nvidia-smi.exe path
 
 WindowsでGPUを使用する場合、`settings.yaml`に`nvidia-smi.exe`の場所を正確に設定する必要があります。  
-`nvidia-smi.exe`は大抵の場合 `C:¥Program Files¥¥NVIDIA Corporation¥¥NVSMI¥¥nvidia-smi.exe`に配置されています。  
+`nvidia-smi.exe`は大抵の場合 `C:¥¥Program Files¥¥NVIDIA Corporation¥¥NVSMI¥¥nvidia-smi.exe`に配置されています。  
 
 
 License
