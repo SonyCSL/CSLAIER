@@ -18,3 +18,8 @@ inspection_temp_image: /path/to/your/deepstation/tmp_image
 prepared_data: /path/to/your/deepstation/prepared_data
 # Path to save trained data
 trained_data: /path/to/your/deepstation/trained_data
+
+# Path to nvidia-smi command
+nvidia_smi: nvidia-smi
+# SAMPLE FOR WINDOWS
+# nvidia_smi: "C:¥Program Files¥¥NVIDIA Corporation¥¥NVSMI¥¥nvidia-smi.exe"

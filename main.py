@@ -46,6 +46,7 @@ PREPARED_DATA_DIR      = settings['prepared_data']
 TRAINED_DATA_DIR       = settings['trained_data']
 TEMP_IMAGE_DIR         = settings['inspection_temp_image']
 INSPECTION_RAW_IMAGE   = settings['inspection_raw_image']
+NVIDIA_SMI_CMD         = settings['nvidia_smi']
 
 # static files
 @app.route('/statics/<filepath:path>')
@@ -533,8 +534,12 @@ def count_categories(path):
     
 def get_gpu_info():
     ret = {}
+    current_platform = platform.system()
     try:
-        xml = subprocess.check_output(['nvidia-smi', '-q', '-x'])
+        if current_platform == 'Windows':
+            xml = subprocess.check_output([NVIDIA_SMI_CMD, '-q', '-x'], shell=True)
+        else:
+            xml = subprocess.check_output([NVIDIA_SMI_CMD, '-q', '-x'])
     except:
         return {'error': 'command_not_available'}
     elem = fromstring(xml)
@@ -559,7 +564,7 @@ def get_gpu_info():
         utilization = g.find('utilization')
         info['gpu_util'] = utilization.find('gpu_util').text
         ret_gpus.append(info)
-    if platform.system() is 'Linux':
+    if current_platform == 'Linux':
         ret_gpus.sort(cmp=lambda x,y: cmp(int(x['minor_number']), int(y['minor_number'])))
     ret['gpus'] = ret_gpus
     return ret
