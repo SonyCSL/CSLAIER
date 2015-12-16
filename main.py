@@ -2,6 +2,7 @@
 
 import os
 import os.path
+import platform
 import sys
 import traceback
 import bottle
@@ -555,8 +556,11 @@ def get_gpu_info():
         memory = g.find('fb_memory_usage')
         info['memory_total'] = memory.find('total').text
         info['memory_used'] = memory.find('used').text
+        utilization = g.find('utilization')
+        info['gpu_util'] = utilization.find('gpu_util').text
         ret_gpus.append(info)
-    ret_gpus.sort(cmp=lambda x,y: cmp(int(x['minor_number']), int(y['minor_number'])))
+    if platform.system() is 'Linux':
+        ret_gpus.sort(cmp=lambda x,y: cmp(int(x['minor_number']), int(y['minor_number'])))
     ret['gpus'] = ret_gpus
     return ret
 
