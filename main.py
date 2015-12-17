@@ -340,7 +340,7 @@ def api_get_training_data(id, db):
     model_row = db.execute('select line_graph_data_path, is_trained from Model where id = ?', (id,))
     model = model_row.fetchone()
     bottle.response.content_type = 'application/json'
-    if not os.path.exists(model[0]) or model[0] is None:
+    if model[0] is None or not os.path.exists(model[0]):
         return dumps({'status': 'graph not ready', 'is_trained': model[1]})
     f = open(model[0], 'r')
     data = f.read()
