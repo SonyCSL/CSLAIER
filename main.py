@@ -339,15 +339,13 @@ def api_get_model_template(model_name):
 def api_get_training_data(id, db):
     model_row = db.execute('select line_graph_data_path, is_trained from Model where id = ?', (id,))
     model = model_row.fetchone()
+    bottle.response.content_type = 'application/json'
+    if not os.path.exists(model[0]) or model[0] is None:
+        return dumps({'status': 'graph not ready', 'is_trained': model[1]})
     f = open(model[0], 'r')
     data = f.read()
     f.close()
-    bottle.response.content_type = 'application/json'
-    if model[0] is None:
-        ret = {'status': 'graph not ready', 'is_trained': model[1]}
-    else:
-        ret = {'status': 'ready', 'data': data, 'is_trained': model[1]}
-    return ret
+    return dumps({'status': 'ready', 'data': data, 'is_trained': model[1]})
     
 @app.route('/api/models/chekc_train_progress')
 def api_check_train_progress(db):
