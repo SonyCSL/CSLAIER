@@ -16,6 +16,7 @@ $(function(){
 });
 
 $('#uploadDataset #submit_dataset').on('click', function(e){
+    if($('#submit_dataset').hasClass('disabled')) return;
     $('#upload_modal').modal('hide');
     $('#uploading_progress_div').removeClass('hidden');
     $('body').addClass('noscroll');
@@ -246,6 +247,11 @@ $('#model_dl_btn').on('click', function(e){
     var model_id = $('#model_id').val();
     var epoch = $('#epoch_select').val();
     window.open('/models/download/' + model_id + '/' + epoch);
+});
+
+$('#label_dl_btn').on('click', function(e){
+    var model_id = $('#model_id').val();
+    window.open('/models/labels/download/' + model_id);
 });
 
 $('#graph_tab').on('click', function(e){

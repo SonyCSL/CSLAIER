@@ -65,7 +65,7 @@ def images_for_inspection(filepath):
 def download_trained_model(filepath):
     filename = filepath.split('/')[-1]
     return bottle.static_file(filepath, TRAINED_DATA_DIR, download=filename, mimetype="application/octet-stream")
-    
+
 # main
 @app.route('/')
 def index(db):
@@ -234,7 +234,13 @@ def get_trained_model(id, epoch, db):
     epoch = int(epoch)
     path = path.replace(TRAINED_DATA_DIR, '')
     return bottle.redirect('/trained_models/download' + path + '/model%04d'%epoch)
- 
+
+@app.route('/models/labels/download/<id>')
+def get_label_text(id, db):
+    row_model = db.execute('select prepared_file_path from Model where id = ?', (id,))
+    path = row_model.fetchone()[0]
+    return bottle.static_file('labels.txt', path, download='labels.txt', mimetype="text/plain")
+
 @app.route('/models/new')
 def make_new_model():
     model_templates = os.listdir(DEEPSTATION_ROOT + os.sep + 'model_templates')

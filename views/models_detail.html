@@ -59,7 +59,8 @@
                                     <label for="epoch_select" describedby="epoch_select">Epoch (1 〜 {{model_info['epoch']}})</label>
                                     <input id="epoch_select" type="number" min="1" max="{{model_info['epoch']}}" class="form-control" value="{{model_info['epoch']}}">
                                 </div>
-                                <button class="btn btn-cyber btn-block need-epoch" id="model_dl_btn">Download</button>
+                                <button class="btn btn-cyber btn-block need-epoch" id="model_dl_btn">Download Model</button>
+                                <button class="btn btn-cyber btn-block need-epoch" id="label_dl_btn">Download Label</button>
                                 <button class="btn btn-cyber btn-block need-epoch" data-toggle="modal" data-target="#inspection_modal">Inspect</button>
                             </div>
                         % end
