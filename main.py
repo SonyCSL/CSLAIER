@@ -69,7 +69,7 @@ def download_trained_model(filepath):
 # main
 @app.route('/')
 def index(db):
-    models = db.execute('select Model.id, Model.name, Model.epoch, Model.is_trained, Model.created_at, Model.network_name, Model.algorithm, Dataset.name from Model left join Dataset on Model.dataset_id = Dataset.id ')
+    models = db.execute('select Model.id, Model.name, Model.epoch, Model.is_trained, Model.created_at, Model.network_name, Model.algorithm, Dataset.name from Model left join Dataset on Model.dataset_id = Dataset.id order by Model.id DESC')
     dataset_cur = db.execute('select id, name, dataset_path from Dataset')
     dataset_rows = dataset_cur.fetchall()
     datasets = []
