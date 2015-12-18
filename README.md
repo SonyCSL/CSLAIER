@@ -88,27 +88,6 @@ Training makes a lot of temporary images on your `prepared_data` directory.
 If you want to remove these images, access `http://localhost:8080/cleanup` on your browser.  
 It removes temporary images **IMMEDIATELY**.
 
-### Running on Windows
-
-#### Additional Libraries
-
-To run DEEPstation on Windows platform, you need to install these additional python libraries.
-
-* Pillow (PIL)
-
-If you cannot find necessary python libraries using `pip` command, you can find some whl file on [Python Extension Packages for Windows - Christoph Gohlke](http://www.lfd.uci.edu/~gohlke/pythonlibs/).
-
-#### Editting settings.yaml
-
-Please make sure that you are using Windows style separetor on your `settings.yaml` like below. 
-
-`C:¥¥Users¥User¥DEEPstation` or `C:\\Users\User\DEEPstation` 
-
-#### Set nvidia-smi.exe path
-
-If you want to use gpus on Windows platform, DEEPstation need to set `nvidia-smi.exe` path on `settings.yaml`.  
-`nvidia-smi.exe` is basically in the following directory `C:¥¥Program Files¥¥NVIDIA Corporation¥¥NVSMI¥¥nvidia-smi.exe`.  
-
 License
 --------
 
@@ -182,26 +161,6 @@ Tips
 学習ではたくさんの一時ファイルを`prepared_data`ディレクトリに作成します。  
 もし、これらの画像を削除したい場合は `http://localhost:8080/cleanup` にブラウザでアクセスします。 
 すると、作成された一時ファイルが **ただちに** 削除されます。
-
-### Windowsで動かす場合
-
-#### 追加で必要なライブラリ
-Windows上でDEEPstationを動かす場合、下記のPythonライブラリを追加でインストールする必要があります。
-
-* Pillow (PIL)
-
-`pip`を使って必要なPythonライブラリをインストールする場合、幾つかのライブラリが見つからない場合があります。  
-この場合[Python Extension Packages for Windows - Christoph Gohlke](http://www.lfd.uci.edu/~gohlke/pythonlibs/)こちらのサイトにwhlファイルがあるので、そちらをご利用ください。
-
-#### setting.yamlの編集
-
-`settings.yaml`を編集する際、ディレクトリのセパレータがWindowsの書式になっていることを確認してください。  
-`C:¥¥Users¥User¥DEEPstation` もしくは `C:\\Users\User\DEEPstation`のようになっている必要があります。 
-
-#### Set nvidia-smi.exe path
-
-WindowsでGPUを使用する場合、`settings.yaml`に`nvidia-smi.exe`の場所を正確に設定する必要があります。  
-`nvidia-smi.exe`は大抵の場合 `C:¥¥Program Files¥¥NVIDIA Corporation¥¥NVSMI¥¥nvidia-smi.exe`に配置されています。  
 
 
 License
