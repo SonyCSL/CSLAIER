@@ -186,22 +186,17 @@ h3 {
 }
 
 .model {
-    width: 300px;
+    width: 250px;
     height: 200px;
 }
-
 
 .model-progress{
     border:solid 1px #a00;
     background-color: #300;
-    width: 300px;
-    height: 200px;
 }
 .model-nottrained{
     border:solid 1px #a60;
     background-color: #320;
-    width: 300px;
-    height: 200px;
 }
 
 .dataset:hover, .model:hover {
