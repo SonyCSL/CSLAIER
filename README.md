@@ -30,6 +30,12 @@ Requirement
 
 DEEPstation is tested on Ubuntu 14.04. We recommend them to use DEEPstation, though it may run on other systems as well.
 
+### Supported Browsers
+
+* Chrome
+* Safari
+* Firefox
+
 ### System
 * NVIDIA CUDA Technology GPU and drivers 
 * Python 2.7
@@ -103,6 +109,12 @@ Requirement
 ------------
 
 DEEPstationはUbuntu14.04でテストしています。 Ubuntu上で動かすことをおすすめしますが、他のプラットフォームでも動作します。
+
+### Supported Browsers
+
+* Chrome
+* Safari
+* Firefox
 
 ### System
 * NVIDIA CUDA Technology GPU and drivers 
