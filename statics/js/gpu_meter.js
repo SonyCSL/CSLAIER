@@ -44,6 +44,7 @@ var createCircle = function(context, r, beginColorOffset, endColorRGB, radius, s
 };
 
 var create_gpu_meter = function(fan,power,power_limit,memory,memory_total,temp) {
+    enchant.ENV.USE_TOUCH_TO_START_SCENE = false;
     var game = new Game(228, 228);
     
     var re = /^[\d\.]+/;
@@ -65,11 +66,7 @@ var create_gpu_meter = function(fan,power,power_limit,memory,memory_total,temp) 
         //コンテキストを取得します
         var context = surface.context;
         sprite.on('enterframe',function(){
-            a = fan + Math.random()*0.01-0.005
-            b = power + Math.random()*0.01-0.005
-            c = memory + Math.random()*0.01-0.005
-            d = temp + Math.random()*0.01-0.005
-            circluarGraph(context,a,b,c,d);
+            circluarGraph(context,fan,power,memory,temp);
         })
         //シーンにサーフェスを追加する
         game.rootScene.addChild(sprite); 
