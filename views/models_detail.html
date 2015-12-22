@@ -22,16 +22,22 @@
         <div class="col-md-9 full-height">
             <h2>
                 Model: {{model_info["name"]}}
-                <div id="progress-label">
-                % if model_info["is_trained"] == 0:
-                    <span class="label label-nottrained"> Not Trained</span>
-                % elif model_info["is_trained"] == 1:
-                    <span class="label label-progress"> In Progress</span>
-                % else:
-                    <span class="label label-trained"> Trained</span>
-                % end
-                </div>
             </h2>
+            <div class="model-sub-header">
+                <div id="progress-label">
+                    % if model_info["is_trained"] == 0:
+                        <span class="label label-nottrained"> Not Trained</span>
+                    % elif model_info["is_trained"] == 1:
+                        <span class="label label-progress"> In Progress</span>
+                    % else:
+                        <span class="label label-trained"> Trained</span>
+                    % end
+                </div>
+                <div class="model-delete-div">
+                    <button class="btn btn-cyber" id="delete_model_button">Delete</button>
+                </div>
+            </div>
+            <div style="clear:both;height:5px;"></div>
             <div class="row full-height">
                 <div class="col-md-4">
                     <div>

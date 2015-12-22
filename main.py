@@ -280,6 +280,12 @@ def create_new_model(db):
         return show_error_screen(traceback.format_exc(sys.exc_info()[2]))
     return bottle.redirect('/models/show/' + str(row.lastrowid))
 
+@app.route('/models/delete/<id>', method="POST")
+def delete_model(id, db):
+    row_model = db.execute('select network_path, trained_model_path, prepared_file_path from Model where id = ?', (id,));
+    
+    return bottle.redirect('/')
+
 @app.route('/cleanup')
 def cleanup(db):
     rows = db.execute('select prepared_file_path from Model')

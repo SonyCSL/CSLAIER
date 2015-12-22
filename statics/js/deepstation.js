@@ -258,6 +258,14 @@ $('#start_train_btn').on('click', function(e){
     });
 });
 
+$('#delete_model_button').on('click', function(e){
+    if(window.confirm('Is it okay to remove this model?')) {
+        var model_id = $('#model_id').val();
+        var form = '<input type="hidden" name="model_id" value="'+ model_id +'">';
+        $('<form action="/models/delete/' + model_id + '" method="POST">' + form + '</form>').append('body').submit();
+    }
+});
+
 $('#processing_screen').on('click', function(e){
     e.stopPropagation();
 });

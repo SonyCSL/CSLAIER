@@ -301,6 +301,23 @@ h3 {
     font-weight: bold;
 }
 
+.model-sub-header {
+    width: 100%;
+    margin-top: -10px;
+    margin-bottom: 10px;
+    vertical-align: middle;
+}
+
+#progress-label {
+    width: 200px;
+    font-size: 2em;
+    float: left;
+}
+
+.model-delete-div {
+    float: right;
+}
+
 .full-height{
     height: 100%;
 }
