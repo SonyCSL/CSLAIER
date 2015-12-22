@@ -1,5 +1,6 @@
 % rebase('base.html', title='index')
 <div id="index" class="hidden">true</div>
+<div id="gpu_meter_needed" class="hidden">true</div>
 <nav class="navbar navbar-inverse navbar-fixed-top">
     <div class="container">
         <div class="navbar-header">
@@ -115,7 +116,7 @@
                     </div>
             % else:
                 % for g in gpu_info['gpus']:
-                    <div class="gpu" >
+                    <div class="gpu" id="{{g['uuid']}}">
                         <h4>{{g['minor_number']}}:{{g['product_name']}}</h4>
                         <table class="gpu_table">
                             <tr><th>UUID</th><td>{{g['uuid']}}</td></tr>

@@ -1,150 +1,78 @@
 enchant();
 
-// enchant.jsのSurfaceクラスは、HTML5のcanvasと同じ働きをします
-// canvasを使用すると画面に直線や円など好きな図形を描くことが出来ます
-
-circluarGraph=function(context,fan,power,memory,temp){
-        percent=memory
-    
-        fan = 360*fan-90
-        memory = 360*memory-90
-        temp=360*temp-90
-        power=360*power-90
+var circluarGraph = function(context,fan,power,memory,temp){
+        context.clearRect(0,0,228,228);
+        var percent=memory;
+        fan = 360*fan-90;
+        memory = 360*memory-90;
+        temp=360*temp-90;
+        power=360*power-90;
         
-        //以下、HTML5のcanvasと同じように使えます
-        context.beginPath();     //パスを開始
-        
-        context.clearRect(0,0,240,240)
-        
+        createCircle(context, 100, 0.7, 'rgb(64,64,0)', 100, 0, 360, true);
+        createCircle(context, 100, 0.7, 'rgb(200,128,0)', 100, -90, memory, false);
+        createCircle(context, 70, 0.7, 'rgb(200,0,0)', 80, -90, power, false);
+        createCircle(context, 50, 0.5, 'rgb(50,150,0)', 60, -90, temp, false);                
+        createCircle(context, 50, 0.1, 'rgb(0,200,100)', 40, -90, fan, false);
 
-        //(0,50)から(0,200)までの間にグラデーションを設定
-        var grad  = context.createRadialGradient(120,120, 10,120,120,100);
-
-        //赤からグラデーション開始
-        grad.addColorStop(0,'#020'); 
-        grad.addColorStop(0.7,'#020'); 
-
-        //青でグラデーション終了
-        grad.addColorStop(1,'rgb(  200,  128,0)'); 
-        context.fillStyle = grad; 
-                
-        radius=100
-        start=-90
-        end=memory
-        x=120
-        y=120
-        bool = false
-        context.moveTo(x,y)
-        context.arc(x, y, radius, (start * Math.PI / 180), (end * Math.PI / 180), bool);
-        context.fill();
-        
-        context.closePath();	//パスを終了
-    
-        context.beginPath();     //パスを開始
-        //(0,50)から(0,200)までの間にグラデーションを設定
-        var grad  = context.createRadialGradient(120,120, 10,120,120,70);
-
-        grad.addColorStop(0,'#020'); 
-        grad.addColorStop(0.7,'#020'); 
-
-        grad.addColorStop(1,'rgb(  200,  0,0)'); 
-        context.fillStyle = grad; 
-                
-        radius=80
-        start=-90
-        end=power
-        x=120
-        y=120
-        bool = false
-        context.moveTo(x,y)
-        context.arc(x, y, radius, (start * Math.PI / 180), (end * Math.PI / 180), bool);
-        context.fill();
-        
-        context.closePath();    //パスを終了
-
-        context.beginPath();     //パスを開始
-        //(0,50)から(0,200)までの間にグラデーションを設定
-        var grad  = context.createRadialGradient(120,120, 10,120,120,50);
-
-        //赤からグラデーション開始
-        grad.addColorStop(0,'#020'); 
-        grad.addColorStop(0.5,'#020'); 
-
-        grad.addColorStop(1,'rgb(  050,  150,0)'); 
-        context.fillStyle = grad; 
-                
-        radius=60
-        start=-90
-        end=temp
-        x=120
-        y=120
-        bool = false
-        context.moveTo(x,y)
-        context.arc(x, y, radius, (start * Math.PI / 180), (end * Math.PI / 180), bool);
-        context.fill();
-        
-        context.closePath();    //パスを終了
-
-        context.beginPath();     //パスを開始
-        //(0,50)から(0,200)までの間にグラデーションを設定
-        var grad  = context.createRadialGradient(120,120, 10,120,120,50);
-
-        //赤からグラデーション開始
-        grad.addColorStop(0,'#020'); 
-        grad.addColorStop(0.1,'#020'); 
-
-        //青でグラデーション終了
-        grad.addColorStop(1,'rgb(  0,  200,100)'); 
-        context.fillStyle = grad; 
-                
-        radius=40
-        start=-90
-        end=fan
-        x=120
-        y=120
-        bool = false
-        context.moveTo(x,y)
-        context.arc(x, y, radius, (start * Math.PI / 180), (end * Math.PI / 180), bool);
-        context.fill();
-        
-        context.closePath();    //パスを終了
         context.fillStyle = '#fa0';
         context.font= 'bold 36px Century Gothic';
-        context.fillText( ~~(percent*100)+"%",90,140)
+        context.fillText( ~~(percent*100)+"%",90,140);
         context.fillStyle = '#fa0';
         context.font= 'bold 10px Century Gothic';
-        context.fillText( "Memory ",100,100)
+        context.fillText( "Memory ",100,100);
+};
 
+var createCircle = function(context, r, beginColorOffset, endColorRGB, radius, start, end, bool){
+        var x = y = 120;
+        context.beginPath();     //パスを開始
 
-}
+        //グラデーションを設定
+        var grad  = context.createRadialGradient(120,120,10,120,120,r);
 
+        //グラデーション開始
+        grad.addColorStop(0,'#020'); 
+        grad.addColorStop(beginColorOffset,'#020'); 
 
-var create_gpu_meter = function(fan, power, memory, temp) {
-    var game = new Game(240, 240);
+        //グラデーション終了
+        grad.addColorStop(1,endColorRGB); 
+        context.fillStyle = grad; 
+
+        context.moveTo(x,y);
+        context.arc(x, y, radius, (start * Math.PI / 180), (end * Math.PI / 180), bool);
+        context.fill();
+        context.closePath();    //パスを終了
+};
+
+var create_gpu_meter = function(fan,power,power_limit,memory,memory_total,temp) {
+    var game = new Game(228, 228);
+    
+    var re = /^[\d\.]+/;
+    fan = fan.match(re)[0] * 0.001;
+    power = power.match(re)[0] / power_limit.match(re)[0];
+    memory = memory.match(re)[0] / memory_total.match(re)[0];
+    temp = temp.match(re)[0] * 0.001;
     
     game.onload = function(){
-        game.rootScene.backgroundColor = "black";
+        game.rootScene.backgroundColor = "#020";
         //Spriteを作ります
-        sprite = new Sprite(240,240);        
+        var sprite = new Sprite(228,228);        
         //Surfaceを作ります
-        surface = new Surface(240,240);
+        var surface = new Surface(228,228);
         
         //spriteのimageにsurfaceを代入します
         sprite.image = surface;
         
         //コンテキストを取得します
-        context = surface.context;
-        a=b=c=d=0;
+        var context = surface.context;
         sprite.on('enterframe',function(){
-            a+= Math.random()*0.01-0.002
-            b+= Math.random()*0.01-0.002
-            c+= Math.random()*0.01-0.002
-            d+= Math.random()*0.01-0.002
+            a = fan + Math.random()*0.01-0.005
+            b = power + Math.random()*0.01-0.005
+            c = memory + Math.random()*0.01-0.005
+            d = temp + Math.random()*0.01-0.005
             circluarGraph(context,a,b,c,d);
-            
         })
         //シーンにサーフェスを追加する
         game.rootScene.addChild(sprite); 
     }
     game.start();
-};
+}

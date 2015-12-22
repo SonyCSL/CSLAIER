@@ -13,6 +13,25 @@ $(function(){
             showResultScreen();
         }
     }
+    if($('#gpu_meter_needed').text() !== '') {
+        _.each(gpus, function(gpu){
+            var iframe = document.createElement('iframe');
+            iframe.width = 228;
+            iframe.height = 228;
+            iframe.frameBorder = 0;
+            iframe.style.cssText = 'border: none';
+            var url = '/statics/html/gpu_usage.html?';
+            var keys = Object.keys(gpu);
+            var uuid = '';
+            _.each(keys, function(key){
+                if(key == 'uuid') uuid = gpu[key];
+                url += '&' + encodeURIComponent(key) + '=' + encodeURIComponent(gpu[key]);
+            });
+            url = url.replace('?&', '?');
+            iframe.src = url;
+            $('#' + uuid).append($(iframe));
+        });
+    }
 });
 
 $('#uploadDataset #submit_dataset').on('click', function(e){

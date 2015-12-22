@@ -173,7 +173,7 @@ h3 {
 
 .gpu{
     border:solid 1px #0c0;    
-    height: 180px;
+    height: auto;
 }
 
 .gpu th{
