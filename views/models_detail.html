@@ -1,5 +1,6 @@
 % rebase('base.html', title='new model')
 <div class="hidden" id="model_detail">true</div>
+<div class="hidden" id="gpu_meter_needed">true</div>
 <nav class="navbar navbar-inverse navbar-fixed-top">
     <div class="container">
         <div class="navbar-header">
@@ -119,7 +120,7 @@
                     </div>
             % else:
                 % for g in gpu_info['gpus']:
-                    <div class="gpu" >
+                    <div class="gpu" id="{{g['uuid']}}">
                         <h4>{{g['minor_number']}}:{{g['product_name']}}</h4>
                         <table class="gpu_table">
                             <tr><th>UUID</th><td>{{g['uuid']}}</td></tr>
@@ -248,3 +249,24 @@
 </pre>
 
 <input type="hidden" id="original_name" value="{{model_info['name']}}">
+
+<script>
+    var gpus = [
+    % for i,g in enumerate(gpu_info['gpus']):
+        {
+            "minor_number": "{{g['minor_number']}}",
+            "product_name": "{{g['product_name']}}",
+            "uuid": "{{g['uuid']}}",
+            "fan": "{{g['fan']}}",
+            "temperature": "{{g['temperature']}}",
+            "power_draw": "{{g['power_draw']}}",
+            "power_limit": "{{g['power_limit']}}",
+            "memory_used": "{{g['memory_used']}}",
+            "memory_total": "{{g['memory_total']}}"
+        }
+        % if i is not (len(gpu_info['gpus']) - 1):
+        ,
+        % end
+    % end
+    ];
+</script>
