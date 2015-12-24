@@ -276,6 +276,11 @@ $('#model_dl_btn').on('click', function(e){
     window.open('/models/download/' + model_id + '/' + epoch);
 });
 
+$('#mean_dl_btn').on('click', function(e){
+    var model_id = $('#model_id').val();
+    window.open('/models/mean/download/' + model_id);
+});
+
 $('#label_dl_btn').on('click', function(e){
     var model_id = $('#model_id').val();
     window.open('/models/labels/download/' + model_id);

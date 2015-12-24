@@ -241,6 +241,12 @@ def get_label_text(id, db):
     path = row_model.fetchone()[0]
     return bottle.static_file('labels.txt', path, download='labels.txt', mimetype="text/plain")
 
+@app.route('/models/mean/download/<id>')
+def get_mean_file(id, db):
+    row_model = db.execute('select prepared_file_path from Model where id = ?', (id,))
+    path = row_model.fetchone()[0]
+    return bottle.static_file('mean.npy', path, download='mean.npy', mimetype="application/octet-stream")
+
 @app.route('/models/new')
 def make_new_model():
     model_templates = os.listdir(DEEPSTATION_ROOT + os.sep + 'model_templates')
