@@ -48,6 +48,7 @@ DEEPstation is tested on Ubuntu 14.04. We recommend them to use DEEPstation, tho
 * bottle_sqlite
 * cv2
 * PyYAML
+* matplotlib
 
 Setup
 ------
