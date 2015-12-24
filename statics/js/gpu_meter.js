@@ -48,10 +48,10 @@ var create_gpu_meter = function(fan,power,power_limit,memory,memory_total,temp) 
     var game = new Game(228, 228);
     
     var re = /^[\d\.]+/;
-    fan = fan.match(re)[0] * 0.001;
+    fan = fan.match(re)[0] * 0.01;
     power = power.match(re)[0] / power_limit.match(re)[0];
     memory = memory.match(re)[0] / memory_total.match(re)[0];
-    temp = temp.match(re)[0] * 0.001;
+    temp = temp.match(re)[0] * 0.01;
     
     game.onload = function(){
         game.rootScene.backgroundColor = "#020";
