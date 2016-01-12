@@ -379,6 +379,13 @@ def api_check_train_progress(db):
         progress.append({'id': m[0], 'is_trained': m[1]})
     bottle.response.content_type = 'application/json'
     return dumps({'progress': progress})
+    
+@app.route('/api/models/draw_layer/<id>')
+def api_visualize_layer(id, db):
+    model_row = db.execute('select epoch, network_path, trained_model_path from Model where id = ?', (id,))
+    (epoch, network, trained_model_path) = model_row.fetchone()
+    
+    return
 
 #------- private methods ---------
 def find_all_files(directory):
