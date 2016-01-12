@@ -220,7 +220,7 @@ $('#start_train_btn').on('click', function(e){
     var model_id = $('#model_id').val();
     var dataset_id = parseInt($('#select_dataset').val(), 10);
     var epoch = $('#epoch_input').val();
-    var gpu_num = $('#gpu_num').val();
+    var gpu_num = $('#gpu_num').val() || $('input[name="gpu_num"]:checked').val();
     if(dataset_id < 0) {
         alert('Select Dataset.');
         return;

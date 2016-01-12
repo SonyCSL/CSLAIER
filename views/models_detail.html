@@ -165,16 +165,16 @@
                     <input id="epoch_input" type="number" value="1" min="1" class="form-control" name="epoch">
                 </div>
                 % if int(model_info['gpu_num']) is 0:
-                    <input type="hidden" name="gpu_num" value="-1">
+                    <input type="hidden" id="gpu_num" name="gpu_num" value="-1">
                 % else:
                     <div class="form-group">
                         <label for="gpu_num" class="label-control">Select GPU to compute.</label>
                         % for i in range(0, model_info['gpu_num']):
                             <label class="checkbox-inline">
                                 % if i is 0:
-                                    <input type="radio" id="gpu_num" name="gpu_num" value="{{i}}" checked> {{i}}
+                                    <input type="radio" name="gpu_num" value="{{i}}" checked> {{i}}
                                 % else:
-                                    <input type="radio" id="gpu_num" name="gpu_num" value="{{i}}"> {{i}}
+                                    <input type="radio" name="gpu_num" value="{{i}}"> {{i}}
                                 % end
                             </label>
                         % end
