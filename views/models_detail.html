@@ -78,6 +78,11 @@
                     <ul class="nav nav-tabs">
                         <li role="presentation" class="" id="graph_tab"><a href="#">Result</a></li>
                         <li role="presentation" class="active" id="network_tab"><a href="#">Network</a></li>
+                        % if model_info['is_trained'] is 2:
+                            <li role="presentation" class="" id="layer_tab"><a href="#">Layers</a></li>
+                        % else:
+                            <li role="presentation" class="disabled" id="layer_tab"><a href="#">Layers</a></li>
+                        % end
                     </ul>
                     <div id="model_detail_graph" class="hidden">
                         <p id="training_graph">Graph Not Ready</p>
@@ -95,6 +100,19 @@
                                 <button class="btn btn-cyber" data-toggle="modal" data-target="#create_new_network_modal">Create</button>
                                 <button class="btn btn-cyber" id="model_edit_cancel">Cancel</button>
                             % end
+                        </div>
+                    </div>
+                    <div id="model_detail_layers" class="hidden">
+                        <p id="layers_not_ready">Generating Layer Image</p>
+                        <div id="layer_images" class="hidden">
+                            <div>
+                                <h4>Epoch 0</h4>
+                                <img src="" alt="" class="img-responsive" id="layer_epoch0">
+                            </div>
+                            <div>
+                                <h4 id="last_epoch_title">Last Epoch</h4>
+                                <img src="" alt="" class="img-responsive" id="layer_last_epoch">
+                            </div>
                         </div>
                     </div>
                 </div>

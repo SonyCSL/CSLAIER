@@ -28,6 +28,7 @@ from PIL import Image
 
 import imagenet_inspect
 import train
+import visualizer
 
 
 # initialization
@@ -65,6 +66,12 @@ def images_for_inspection(filepath):
 def download_trained_model(filepath):
     filename = filepath.split('/')[-1]
     return bottle.static_file(filepath, TRAINED_DATA_DIR, download=filename, mimetype="application/octet-stream")
+
+@app.route('/layers/<id>/<filename>')
+def show_layer_image(id, filename, db):
+    model_row = db.execute('select trained_model_path from Model where id = ?', (id,))
+    trained_model_path = model_row.fetchone()[0]
+    return bottle.static_file(filename, trained_model_path)
 
 # main
 @app.route('/')
@@ -382,10 +389,23 @@ def api_check_train_progress(db):
     
 @app.route('/api/models/draw_layer/<id>')
 def api_visualize_layer(id, db):
+    bottle.response.content_type = 'application/json'
     model_row = db.execute('select epoch, network_path, trained_model_path from Model where id = ?', (id,))
     (epoch, network, trained_model_path) = model_row.fetchone()
-    
-    return
+    trained_models = []
+    if os.path.exists(trained_model_path + os.sep + 'epoch0_layer.png') and os.path.exists(trained_model_path + os.sep + 'epoch' + str(epoch) + '_layer.png'):
+        return dumps({'id': id, 'epoch_0': 'epoch0_layer.png', 'last_epoch': 'epoch' + str(epoch) + '_layer.png', 'epoch': epoch})
+    for f in find_all_files(trained_model_path):
+        if os.path.split(f)[1].startswith("model"):
+            trained_models.append(f)
+    trained_models = sorted(trained_models)
+    epoch0_model = trained_models[0]
+    epoch_last_model = trained_models[-1]
+    v0 = visualizer.LayerVisualizer(network, epoch0_model, trained_model_path)
+    v0.visualize_first_conv_layer('epoch0_layer')
+    v_last = visualizer.LayerVisualizer(network, epoch_last_model, trained_model_path)
+    v_last.visualize_first_conv_layer('epoch' + str(epoch) + '_layer')
+    return dumps({'id': id, 'epoch_0': 'epoch0_layer.png', 'last_epoch': 'epoch' + str(epoch) + '_layer.png', 'epoch': epoch})
 
 #------- private methods ---------
 def find_all_files(directory):

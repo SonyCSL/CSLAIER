@@ -290,14 +290,37 @@ $('#graph_tab').on('click', function(e){
     $(this).addClass('active');
     $('#model_detail_graph').removeClass('hidden');
     $('#network_tab').removeClass('active');
+    $('#layer_tab').removeClass('active');
     $('#model_detail_network').addClass('hidden');
+    $('#model_detail_layers').addClass('hidden');
 });
 
 $('#network_tab').on('click', function(e){
     $(this).addClass('active');
     $('#model_detail_network').removeClass('hidden');
     $('#model_detail_graph').addClass('hidden');
+    $('#model_detail_layers').addClass('hidden');
     $('#graph_tab').removeClass('active');
+    $('#layer_tab').removeClass('active');
+});
+
+$('#layer_tab').on('click', function(e){
+    if($(this).hasClass('disabled')) return;
+    if($('#layers_not_ready')) {
+        $.get('/api/models/draw_layer/' + $('#model_id').val(), function(ret){
+            $('#last_epoch_title').text('Epoch ' + ret.epoch);
+            $('#layer_epoch0').attr('src', '/layers/' + ret.id + '/' + ret.epoch_0);
+            $('#layer_last_epoch').attr('src', '/layers/' + ret.id + '/' + ret.last_epoch);
+            $('#layer_images').removeClass('hidden');
+            $('#layers_not_ready').remove();
+        });
+    }
+    $(this).addClass('active');
+    $('#model_detail_network').addClass('hidden');
+    $('#model_detail_graph').addClass('hidden');
+    $('#model_detail_layers').removeClass('hidden');
+    $('#graph_tab').removeClass('active');
+    $('#network_tab').removeClass('active');
 });
 
 

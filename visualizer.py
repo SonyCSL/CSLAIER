@@ -41,17 +41,17 @@ class LayerVisualizer:
                 for ch in channel:
                     accum += ch
                 accum /= len(channel)
-                ax.imshow(accum, interpolation='nearest') # interpolationはセットしないほうがいい？
+                ax.imshow(accum)
         else:
-            plt.imshow(W.data, interpolation='nearest')
+            plt.imshow(W.data)
         
     def save_plot(self, W, name):
         plt.clf()
         fig = plt.figure()
-        fig.suptitle(name + " " + W.label, fontweight='bold')
+        fig.suptitle(name + " " + W.label, fontweight='bold', color='#ffffff')
         self.plot(W)
         plt.draw()
-        plt.savefig(self.output_dir + os.sep + name + ".png")
+        plt.savefig(self.output_dir + os.sep + name + ".png", facecolor="#001100")
         
     def visualize_first_conv_layer(self, name=None):
         candidate = None

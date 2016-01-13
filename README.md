@@ -129,6 +129,7 @@ DEEPstationはUbuntu14.04でテストしています。 Ubuntu上で動かすこ
 * bottle_sqlite
 * cv2
 * PyYAML
+* matplotlib
 
 Setup
 ------
