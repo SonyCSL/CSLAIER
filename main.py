@@ -291,10 +291,10 @@ def delete_model(id, db):
     row_model = db.execute('select network_path, trained_model_path, prepared_file_path from Model where id = ?', (id,));
     network_path, trained_model_path, prepared_file_path = row_model.fetchone()
     db.execute('delete from Model where id = ?', (id,))
-    shutil.rmtree(prepared_file_path)
-    shutil.rmtree(trained_model_path)
+    if prepared_file_path: shutil.rmtree(prepared_file_path)
+    if trained_model_path: shutil.rmtree(trained_model_path)
     os.remove(network_path)
-    os.remove(network_path + 'c')
+    if os.path.exists(network_path + 'c'): os.remove(network_path + 'c')
     return bottle.redirect('/')
 
 @app.route('/cleanup')
