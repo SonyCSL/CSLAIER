@@ -1,7 +1,7 @@
 DEEPstation
 ============
 
-DEEPstation version 0.2.0
+DEEPstation version 0.2.1
 
 Browser based GUI deep learning tool.
 
