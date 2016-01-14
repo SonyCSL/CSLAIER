@@ -88,6 +88,15 @@
                     </div>
                 % end
             </div>
+			<table width=100%>
+			% for row in system_info:
+			<tr>
+				% for col in row:
+				<td style="text-align:right">{{col}}</td>
+				% end
+			</tr>
+			% end
+			</table>
         </div>
         <div class="col-md-3">
             <table border="0">
