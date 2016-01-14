@@ -6,18 +6,18 @@ debug: True
 # All paths must be absolute path.
 
 # Path for upload images.
-uploaded_images: /path/to/your/deepstation/uploaded_images
+uploaded_images: uploaded_images
 # Path for upload zip files.
-uploaded_raw_files: /path/to/your/deepstation/uploaded_raw_files
+uploaded_raw_files: uploaded_raw_files
 # Path for upload images to inspect.
-inspection_raw_image: /path/to/your/deepstation/inspection_raw_image
+inspection_raw_image: inspection_raw_image
 # Path to save temporary file for inspection
-inspection_temp_image: /path/to/your/deepstation/tmp_image
+inspection_temp_image: tmp_image
 
 # Path to save prepared data for training 
-prepared_data: /path/to/your/deepstation/prepared_data
+prepared_data: prepared_data
 # Path to save trained data
-trained_data: /path/to/your/deepstation/trained_data
+trained_data: trained_data
 
 # Path to nvidia-smi command
 nvidia_smi: nvidia-smi
