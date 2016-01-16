@@ -15,7 +15,7 @@ import sqlite3
 import numpy as np
 from PIL import Image
 import six
-import six.moves.cPickle as pickle
+import cPickle as pickle
 from six.moves import queue
 
 import chainer
@@ -101,7 +101,10 @@ def feed_data(train_list, val_list, mean_image, batchsize, val_batchsize, model,
     data_q.put('end')
     return
     
-def log_result(batchsize, val_batchsize, log_file, res_q):
+def log_result(batchsize, val_batchsize, log_file,log_html, res_q):
+    fH = open(log_html, 'w')
+    fH.flush()
+
     f = open(log_file, 'w')
     f.write("count\tepoch\taccuracy\tloss\taccuracy(val)\tloss(val)\n")
     f.flush()
@@ -134,9 +137,10 @@ def log_result(batchsize, val_batchsize, log_file, res_q):
             train_count += 1
             duration = time.time() - begin_at
             throughput = train_count * batchsize / duration
-            sys.stderr.write(
-                '\rtrain {} updates ({} samples) time: {} ({} images/sec)'
+            fH.write(
+                '\rtrain {} updates ({} samples) time: {} ({} images/sec)<BR/>'
                 .format(train_count, train_count * batchsize, datetime.timedelta(seconds=duration), throughput))
+            fH.flush()
             f.write(str(count) + "\t" + str(epoch) + "\t" + str(accuracy) + "\t" + str(loss) + "\t\t\n")
             f.flush()
             count += 1
@@ -146,7 +150,8 @@ def log_result(batchsize, val_batchsize, log_file, res_q):
                 mean_loss = train_cur_loss / 1000
                 mean_error = 1 - train_cur_accuracy / 10000
                 print(file=sys.stderr)
-                print(json.dumps({'type': 'train', 'iteration': train_count, 'error': mean_error, 'loss': mean_loss}))
+                fH.write("<strong>"+json.dumps({'type': 'train', 'iteration': train_count, 'error': mean_error, 'loss': mean_loss})+"</strong><br/>")
+                fH.flush()
                 sys.stdout.flush()
                 train_cur_loss = 0
                 train_cur_accuracy = 0
@@ -154,22 +159,25 @@ def log_result(batchsize, val_batchsize, log_file, res_q):
             val_count += val_batchsize
             duration = time.time() - val_begin_at
             throughput = val_count / duration
-            sys.stderr.write(
+            fH.write(
                 '\rval {} batches ({} samples) time: {} ({} images/sec)'
                 .format(val_count / val_batchsize, val_count, datetime.timedelta(seconds=duration), throughput)
             )
+            fH.flush()
             val_loss += loss
             val_accuracy += accuracy
             if val_count == VALIDATION_TIMING:
                 mean_loss = val_loss * val_batchsize / VALIDATION_TIMING
                 mean_accuracy = val_accuracy * val_batchsize / VALIDATION_TIMING
                 print(file=sys.stderr)
-                print(json.dumps({'type': 'val', 'iteration': train_count, 'error': (1 - mean_accuracy), 'loss': mean_loss}))
+                fH.write("<strong>"+json.dumps({'type': 'val', 'iteration': train_count, 'error': (1 - mean_accuracy), 'loss': mean_loss})+"</strong><br/>")
+                fH.flush()
                 f.write(str(count) + "\t" + str(epoch) + "\t\t\t" + str(mean_accuracy) + "\t" + str(mean_loss) + "\n")
                 count += 1
                 f.flush()
                 sys.stdout.flush()
     f.close()    
+    fH.close()
     
 def train_loop(model, output_dir, xp, optimizer, res_q, data_q):
     graph_generated = False
@@ -207,7 +215,9 @@ def train_loop(model, output_dir, xp, optimizer, res_q, data_q):
         del x, t
             
 def load_module(dir_name, symbol):
-    (file, path, description) = imp.find_module(dir_name + os.sep + symbol)
+    print(dir_name)
+    #(file, path, description) = imp.find_module(dir_name + os.sep + symbol)
+    (file, path, description) = imp.find_module(symbol,[dir_name])
     return imp.load_module(symbol, file, path, description)
             
 def do_train(db_path, train, test, mean, root_output_dir, model_dir, model_id, batchsize=32, val_batchsize=250, epoch=10, gpu=-1, loaderjob=20):
@@ -252,7 +262,7 @@ def do_train(db_path, train, test, mean, root_output_dir, model_dir, model_id, b
     feeder = threading.Thread(target=feed_data, args=(train_list, val_list, mean_image, batchsize, val_batchsize, model, loaderjob, epoch, optimizer, data_q))
     feeder.daemon = True
     feeder.start()
-    logger = threading.Thread(target=log_result, args=(batchsize, val_batchsize, output_dir + os.sep + 'line_graph.tsv', res_q))
+    logger = threading.Thread(target=log_result, args=(batchsize, val_batchsize, output_dir + os.sep + 'line_graph.tsv',output_dir + os.sep + 'log.html',  res_q))
     logger.daemon = True
     logger.start()
     train_loop(model, output_dir, xp, optimizer, res_q, data_q)

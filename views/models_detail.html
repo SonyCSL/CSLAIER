@@ -76,6 +76,7 @@
                 </div>
                 <div class="col-md-8 full-height">
                     <ul class="nav nav-tabs">
+                        <li role="presentation" class="" id="log_tab"><a href="#">Log</a></li>
                         <li role="presentation" class="" id="graph_tab"><a href="#">Result</a></li>
                         <li role="presentation" class="active" id="network_tab"><a href="#">Network</a></li>
                         % if model_info['is_trained'] is 2:
@@ -84,6 +85,11 @@
                             <li role="presentation" class="disabled" id="layer_tab"><a href="#">Layers</a></li>
                         % end
                     </ul>
+                    <div id="model_detail_log" class="hidden full-height">
+                        <div class="form-group has-textarea" >
+                            <pre id="training_log"></pre>
+                        </div>
+                    </div>
                     <div id="model_detail_graph" class="hidden">
                         <p id="training_graph">Graph Not Ready</p>
                     </div>
@@ -95,7 +101,7 @@
                                 <textarea class="form-control" id="network_edit_area">{{model_txt}}</textarea>
                             % end
                         </div>
-                        <div class="form-group hidden" id="create_network_buttons">
+                        <div class="form-group hidden" id="create_network_buttons">
                             % if model_info['is_trained'] is not 1:
                                 <button class="btn btn-cyber" data-toggle="modal" data-target="#create_new_network_modal">Create</button>
                                 <button class="btn btn-cyber" id="model_edit_cancel">Cancel</button>
@@ -117,6 +123,7 @@
                     </div>
                 </div>
             </div>
+
         </div>
         <div class="col-md-3">
             <table border="0">
@@ -198,8 +205,8 @@
                         % end
                     </div>
                 % end
-                <button type="button" id="start_train_btn" class="btn btn-cyber">開始</button>
-                <button type="cancel" class="btn btn-cyber" data-dismiss="modal">キャンセル</button>
+                <button type="button" id="start_train_btn" class="btn btn-cyber">Start</button>
+                <button type="cancel" class="btn btn-cyber" data-dismiss="modal">Calcel</button>
             </div>
         </div>
     </div>
@@ -277,20 +284,22 @@
 
 <script>
     var gpus = [
-    % for i,g in enumerate(gpu_info['gpus']):
-        {
-            "minor_number": "{{g['minor_number']}}",
-            "product_name": "{{g['product_name']}}",
-            "uuid": "{{g['uuid']}}",
-            "fan": "{{g['fan']}}",
-            "temperature": "{{g['temperature']}}",
-            "power_draw": "{{g['power_draw']}}",
-            "power_limit": "{{g['power_limit']}}",
-            "memory_used": "{{g['memory_used']}}",
-            "memory_total": "{{g['memory_total']}}"
-        }
-        % if i is not (len(gpu_info['gpus']) - 1):
-        ,
+    % if 'gpus' in gpu_info:
+        % for i,g in enumerate(gpu_info['gpus']):
+            {
+                "minor_number": "{{g['minor_number']}}",
+                "product_name": "{{g['product_name']}}",
+                "uuid": "{{g['uuid']}}",
+                "fan": "{{g['fan']}}",
+                "temperature": "{{g['temperature']}}",
+                "power_draw": "{{g['power_draw']}}",
+                "power_limit": "{{g['power_limit']}}",
+                "memory_used": "{{g['memory_used']}}",
+                "memory_total": "{{g['memory_total']}}"
+            }
+            % if i is not (len(gpu_info['gpus']) - 1):
+            ,
+            % end
         % end
     % end
     ];

@@ -14,7 +14,7 @@ import numpy as np
 from PIL import Image
 
 import six
-import six.moves.cPickle as pickle
+import cPickle as pickle
 from six.moves import queue
 
 import chainer

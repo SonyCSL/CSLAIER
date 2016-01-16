@@ -39,7 +39,7 @@ body.noscroll {
 }
 
 input.form-control, textarea.form-control, select.form-control,
-pre#network_edit_area, .CodeMirror {
+pre#network_edit_area,pre#training_log, .CodeMirror {
     background-color: #020;
     color: #0c0;
     border-color: #060;
@@ -244,6 +244,11 @@ h3 {
     -webkit-box-shadow: 10px 10px 10px rgba(0,0,0,0.4);
     -o-box-shadow: 10px 10px 10px rgba(0,0,0,0.4);
     -ms-box-shadow: 10px 10px 10px rgba(0,0,0,0.4);
+}
+#training_log {
+    height: 100%;
+    width: 100%;
+    font-size: 8px;
 }
 
 #network_edit_area {
