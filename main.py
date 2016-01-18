@@ -40,13 +40,12 @@ f.close()
 app = bottle.Bottle()
 plugin = sqlite.Plugin(dbfile=DEEPSTATION_ROOT + os.sep + 'deepstation.db' )
 app.install(plugin)
-
-UPLOADED_IMAGES_DIR    = settings['uploaded_images']
-UPLOADED_RAW_FILES_DIR = settings['uploaded_raw_files']
-PREPARED_DATA_DIR      = settings['prepared_data']
-TRAINED_DATA_DIR       = settings['trained_data']
-TEMP_IMAGE_DIR         = settings['inspection_temp_image']
-INSPECTION_RAW_IMAGE   = settings['inspection_raw_image']
+UPLOADED_IMAGES_DIR = settings['uploaded_images'] if settings['uploaded_images'].startswith('/') else os.path.realpath(DEEPSTATION_ROOT + settings['uploaded_images'])
+UPLOADED_RAW_FILES_DIR = settings['uploaded_raw_files'] if settings['uploaded_raw_files'].startswith('/') else os.path.realpath(DEEPSTATION_ROOT + settings['uploaded_raw_files'])
+PREPARED_DATA_DIR      = settings['prepared_data'] if settings['prepared_data'].startswith('/') else os.path.realpath(DEEPSTATION_ROOT + settings['prepared_data'])
+TRAINED_DATA_DIR       = settings['trained_data'] if settings['trained_data'].startswith('/') else os.path.realpath(DEEPSTATION_ROOT + settings['trained_data'])
+TEMP_IMAGE_DIR         = settings['inspection_temp_image'] if settings['inspection_temp_image'].startswith('/') else os.path.realpath(DEEPSTATION_ROOT + settings['inspection_temp_image'])
+INSPECTION_RAW_IMAGE   = settings['inspection_raw_image'] if settings['inspection_raw_image'].startswith('/') else os.path.realpath(DEEPSTATION_ROOT + settings['inspection_raw_image'])
 NVIDIA_SMI_CMD         = settings['nvidia_smi']
 
 # static files
@@ -82,7 +81,7 @@ def index(db):
     datasets = []
     for d in dataset_rows:
         datasets.append({"id": d[0], "name": d[1], "dataset_path": d[2], "thumbnails": get_files_in_random_order(d[2], 4), "file_num": count_files(d[2]), "category_num": count_categories(d[2])})
-    return bottle.template('index.html', models = models.fetchall(), datasets = datasets, gpu_info = get_gpu_info(), chainer_version = get_chainer_version(), python_version = get_python_version())
+    return bottle.template('index.html', models = models.fetchall(), datasets = datasets, system_info = get_system_info(), gpu_info = get_gpu_info(), chainer_version = get_chainer_version(), python_version = get_python_version())
 
 @app.route('/inspection/upload', method='POST')
 def do_upload_for_inspection(db):
@@ -212,7 +211,7 @@ def show_model_detail(id, db):
     model_txt = open(ret['network_path']).read()
     row_all_datasets = db.execute('select id, name from Dataset')
     all_datasets_info = row_all_datasets.fetchall()
-    return bottle.template('models_detail.html', model_info = ret, datasets = all_datasets_info, model_txt=model_txt,gpu_info = get_gpu_info(), chainer_version = get_chainer_version(), python_version = get_python_version())
+    return bottle.template('models_detail.html', model_info = ret, datasets = all_datasets_info, model_txt=model_txt,system_info = get_system_info(),gpu_info = get_gpu_info(), chainer_version = get_chainer_version(), python_version = get_python_version())
 
 @app.route('/models/start/train', method="POST")
 def kick_train_start(db):
@@ -604,6 +603,7 @@ def get_gpu_info():
             xml = subprocess.check_output([NVIDIA_SMI_CMD, '-q', '-x'])
     except:
         return {'error': 'command_not_available'}
+		
     elem = fromstring(xml)
     ret['driver_version'] = elem.find('driver_version').text
     gpus = elem.findall('gpu')
@@ -630,6 +630,20 @@ def get_gpu_info():
         ret_gpus.sort(cmp=lambda x,y: cmp(int(x['minor_number']), int(y['minor_number'])))
     ret['gpus'] = ret_gpus
     return ret
+	
+def get_system_info():
+    df = subprocess.check_output(['df'])
+    disks=df[:-1].split('\n')
+    info=[]
+    info.append( disks[0].split() )
+    for i,disk in enumerate(disks):
+        row = disk.split()
+        print(row)
+        if row[0].find('/') > -1:
+           info.append(row)
+    print(info)
+    return info
+
 
 def get_chainer_version():
     return chainer.__version__
