@@ -12,6 +12,7 @@ $(function(){
         if(hash == '#result') {
             showResultScreen();
         }
+        setInterval("update_train_log()", 10000);
     }
     if($('#gpu_meter_needed').text() !== '') {
         _.each(gpus, function(gpu){
@@ -384,13 +385,10 @@ var  update_train_log = function(){
 
     $.get('/api/models/get_training_log/' + model_id, function(ret){
         if(ret.status != 'ready') return;
-        $('#training_graph').empty();
         $('#training_log').html(ret.data)
     });
     draw_train_graph();
-
 }
-setInterval("update_train_log()", 10000);
 
 
 $('#graph_tab').on('click', function(e){
@@ -398,11 +396,11 @@ $('#graph_tab').on('click', function(e){
     draw_train_graph();
 });
 
-last_draw_time=0
+var last_draw_time = 0;
 var draw_train_graph = function(){
 
-    if( ($.now() - last_draw_time) < 30000)
-        return;
+    if( ($.now() - last_draw_time) < 30000) return;
+    
     last_draw_time = $.now()
 
     var model_id = $('#model_id').val();
