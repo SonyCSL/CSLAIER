@@ -12,6 +12,7 @@ $(function(){
         if(hash == '#result') {
             showResultScreen();
         }
+        setInterval("update_train_log()", 10000);
     }
     if($('#gpu_meter_needed').text() !== '') {
         _.each(gpus, function(gpu){
@@ -291,6 +292,8 @@ $('#graph_tab').on('click', function(e){
     $('#model_detail_graph').removeClass('hidden');
     $('#network_tab').removeClass('active');
     $('#layer_tab').removeClass('active');
+    $('#log_tab').removeClass('active');
+    $('#model_detail_log').addClass('hidden');
     $('#model_detail_network').addClass('hidden');
     $('#model_detail_layers').addClass('hidden');
 });
@@ -300,8 +303,10 @@ $('#network_tab').on('click', function(e){
     $('#model_detail_network').removeClass('hidden');
     $('#model_detail_graph').addClass('hidden');
     $('#model_detail_layers').addClass('hidden');
+    $('#model_detail_log').addClass('hidden');
     $('#graph_tab').removeClass('active');
     $('#layer_tab').removeClass('active');
+    $('#log_tab').removeClass('active');
 });
 
 $('#layer_tab').on('click', function(e){
@@ -319,6 +324,8 @@ $('#layer_tab').on('click', function(e){
     $('#model_detail_network').addClass('hidden');
     $('#model_detail_graph').addClass('hidden');
     $('#model_detail_layers').removeClass('hidden');
+    $('#model_detail_log').addClass('hidden');
+    $('#log_tab').removeClass('active');
     $('#graph_tab').removeClass('active');
     $('#network_tab').removeClass('active');
 });
@@ -361,13 +368,41 @@ $('#create_new_network_modal_form').submit(function(){
     }
 });
 
-$('#graph_tab').on('click', function(e){
+
+$('#log_tab').on('click', function(e){
+    $(this).addClass('active');
+    $('#model_detail_log').removeClass('hidden');
+    $('#model_detail_network').addClass('hidden');
+    $('#model_detail_graph').addClass('hidden');
+    $('#model_detail_layers').addClass('hidden');
+    $('#graph_tab').removeClass('active');
+    $('#layer_tab').removeClass('active');
+    $('#network_tab').removeClass('active');
+    update_train_log();
+});
+var  update_train_log = function(){
+    var model_id = $('#model_id').val();
+
+    $.get('/api/models/get_training_log/' + model_id, function(ret){
+        if(ret.status != 'ready') return;
+        $('#training_log').html(ret.data)
+    });
     draw_train_graph();
-    setInterval("draw_train_graph()", 30000);
+}
+
+
+$('#graph_tab').on('click', function(e){
+    last_draw_time=0;
+    draw_train_graph();
 });
 
-
+var last_draw_time = 0;
 var draw_train_graph = function(){
+
+    if( ($.now() - last_draw_time) < 30000) return;
+    
+    last_draw_time = $.now()
+
     var model_id = $('#model_id').val();
     $.get('/api/models/get_training_data/' + model_id, function(ret){
         if(ret.status != 'ready') return;

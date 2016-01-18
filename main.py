@@ -21,7 +21,7 @@ import subprocess
 import chainer
 from xml.etree.ElementTree import *
 import six
-import six.moves.cPickle as pickle
+import cPickle as pickle
 from datetime import datetime
 from json import dumps
 from PIL import Image
@@ -376,6 +376,20 @@ def api_get_training_data(id, db):
     data = f.read()
     f.close()
     return dumps({'status': 'ready', 'data': data, 'is_trained': model[1]})
+
+@app.route('/api/models/get_training_log/<id>')
+def api_get_training_data(id, db):
+    model_row = db.execute('select line_graph_data_path, is_trained from Model where id = ?', (id,))
+    model = model_row.fetchone()
+    bottle.response.content_type = 'application/json'
+    if model[0] is None or not os.path.exists(model[0]):
+        return dumps({'status': 'graph not ready'})
+    filename=model[0].replace('line_graph.tsv','log.html')
+    f = open(filename, 'r')
+    data = f.read()
+    f.close()
+    return dumps({'status': 'ready', 'data': data})
+
     
 @app.route('/api/models/chekc_train_progress')
 def api_check_train_progress(db):
