@@ -54,6 +54,8 @@ Setup
 ------
 
 * Edit `settings.yaml` to set paths for saving files.
+  * Begin with `/` stands for abosolute path.
+  * Begin without `/` or begin with `./` stands for absolute path from DEEPstation's `main.py`. 
 * Setup database. Try command below on root directory of DEEPstation.  
 `sqlite3 deepstation.db < ./scheme/deepstation.sql`
 * Startup server. `python main.py`
@@ -135,6 +137,8 @@ Setup
 ------
 
 * 各種ファイルの保存場所を`settings.yaml`に定義します。
+  * `/` で始まるパスは絶対パスとして処理されます。
+  * `/` で始まらないパス、`./`で始まるパスはDEEPstationの`main.py`が配置されているディレクトリ直下の相対パスとして処理されます。
 * データベースのセットアップを行います。DEEPstationをダウンロードしたディレクトリで下記のコマンドを実行してください。  
 `sqlite3 deepstation.db < ./scheme/deepstation.sql`
 * サーバを起動します。DEEPstationをダウンロードしたディレクトリで `python main.py`を実行します

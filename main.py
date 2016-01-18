@@ -40,16 +40,13 @@ f.close()
 app = bottle.Bottle()
 plugin = sqlite.Plugin(dbfile=DEEPSTATION_ROOT + os.sep + 'deepstation.db' )
 app.install(plugin)
-
-UPLOADED_IMAGES_DIR    = DEEPSTATION_ROOT  + settings['uploaded_images']
-UPLOADED_RAW_FILES_DIR = DEEPSTATION_ROOT  + settings['uploaded_raw_files']
-PREPARED_DATA_DIR      = DEEPSTATION_ROOT  + settings['prepared_data']
-TRAINED_DATA_DIR       = DEEPSTATION_ROOT  + settings['trained_data']
-TEMP_IMAGE_DIR         = DEEPSTATION_ROOT  + settings['inspection_temp_image']
-INSPECTION_RAW_IMAGE   = DEEPSTATION_ROOT  + settings['inspection_raw_image']
+UPLOADED_IMAGES_DIR = settings['uploaded_images'] if settings['uploaded_images'].startswith('/') else os.path.realpath(DEEPSTATION_ROOT + settings['uploaded_images'])
+UPLOADED_RAW_FILES_DIR = settings['uploaded_raw_files'] if settings['uploaded_raw_files'].startswith('/') else os.path.realpath(DEEPSTATION_ROOT + settings['uploaded_raw_files'])
+PREPARED_DATA_DIR      = settings['prepared_data'] if settings['prepared_data'].startswith('/') else os.path.realpath(DEEPSTATION_ROOT + settings['prepared_data'])
+TRAINED_DATA_DIR       = settings['trained_data'] if settings['trained_data'].startswith('/') else os.path.realpath(DEEPSTATION_ROOT + settings['trained_data'])
+TEMP_IMAGE_DIR         = settings['inspection_temp_image'] if settings['inspection_temp_image'].startswith('/') else os.path.realpath(DEEPSTATION_ROOT + settings['inspection_temp_image'])
+INSPECTION_RAW_IMAGE   = settings['inspection_raw_image'] if settings['inspection_raw_image'].startswith('/') else os.path.realpath(DEEPSTATION_ROOT + settings['inspection_raw_image'])
 NVIDIA_SMI_CMD         = settings['nvidia_smi']
-
-
 
 # static files
 @app.route('/statics/<filepath:path>')
