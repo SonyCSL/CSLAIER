@@ -97,6 +97,12 @@ Training makes a lot of temporary images on your `prepared_data` directory.
 If you want to remove these images, access `http://localhost:8080/cleanup` on your browser.  
 It removes temporary images **IMMEDIATELY**.
 
+### Changing server backend
+
+You can change server backend (default is wsgiref). If you want to change, edit `settings.yaml`.  
+You can chose server backend from [here](http://bottlepy.org/docs/dev/deployment.html#switching-the-server-backend)  
+Use this functionality at your own risk.
+
 License
 --------
 
@@ -180,6 +186,12 @@ Tips
 もし、これらの画像を削除したい場合は `http://localhost:8080/cleanup` にブラウザでアクセスします。 
 すると、作成された一時ファイルが **ただちに** 削除されます。
 
+### サーバのバックエンドの変更
+
+実行するサーババックエンドを変更することができます(デフォルトではwsgirefが選択されています)。  
+`settings.yaml` に使用するサーババックエンドを指定することで変更することができます。  
+使用できるバックエンドは [このリスト](http://bottlepy.org/docs/dev/deployment.html#switching-the-server-backend) の中から選択することができます。  
+サーバのバックエンドを変更する場合は自己責任で行ってください。
 
 License
 --------

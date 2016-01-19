@@ -381,14 +381,15 @@ def api_get_training_data(id, db):
     model_row = db.execute('select line_graph_data_path, is_trained from Model where id = ?', (id,))
     model = model_row.fetchone()
     bottle.response.content_type = 'application/json'
-    if model[0] is None or not os.path.exists(model[0]):
+    if model[0] is None:
         return dumps({'status': 'graph not ready'})
-    filename=model[0].replace('line_graph.tsv','log.html')
+    filename = model[0].replace('line_graph.tsv','log.html')
+    if not os.path.exists(filename):
+        return dumps({'status': 'graph not ready'})
     f = open(filename, 'r')
     data = f.read()
     f.close()
     return dumps({'status': 'ready', 'data': data})
-
     
 @app.route('/api/models/chekc_train_progress')
 def api_check_train_progress(db):
@@ -632,16 +633,14 @@ def get_gpu_info():
     return ret
 	
 def get_system_info():
-    df = subprocess.check_output(['df'])
+    df = subprocess.check_output(['df', '-h'])
     disks=df[:-1].split('\n')
     info=[]
     info.append( disks[0].split() )
     for i,disk in enumerate(disks):
         row = disk.split()
-        print(row)
         if row[0].find('/') > -1:
            info.append(row)
-    print(info)
     return info
 
 
@@ -655,5 +654,5 @@ def get_python_version():
 def show_error_screen(error):
     return bottle.template('errors.html', detail=error)
     
-app.run(host=settings['host'], port=settings['port'], debug=settings['debug'])
+app.run(server=settings['server_engine'], host=settings['host'], port=settings['port'], debug=settings['debug'])
 

@@ -117,17 +117,14 @@ def log_result(batchsize, val_batchsize, log_file,log_html, res_q):
     while True:
         result = res_q.get()
         if result == 'end':
-            print(file=sys.stderr)
             break
         elif result == 'train':
-            print(file=sys.stderr)
             train = True
             if val_begin_at is not None:
                 begin_at += time.time() - val_begin_at
                 val_begin_at = None
             continue
         elif result == 'val':
-            print(file=sys.stderr)
             train = False
             val_count = val_loss = val_accuracy = 0
             val_begin_at = time.time()
@@ -149,7 +146,6 @@ def log_result(batchsize, val_batchsize, log_file,log_html, res_q):
             if train_count % 1000 == 0:
                 mean_loss = train_cur_loss / 1000
                 mean_error = 1 - train_cur_accuracy / 10000
-                print(file=sys.stderr)
                 fH.write("<strong>"+json.dumps({'type': 'train', 'iteration': train_count, 'error': mean_error, 'loss': mean_loss})+"</strong><br/>")
                 fH.flush()
                 sys.stdout.flush()
@@ -169,7 +165,6 @@ def log_result(batchsize, val_batchsize, log_file,log_html, res_q):
             if val_count == VALIDATION_TIMING:
                 mean_loss = val_loss * val_batchsize / VALIDATION_TIMING
                 mean_accuracy = val_accuracy * val_batchsize / VALIDATION_TIMING
-                print(file=sys.stderr)
                 fH.write("<strong>"+json.dumps({'type': 'val', 'iteration': train_count, 'error': (1 - mean_accuracy), 'loss': mean_loss})+"</strong><br/>")
                 fH.flush()
                 f.write(str(count) + "\t" + str(epoch) + "\t\t\t" + str(mean_accuracy) + "\t" + str(mean_loss) + "\n")
@@ -215,8 +210,6 @@ def train_loop(model, output_dir, xp, optimizer, res_q, data_q):
         del x, t
             
 def load_module(dir_name, symbol):
-    print(dir_name)
-    #(file, path, description) = imp.find_module(dir_name + os.sep + symbol)
     (file, path, description) = imp.find_module(symbol,[dir_name])
     return imp.load_module(symbol, file, path, description)
             
