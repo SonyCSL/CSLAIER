@@ -7,6 +7,7 @@ import re
 import imp
 
 from PIL import Image
+import cv2
 
 import six
 import cPickle as pickle
@@ -20,7 +21,7 @@ def load_module(dir_name, symbol):
     return imp.load_module(symbol, file, path, description)
 
 def read_image(path, model, mean_image, cropwidth, center=False, flip=False):
-    image = np.asarray(Image.open(path)).transpose(2, 0, 1)
+    image = np.asarray(Image.fromarray(resize_image(path))).transpose(2, 0, 1)
     if center:
         top = left = cropwidth / 2
     else:
@@ -35,6 +36,22 @@ def read_image(path, model, mean_image, cropwidth, center=False, flip=False):
         return image[:, :, ::-1]
     else:
         return image
+
+def resize_image(image_path):
+    output_side_length = 256
+    img = cv2.imread(image_path)
+    height, width, depth = img.shape
+    new_height = output_side_length
+    new_width = output_side_length
+    if height > width:
+        new_height = output_side_length * height / width
+    else:
+        new_width = output_side_length * width / height
+    resized_img = cv2.resize(img, (new_width, new_height))
+    height_offset = (new_height - output_side_length) / 2
+    width_offset = (new_width - output_side_length) / 2
+    cropped_img = resized_img[height_offset:height_offset + output_side_length, width_offset:width_offset + output_side_length]
+    return cropped_img
 
 def inspect(image_path, mean, model_path, label, network, gpu=-1):
     network = network.split(os.sep)[-1]

@@ -1,35 +1,26 @@
 import os
 import numpy as np
-import datetime
 import json
-import multiprocessing
 import random
-import sys
-import threading
-import time
 import re
 import imp
 
-import numpy as np
 from PIL import Image
+import cv2
 
 import six
 import cPickle as pickle
-from six.moves import queue
 
 import chainer
 from chainer import cuda
-from chainer import optimizers
 from chainer import serializers
 
-import h5py
-
 def load_module(dir_name, symbol):
-    (file, path, description) = imp.find_module(dir_name + os.sep + symbol)
+    (file, path, description) = imp.find_module(symbol, [dir_name])
     return imp.load_module(symbol, file, path, description)
 
 def read_image(path, model, mean_image, cropwidth, center=False, flip=False):
-    image = np.asarray(Image.open(path)).transpose(2, 0, 1)
+    image = np.asarray(Image.fromarray(resize_image(path))).transpose(2, 0, 1)
     if center:
         top = left = cropwidth / 2
     else:
@@ -45,6 +36,22 @@ def read_image(path, model, mean_image, cropwidth, center=False, flip=False):
     else:
         return image
 
+def resize_image(image_path):
+    output_side_length = 256
+    img = cv2.imread(image_path)
+    height, width, depth = img.shape
+    new_height = output_side_length
+    new_width = output_side_length
+    if height > width:
+        new_height = output_side_length * height / width
+    else:
+        new_width = output_side_length * width / height
+    resized_img = cv2.resize(img, (new_width, new_height))
+    height_offset = (new_height - output_side_length) / 2
+    width_offset = (new_width - output_side_length) / 2
+    cropped_img = resized_img[height_offset:height_offset + output_side_length, width_offset:width_offset + output_side_length]
+    return cropped_img
+
 def inspect(image_path, mean, model_path, label, network, gpu=0):
     network = network.split(os.sep)[-1]
     model_name = re.sub(r"\.py$", "", network)
@@ -57,7 +64,7 @@ def inspect(image_path, mean, model_path, label, network, gpu=0):
         cuda.get_device(gpu).use()
         model.to_gpu()
     cropwidth = 256 - model.insize
-    img = read_image(image_path, model, mean_image, cropwidth)
+    img = read_image(image_path, model, mean_image, cropwidth, center=True)
     x = np.ndarray((1, 3, model.insize, model.insize), dtype=np.float32)
     x[0] = img
     if gpu >= 0:

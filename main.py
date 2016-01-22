@@ -89,7 +89,7 @@ def do_upload_for_inspection(db):
     epoch = int(bottle.request.forms.get('epoch'))
     upload = bottle.request.files.get('fileInput')
     name, ext = os.path.splitext(upload.filename)
-    if ext not in ('.jpg'):
+    if ext not in ('.jpg', '.jpeg', '.gif', '.png'):
         return show_error_screen("File extension not allowed.")
     timestamp_str = get_timestamp()
     new_filename = INSPECTION_RAW_IMAGE + os.sep + timestamp_str + upload.filename
@@ -463,7 +463,6 @@ def make_train_data(target_dir, prepared_data_dir):
     return
 
 def resize_image(source, dest):
-    name, ext = os.path.splitext(source)
     output_side_length = 256
     img = cv2.imread(source)
     height, width, depth = img.shape
