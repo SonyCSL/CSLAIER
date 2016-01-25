@@ -118,6 +118,10 @@ $('.dataset').on('click', function(e){
     location.href = '/dataset/show/' + dataset_id;
 });
 
+$('#dataset_more').on('click',function(){
+    $("#hidden-dataset").toggle();
+})
+
 $('.category').on('click', function(e){
     var path = $(this).data('path');
     var dataset_id = $(this).data('id');
