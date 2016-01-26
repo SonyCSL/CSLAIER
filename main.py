@@ -208,16 +208,29 @@ def show_model_detail(id, db):
             ret['dataset_name'] = '---'
     else:
         ret['dataset_name'] = '---'
+
+    if model_info[6]:
+        pretrained_models = subprocess.check_output(["ls",model_info[6]]).split('\n').sort(reverse=True)
+        if pretrained_models:
+            pretrained_models = filter(lambda file:file.find('model')>-1, pretrained_models)
+            pretrained_models.append("New")
+            print(pretrained_models)
+        else:
+            pretrained_models=["New"]
+    else:
+        pretrained_models=["New"]
+
     model_txt = open(ret['network_path']).read()
     row_all_datasets = db.execute('select id, name from Dataset')
     all_datasets_info = row_all_datasets.fetchall()
-    return bottle.template('models_detail.html', model_info = ret, datasets = all_datasets_info, model_txt=model_txt,system_info = get_system_info(),gpu_info = get_gpu_info(), chainer_version = get_chainer_version(), python_version = get_python_version())
+    return bottle.template('models_detail.html', model_info = ret, datasets = all_datasets_info, model_txt=model_txt,system_info = get_system_info(),gpu_info = get_gpu_info(), chainer_version = get_chainer_version(), python_version = get_python_version(),pretrained_models=pretrained_models)
 
 @app.route('/models/start/train', method="POST")
 def kick_train_start(db):
     dataset_id = bottle.request.forms.get('dataset_id')
     model_id = bottle.request.forms.get('model_id')
     epoch = bottle.request.forms.get('epoch')
+    pretrained_model = bottle.request.forms.get('pretrained_model')
     gpu_num = bottle.request.forms.get('gpu_num')
     row_ds = db.execute('select dataset_path from Dataset where id = ?', (dataset_id,))
     ds_path = row_ds.fetchone()[0]
@@ -227,7 +240,7 @@ def kick_train_start(db):
         os.mkdir(prepared_file_path)
         db.execute('update Model set prepared_file_path = ?, epoch = ?, is_trained = 1, dataset_id = ? where id = ?', (prepared_file_path, epoch, dataset_id, model_id))
         prepare_for_train(ds_path, prepared_file_path)
-        start_train(model_id, epoch, prepared_file_path, gpu_num)
+        start_train(model_id, epoch, prepared_file_path, gpu_num,pretrained_model)
     except:
         db.execute('update Model set is_trained = 0 where id = ?', (model_id,))
         return dumps({"status": "error", "traceback": traceback.format_exc(sys.exc_info()[2])})
@@ -499,7 +512,7 @@ def prepare_for_train(target_dir, prepared_data_dir):
     make_train_data(target_dir, prepared_data_dir)
     compute_mean(prepared_data_dir)
 
-def start_train(model_id, epoch, prepared_data_dir, gpu):
+def start_train(model_id, epoch, prepared_data_dir, gpu,pretrained_model):
     if not is_prepared_to_train(prepared_data_dir):
         raise Exception('preparation is not done')
     train_th = threading.Thread(
@@ -516,7 +529,8 @@ def start_train(model_id, epoch, prepared_data_dir, gpu):
             250,
             int(epoch, 10),
             int(gpu, 10),
-            20
+            20,
+            pretrained_model
         )
     )
     train_th.start()

@@ -213,7 +213,7 @@ def load_module(dir_name, symbol):
     (file, path, description) = imp.find_module(symbol,[dir_name])
     return imp.load_module(symbol, file, path, description)
             
-def do_train(db_path, train, test, mean, root_output_dir, model_dir, model_id, batchsize=32, val_batchsize=250, epoch=10, gpu=-1, loaderjob=20):
+def do_train(db_path, train, test, mean, root_output_dir, model_dir, model_id, batchsize=32, val_batchsize=250, epoch=10, gpu=-1, loaderjob=20,pretrained_model=""):
     conn = sqlite3.connect(db_path)
     db = conn.cursor()
     cursor = db.execute('select name from Model where id = ?', (model_id,))
@@ -232,6 +232,11 @@ def do_train(db_path, train, test, mean, root_output_dir, model_dir, model_id, b
     model_name = re.sub(r"\.py$", "", model_name)
     model_module = load_module(model_dir, model_name)
     model = model_module.Network()
+    
+    # Load pretrained model
+    if pretrained_model.find("model") > -1:
+        print("load pretrained model : "+output_dir + os.sep +pretrained_model)
+        serializers.load_hdf5(output_dir + os.sep +pretrained_model, model)
     
     if gpu >= 0:
         cuda.get_device(gpu).use()
