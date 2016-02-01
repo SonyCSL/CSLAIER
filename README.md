@@ -65,6 +65,11 @@ If you have changed hostname and port on `settings.yaml`, use that one.
 Usage
 ------
 
+### Start up DEEPstation
+* Move to DEEPstation's directory.
+* Run `python main.py`.
+* Access `http://localhost:8080` by web browser.
+
 ### Creating Dataset
 * Upload dataset from '+new' button on Dataset section on top page. 
 * Dataset is a zip file which contains classifeid images by directory like [Caltech 101](http://www.vision.caltech.edu/Image_Datasets/Caltech101/) dataset.
@@ -153,6 +158,11 @@ Setup
 
 使い方
 ------
+
+### DEEPstationの起動
+* DEEPstationをcloneしてきた場所に移動
+* `python main.py` を実行
+* ブラウザで`http://localhost:8080` にアクセスする
 
 ### Datasetの作成
 * トップページで、Datasetのセクションにある'+new'ボタンを押します。
