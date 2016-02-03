@@ -251,7 +251,7 @@ Modelの詳細画面内の'Result'タブを押すと学習の経過グラフが�
 
 ### 学習が完了したModelの利用
 Modelの詳細画面内の'Downlord Model'ボタン、'Downlord Label'ボタン、'Downlord Mean File'ボタンからそれぞれ学習済みModel、Label(カテゴリの一覧)、Mean Fileをダウンロードすることができます。  
-他のプログラムからの利用方法は[./examples/inspection/](サンプル)を参照ください。
+他のプログラムからの利用方法は[サンプル](./examples/inspection/)を参照ください。
 
 ### setting.yamlの編集について
 
