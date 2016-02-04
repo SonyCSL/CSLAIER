@@ -27,7 +27,8 @@
                 </div>
             </div>
             <div class="datasets">
-                % for dataset in datasets:
+                % if len(datasets)>3:
+                % for dataset in datasets[:3]:
                     <div class="dataset" id="dataset_{{dataset['id']}}" data-id="{{dataset['id']}}">
                         <h3>
                             {{dataset["name"]}}
@@ -37,6 +38,33 @@
                             <img src="/uploaded_images{{img}}" class="img-responsive img-rounded thumbnail-30">
                         % end
                     </div>
+                % end
+                   <button class="btn btn-cyber" id="dataset_more" >more</button>
+                   <div  class="datasets" id="hidden-dataset" style="display:none">
+                % for dataset in datasets[3:]:
+                    <div class="dataset" id="dataset_{{dataset['id']}}" data-id="{{dataset['id']}}">
+                        <h3>
+                            {{dataset["name"]}}
+                        </h3>
+                        <span class="desc">Total {{dataset["category_num"]}} Classes, {{dataset["file_num"]}} Images</span>
+                        % for img in dataset['thumbnails']:
+                            <img src="/uploaded_images{{img}}" class="img-responsive img-rounded thumbnail-30">
+                        % end
+                    </div>
+                % end
+                    </div>
+                % else:
+                    % for dataset in datasets:
+                        <div class="dataset" id="dataset_{{dataset['id']}}" data-id="{{dataset['id']}}">
+                            <h3>
+                                {{dataset["name"]}}
+                            </h3>
+                            <span class="desc">Total {{dataset["category_num"]}} Classes, {{dataset["file_num"]}} Images</span>
+                            % for img in dataset['thumbnails']:
+                                <img src="/uploaded_images{{img}}" class="img-responsive img-rounded thumbnail-30">
+                            % end
+                        </div>
+                    % end
                 % end
             </div>
             <div class="subtitle">
