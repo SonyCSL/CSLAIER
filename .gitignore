@@ -1,0 +1,9 @@
+*.pyc
+uploaded_images/*
+uploaded_raw_files/*
+train_images/*
+tmp_image/*
+trained_data/*
+inspection_raw_image/*
+prepared_data/*
+!.gitkeep
