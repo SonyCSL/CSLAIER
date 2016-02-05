@@ -6,4 +6,5 @@ tmp_image/*
 trained_data/*
 inspection_raw_image/*
 prepared_data/*
+models/*.py
 !.gitkeep
