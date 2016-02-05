@@ -7,4 +7,5 @@ trained_data/*
 inspection_raw_image/*
 prepared_data/*
 models/*.py
+!models/__init__.py
 !.gitkeep
