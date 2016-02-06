@@ -225,6 +225,7 @@ $('#start_train_btn').on('click', function(e){
     var model_id = $('#model_id').val();
     var dataset_id = parseInt($('#select_dataset').val(), 10);
     var epoch = $('#epoch_input').val();
+    var pretrained_model = $('#select_pretrainedmodel').val() == -1 ? 'New' : $('#select_pretrainedmodel').val();
     var gpu_num = $('#gpu_num').val() || $('input[name="gpu_num"]:checked').val();
     if(dataset_id < 0) {
         alert('Select Dataset.');
@@ -234,7 +235,8 @@ $('#start_train_btn').on('click', function(e){
             model_id: model_id,
             dataset_id: dataset_id,
             epoch: epoch,
-            gpu_num: gpu_num
+            gpu_num: gpu_num,
+            pretrained_model: pretrained_model
         }, function(ret){
         if(ret.status === "OK") {
             $('#processing_screen').addClass('hidden');
@@ -259,7 +261,7 @@ $('#start_train_btn').on('click', function(e){
     })
     .fail(function(){
         alert('Failed to start train.');
-        $('#processing_screen').addClas('hidden');
+        $('#processing_screen').addClass('hidden');
     });
 });
 
@@ -483,9 +485,9 @@ var draw_train_graph = function(){
         xEpoch.domain(d3.extent(parsedData, function(d) { return d.epoch; }));
         xCount.domain(d3.extent(parsedData, function(d) { return d.count}));
         yLoss.domain(d3.extent(train_loss_data, function(d) { return d.loss; }));
-        yAccuracy.domain(d3.extent(train_accuracy_data, function(d) { return d.accuracy; }));
+        yAccuracy.domain([0, 1]);
         yValLoss.domain(d3.extent(val_loss_data, function(d) { return d.val_loss; }));
-        yValAccuracy.domain(d3.extent(val_accuracy_data, function(d) { return d.val_accuracy; }));
+        yValAccuracy.domain([0, 1]);
         
         // loss
         svg.append("path")

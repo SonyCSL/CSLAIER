@@ -197,7 +197,7 @@ def train_loop(model, output_dir, xp, optimizer, res_q, data_q):
         if model.train:
             optimizer.update(model, x, t)
             if not graph_generated:
-                with open('graph.dot', 'w') as o:
+                with open(output_dir + os.sep + 'graph.dot', 'w') as o:
                     o.write(computational_graph.build_computational_graph((model.loss,)).dump())
                 print('generated graph')
                 graph_generated = True
@@ -213,7 +213,7 @@ def load_module(dir_name, symbol):
     (file, path, description) = imp.find_module(symbol,[dir_name])
     return imp.load_module(symbol, file, path, description)
             
-def do_train(db_path, train, test, mean, root_output_dir, model_dir, model_id, batchsize=32, val_batchsize=250, epoch=10, gpu=-1, loaderjob=20):
+def do_train(db_path, train, test, mean, root_output_dir, model_dir, model_id, batchsize=32, val_batchsize=250, epoch=10, gpu=-1, loaderjob=20,pretrained_model=""):
     conn = sqlite3.connect(db_path)
     db = conn.cursor()
     cursor = db.execute('select name from Model where id = ?', (model_id,))
@@ -233,6 +233,21 @@ def do_train(db_path, train, test, mean, root_output_dir, model_dir, model_id, b
     model_module = load_module(model_dir, model_name)
     model = model_module.Network()
     
+    # create directory for saving trained models
+    output_dir = root_output_dir + os.sep + model_name
+    if not os.path.exists(output_dir):
+        os.mkdir(output_dir)
+    
+    # Load pretrained model
+    if pretrained_model is not None and pretrained_model.find("model") > -1:
+        print("load pretrained model : "+output_dir + os.sep +pretrained_model)
+        serializers.load_hdf5(output_dir + os.sep +pretrained_model, model)
+        # delete old models
+        pretrained_models = sorted(os.listdir(output_dir), reverse=True)
+        for m in pretrained_models:
+            if m.startswith('model') and pretrained_model != m:
+                os.remove(output_dir + os.sep + m)
+    
     if gpu >= 0:
         cuda.get_device(gpu).use()
         model.to_gpu()
@@ -242,11 +257,6 @@ def do_train(db_path, train, test, mean, root_output_dir, model_dir, model_id, b
     
     data_q = queue.Queue(maxsize=1)
     res_q = queue.Queue()
-
-    # create directory for saving trained models
-    output_dir = root_output_dir + os.sep + model_name
-    if not os.path.exists(output_dir):
-        os.mkdir(output_dir)
         
     db.execute('update Model set epoch = ?, trained_model_path = ?, graph_data_path = ?, is_trained = 1, line_graph_data_path = ? where id = ?', (epoch, output_dir, output_dir + os.sep + 'graph.dot', output_dir + os.sep + 'line_graph.tsv', model_id))
     conn.commit()
