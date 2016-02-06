@@ -484,9 +484,10 @@ var draw_train_graph = function(){
         
         xEpoch.domain(d3.extent(parsedData, function(d) { return d.epoch; }));
         xCount.domain(d3.extent(parsedData, function(d) { return d.count}));
-        yLoss.domain(d3.extent(train_loss_data, function(d) { return d.loss; }));
+        var loss_max = d3.max(train_loss_data.concat(val_loss_data), function(d){ return d.loss || d.val_loss});
+        yLoss.domain([0, loss_max]);
         yAccuracy.domain([0, 1]);
-        yValLoss.domain(d3.extent(val_loss_data, function(d) { return d.val_loss; }));
+        yValLoss.domain([0, loss_max]);
         yValAccuracy.domain([0, 1]);
         
         // loss
