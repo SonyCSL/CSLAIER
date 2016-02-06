@@ -208,13 +208,11 @@ def show_model_detail(id, db):
             ret['dataset_name'] = '---'
     else:
         ret['dataset_name'] = '---'
-
     if model_info[6]:
-        pretrained_models = subprocess.check_output(["ls",model_info[6]]).split('\n').sort(reverse=True)
+        pretrained_models = sorted(os.listdir(model_info[6]), reverse=True)
         if pretrained_models:
             pretrained_models = filter(lambda file:file.find('model')>-1, pretrained_models)
             pretrained_models.append("New")
-            print(pretrained_models)
         else:
             pretrained_models=["New"]
     else:
