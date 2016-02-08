@@ -77,7 +77,7 @@ $('#uploadDataset #submit_dataset').on('click', function(e){
 });
 
 var check_train_progress = function(){
-    $.get('/api/models/chekc_train_progress', function(ret){
+    $.get('/api/models/check_train_progress', function(ret){
         _.each(ret.progress, function(p){
             var target = $('#model_' + p.id);
             switch(p.is_trained) {
@@ -250,6 +250,10 @@ $('#start_train_btn').on('click', function(e){
                 .removeClass('label-trained')
                 .addClass('label-progress')
                 .text('In Progress');
+            $('#terminate_train_button').removeClass('hidden');
+            $('#delete_model_button').addClass('hidden');
+            $('#epoch_info').text(epoch);
+            $('#dataset_name_info').text(ret.dataset_name);
             showResultScreen();
             location.hash = "result";
             return;
@@ -268,10 +272,24 @@ $('#start_train_btn').on('click', function(e){
 $('#delete_model_button').on('click', function(e){
     if(window.confirm('Is it okay to remove this model?')) {
         var model_id = $('#model_id').val();
-        var form = '<input type="hidden" name="model_id" value="'+ model_id +'">';
-        $('<form action="/models/delete/' + model_id + '" method="POST">' + form + '</form>').append('body').submit();
+        var form_input = '<input type="hidden" name="model_id" value="'+ model_id +'">';
+        var form = $('<form action="/models/delete/' + model_id + '" method="POST">' + form_input + '</form>');
+        $('body').append(form);
+        form.submit();
     }
 });
+
+$('#terminate_train_button').on('click', function(e){
+    if(window.confirm('Is it okay to terminate this trainning?')) {
+        var model_id = $('#model_id').val();
+        $.post('/api/models/kill_train', {id: model_id}, function(ret){
+            if(ret.status == 'success') {
+                alert('Successfully terminated');
+                location.reload();
+            }
+        });
+    }
+})
 
 $('#processing_screen').on('click', function(e){
     e.stopPropagation();
@@ -391,7 +409,10 @@ var  update_train_log = function(){
 
     $.get('/api/models/get_training_log/' + model_id, function(ret){
         if(ret.status != 'ready') return;
-        $('#training_log').html(ret.data)
+        $('#training_log').html(ret.data);
+        if(ret.is_trained != $('#current_training_status').val()) {
+            location.reload();
+        }
     });
     draw_train_graph();
 }

@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 import os
-import os.path
+import signal
 import platform
 import sys
 import traceback
@@ -15,7 +15,7 @@ import shutil
 import cv2
 import numpy
 import time
-import threading
+from multiprocessing import Process
 import sqlite3
 import subprocess
 import chainer
@@ -230,19 +230,19 @@ def kick_train_start(db):
     epoch = bottle.request.forms.get('epoch')
     pretrained_model = bottle.request.forms.get('pretrained_model')
     gpu_num = bottle.request.forms.get('gpu_num')
-    row_ds = db.execute('select dataset_path from Dataset where id = ?', (dataset_id,))
-    ds_path = row_ds.fetchone()[0]
+    row_ds = db.execute('select dataset_path, name from Dataset where id = ?', (dataset_id,))
+    (ds_path, dataset_name) = row_ds.fetchone()
     prepared_file_path = PREPARED_DATA_DIR + os.sep + get_timestamp()
     bottle.response.content_type = 'application/json'
     try:
         os.mkdir(prepared_file_path)
-        db.execute('update Model set prepared_file_path = ?, epoch = ?, is_trained = 1, dataset_id = ? where id = ?', (prepared_file_path, epoch, dataset_id, model_id))
+        db.execute('update Model set prepared_file_path = ?, epoch = ?, dataset_id = ? where id = ?', (prepared_file_path, epoch, dataset_id, model_id))
+        db.commit()
         prepare_for_train(ds_path, prepared_file_path)
-        start_train(model_id, epoch, prepared_file_path, gpu_num,pretrained_model)
+        start_train(model_id, epoch, prepared_file_path, gpu_num,pretrained_model, db)
     except:
-        db.execute('update Model set is_trained = 0 where id = ?', (model_id,))
         return dumps({"status": "error", "traceback": traceback.format_exc(sys.exc_info()[2])})
-    return dumps({"status": "OK"})
+    return dumps({"status": "OK", "dataset_name": dataset_name})
  
 @app.route('/models/download/<id>/<epoch>')
 def get_trained_model(id, epoch, db):
@@ -400,9 +400,9 @@ def api_get_training_data(id, db):
     f = open(filename, 'r')
     data = f.read()
     f.close()
-    return dumps({'status': 'ready', 'data': data})
+    return dumps({'status': 'ready', 'data': data, 'is_trained': model[1]})
     
-@app.route('/api/models/chekc_train_progress')
+@app.route('/api/models/check_train_progress')
 def api_check_train_progress(db):
     model_row = db.execute('select id, is_trained from Model')
     models = model_row.fetchall()
@@ -431,6 +431,17 @@ def api_visualize_layer(id, db):
     v_last = visualizer.LayerVisualizer(network, epoch_last_model, trained_model_path)
     v_last.visualize_first_conv_layer('epoch' + str(epoch) + '_layer')
     return dumps({'id': id, 'epoch_0': 'epoch0_layer.png', 'last_epoch': 'epoch' + str(epoch) + '_layer.png', 'epoch': epoch})
+
+@app.route('/api/models/kill_train', method='POST')
+def api_kill_train(db):
+    bottle.response.content_type = 'application/json'
+    model_id = bottle.request.forms.get('id')
+    c = db.execute('select pid from Model where id = ?', (model_id,))
+    pid = c.fetchone()[0]
+    if pid is not None:
+        os.kill(pid, signal.SIGTERM)
+        db.execute('update Model set is_trained = 0, pid = null where id = ?', (model_id,))
+    return dumps({'status': 'success', 'message': 'successfully terminated'})
 
 #------- private methods ---------
 def find_all_files(directory):
@@ -510,10 +521,10 @@ def prepare_for_train(target_dir, prepared_data_dir):
     make_train_data(target_dir, prepared_data_dir)
     compute_mean(prepared_data_dir)
 
-def start_train(model_id, epoch, prepared_data_dir, gpu,pretrained_model):
+def start_train(model_id, epoch, prepared_data_dir, gpu, pretrained_model, db):
     if not is_prepared_to_train(prepared_data_dir):
         raise Exception('preparation is not done')
-    train_th = threading.Thread(
+    train_process = Process(
         target=train.do_train,
         args = (
             DEEPSTATION_ROOT + os.sep + 'deepstation.db',
@@ -531,7 +542,9 @@ def start_train(model_id, epoch, prepared_data_dir, gpu,pretrained_model):
             pretrained_model
         )
     )
-    train_th.start()
+    train_process.start()
+    db.execute('update Model set pid = ? where id = ?', (train_process.pid, model_id))
+    db.commit()
     return
     
 def is_prepared_to_train(prepared_data_dir):

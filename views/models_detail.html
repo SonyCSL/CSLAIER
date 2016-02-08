@@ -1,6 +1,7 @@
 % rebase('base.html', title='new model')
 <div class="hidden" id="model_detail">true</div>
 <div class="hidden" id="gpu_meter_needed">true</div>
+<input type="hidden" id="current_training_status" value="{{model_info['is_trained']}}">
 <nav class="navbar navbar-inverse navbar-fixed-top">
     <div class="container">
         <div class="navbar-header">
@@ -33,8 +34,17 @@
                         <span class="label label-trained"> Trained</span>
                     % end
                 </div>
-                <div class="model-delete-div">
-                    <button class="btn btn-cyber" id="delete_model_button">Delete</button>
+                <div class="model-control-div">
+                    % if model_info["is_trained"] == 1:
+                        <button class="btn btn-cyber" id="terminate_train_button">Terminate</button>
+                    % else:
+                        <button class="btn btn-cyber hidden" id="terminate_train_button">Terminate</button>
+                    % end
+                    % if model_info["is_trained"] != 1:
+                        <button class="btn btn-cyber" id="delete_model_button">Delete</button>
+                    % else:
+                        <button class="btn btn-cyber hidden" id="delete_model_button">Delete</button>
+                    % end
                 </div>
             </div>
             <div style="clear:both;height:5px;"></div>
@@ -43,9 +53,9 @@
                     <div>
                         <ul>
                             <li>Date: {{model_info["created_at"]}}</li>
-                            <li>Epoch: {{model_info["epoch"]}}</li>
-                            <li data-datasetid="{{model_info['dataset_id']}}">Dataset: {{model_info["dataset_name"]}}</li>
-                            <li>Network: 
+                            <li>Epoch: <span id="epoch_info">{{model_info["epoch"]}}</span></li>
+                            <li data-datasetid="{{model_info['dataset_id']}}">Dataset: <span id="dataset_name_info">{{model_info["dataset_name"]}}</span></li>
+                            <li>Network:
                                 % if model_info['network_name']:
                                     {{model_info['network_name']}}
                                 % else:

@@ -217,7 +217,7 @@ def do_train(db_path, train, test, mean, root_output_dir, model_dir, model_id, b
     conn = sqlite3.connect(db_path)
     db = conn.cursor()
     cursor = db.execute('select name from Model where id = ?', (model_id,))
-    row = cursor.fetchone();
+    row = cursor.fetchone()
     model_name = row[0]
     # start initialization
     if gpu >= 0:
@@ -257,7 +257,6 @@ def do_train(db_path, train, test, mean, root_output_dir, model_dir, model_id, b
     
     data_q = queue.Queue(maxsize=1)
     res_q = queue.Queue()
-        
     db.execute('update Model set epoch = ?, trained_model_path = ?, graph_data_path = ?, is_trained = 1, line_graph_data_path = ? where id = ?', (epoch, output_dir, output_dir + os.sep + 'graph.dot', output_dir + os.sep + 'line_graph.tsv', model_id))
     conn.commit()
     
@@ -271,7 +270,7 @@ def do_train(db_path, train, test, mean, root_output_dir, model_dir, model_id, b
     train_loop(model, output_dir, xp, optimizer, res_q, data_q)
     feeder.join()
     logger.join()
-    db.execute('update Model set is_trained = 2 where id = ?', (model_id,))
+    db.execute('update Model set is_trained = 2, pid = null where id = ?', (model_id,))
     conn.commit()
     db.close()
 

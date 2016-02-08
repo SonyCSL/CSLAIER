@@ -11,8 +11,7 @@ create table Model(
     line_graph_data_path text,
     dataset_id integer,
     prepared_file_path integer,
-    created_at timestamp default current_timestamp,
-    pid integer Default null
+    created_at timestamp default current_timestamp
 );
 
 create table Dataset(

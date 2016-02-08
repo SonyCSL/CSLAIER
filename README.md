@@ -1,7 +1,7 @@
 DEEPstation
 ============
 
-DEEPstation version 0.2.1
+DEEPstation version 0.3.0
 
 Browser based GUI deep learning tool.
 
@@ -61,6 +61,20 @@ Setup
 * Startup server. `python main.py`
 * Access `http://localhost:8080` on your browser.   
 If you have changed hostname and port on `settings.yaml`, use that one.
+
+### How to update
+
+* Make backup `settings.yaml` and `deepstation.db`.
+* Get newest code by `git pull` or something.
+* Restore `settings.yaml` and `deepstation.db` from backup.
+* Follow the instructions below as required.
+
+#### Migration v0.2.1 to v0.3.0
+
+* Stop DEEPstation by `ctrl + c`
+* Run command below on root directory of DEEPstation  
+`sqlite3 deepstation.db < ./scheme/migration_20160208.sql`
+* Start DEEPstation.
 
 Usage
 ------
@@ -155,6 +169,20 @@ Setup
 * サーバを起動します。DEEPstationをダウンロードしたディレクトリで `python main.py`を実行します
 * ブラウザで `http://localhost:8080` にアクセスします。  
 `settings.yaml`でhostnameとportを変更している場合はそちらを利用してください。
+
+### Update時の注意点
+
+* `settings.yaml`と`deepstation.db`のバックアップをとってください。
+* `git pull`などで新しいソースコードを取得します。
+* `settings.yaml`と`deepstation.db`をバックアップから復元します。
+* 必要に応じて、以下のアップデート手順を実行します。
+
+#### v0.2.1 から v0.3.0 へのアップデート方法
+
+* DEEPstationを止めてください。DEEPstation実行中のターミナルで`ctrl + c`で止まります。 
+* DEEPstationのルートディレクトリで下記のコマンドを実行してください。  
+`sqlite3 deepstation.db < ./scheme/migration_20160208.sql`
+* DEEPstationを起動してください。
 
 使い方
 ------
