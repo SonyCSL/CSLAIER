@@ -147,10 +147,7 @@ def inspect(image_path, mean, model_path, label, network, resize_mode,channels, 
     img = img.astype(np.float32)
     img -= mean_image
 
-    if channels == 3:
-        x = np.ndarray((1, 3,  output_side_length, output_side_length), dtype=np.float32)
-    else:
-        x = np.ndarray((1, 1,  output_side_length, output_side_length), dtype=np.float32)
+    x = np.ndarray((1, channels,  output_side_length, output_side_length), dtype=np.float32)
     x[0] = img
     
     if gpu >= 0:
