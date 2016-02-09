@@ -32,6 +32,7 @@ import visualizer
 
 
 # initialization
+DEEPSTATION_VERSION = "0.3.0"
 DEEPSTATION_ROOT = (os.getcwd() + os.sep + __file__).replace('main.py', '')
 f = open(DEEPSTATION_ROOT + os.sep + 'settings.yaml')
 settings = yaml.load(f)
@@ -81,7 +82,7 @@ def index(db):
     datasets = []
     for d in dataset_rows:
         datasets.append({"id": d[0], "name": d[1], "dataset_path": d[2], "thumbnails": get_files_in_random_order(d[2], 4), "file_num": count_files(d[2]), "category_num": count_categories(d[2])})
-    return bottle.template('index.html', models = models.fetchall(), datasets = datasets, system_info = get_system_info(), gpu_info = get_gpu_info(), chainer_version = get_chainer_version(), python_version = get_python_version())
+    return bottle.template('index.html', models = models.fetchall(), datasets = datasets, system_info = get_system_info(), gpu_info = get_gpu_info(), chainer_version = get_chainer_version(), python_version = get_python_version(), deepstation_version = DEEPSTATION_VERSION)
 
 @app.route('/inspection/upload', method='POST')
 def do_upload_for_inspection(db):
@@ -221,7 +222,7 @@ def show_model_detail(id, db):
     model_txt = open(ret['network_path']).read()
     row_all_datasets = db.execute('select id, name from Dataset')
     all_datasets_info = row_all_datasets.fetchall()
-    return bottle.template('models_detail.html', model_info = ret, datasets = all_datasets_info, model_txt=model_txt,system_info = get_system_info(),gpu_info = get_gpu_info(), chainer_version = get_chainer_version(), python_version = get_python_version(),pretrained_models=pretrained_models)
+    return bottle.template('models_detail.html', model_info = ret, datasets = all_datasets_info, model_txt=model_txt,system_info = get_system_info(),gpu_info = get_gpu_info(), chainer_version = get_chainer_version(), python_version = get_python_version(),pretrained_models=pretrained_models, deepstation_version = DEEPSTATION_VERSION)
 
 @app.route('/models/start/train', method="POST")
 def kick_train_start(db):
