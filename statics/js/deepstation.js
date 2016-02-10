@@ -232,6 +232,7 @@ $('#start_train_btn').on('click', function(e){
     if(color_mode == "rgb"){
         channels = 3;
     }
+    var flipping_mode = $('#select_flipping_mode').val();
     
     var gpu_num = $('#gpu_num').val() || $('input[name="gpu_num"]:checked').val();
     if(dataset_id < 0) {
@@ -245,6 +246,7 @@ $('#start_train_btn').on('click', function(e){
             gpu_num: gpu_num,
             resize_mode: resize_mode,
             channels: channels,
+            avoid_flipping: flipping_mode,
             pretrained_model: pretrained_model
         }, function(ret){
         if(ret.status === "OK") {
