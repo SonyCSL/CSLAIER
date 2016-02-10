@@ -186,6 +186,11 @@ def dataset_delete(id, db):
 def show_model_detail(id, db):
     row_model = db.execute('select id, name, epoch, algorithm, is_trained, network_path, trained_model_path, graph_data_path, dataset_id, created_at, network_name, resize_mode, channels from Model where id = ?', (id,))
     model_info = row_model.fetchone()
+    if model_info[12] == 3:
+        color_mode = "RGB"
+    else:
+        color_mode = "Grayscale"
+    
     ret = {
         "id": model_info[0],
         "name": model_info[1],
@@ -199,7 +204,7 @@ def show_model_detail(id, db):
         "created_at": model_info[9],
         "network_name": model_info[10]
         "resize_mode": model_info[11]
-        "channels": model_info[12]
+        "channels": color_mode
     }
     gpu_info = get_gpu_info()
     ret['gpu_num'] = 0 if 'gpus' not in gpu_info else len(gpu_info['gpus'])
