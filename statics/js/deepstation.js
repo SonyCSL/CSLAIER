@@ -641,6 +641,3 @@ var showResultScreen = function(){
         draw_train_graph();
         setInterval("draw_train_graph()", 30000);
 };
-
-Status API Training Shop Blog About Pricing
-© 2016 GitHub, Inc. Terms Privacy Security Contact Help
