@@ -236,15 +236,19 @@ def kick_train_start(db):
     gpu_num = bottle.request.forms.get('gpu_num')
     resize_mode = bottle.request.forms.get('resize_mode')
     channels = int(bottle.request.forms.get('channels'))
-    row_ds = db.execute('select dataset_path, name from Dataset where id = ?', (dataset_id,))
-    (ds_path, dataset_name) = row_ds.fetchone()
+    row_ds = db.execute('select dataset_path, name, network_path from Dataset where id = ?', (dataset_id,))
+    #(ds_path, dataset_name) = row_ds.fetchone()
+    net_path = row_ds.fetchone()[2]
+    model_name = re.sub(r"\.py$", "", net_path)
+    model_module = load_module(os.path.dirname(model_path), model_name)
+    model = model_module.Network()
     prepared_file_path = PREPARED_DATA_DIR + os.sep + get_timestamp()
     bottle.response.content_type = 'application/json'
     try:
         os.mkdir(prepared_file_path)
         db.execute('update Model set prepared_file_path = ?, epoch = ?, is_trained = 1, dataset_id = ?, resize_mode = ?, channels = ? where id = ?', (prepared_file_path, epoch, dataset_id, model_id, resize_mode, channels))
         db.commit()
-        prepare_for_train(ds_path, prepared_file_path, resize_mode, channels)
+        prepare_for_train(ds_path, prepared_file_path,model.insize, resize_mode, channels)
         start_train(model_id, epoch, prepared_file_path, gpu_num,pretrained_model, db)
     except:
         return dumps({"status": "error", "traceback": traceback.format_exc(sys.exc_info()[2])})
@@ -450,6 +454,10 @@ def api_kill_train(db):
     return dumps({'status': 'success', 'message': 'successfully terminated'})
 
 #------- private methods ---------
+def load_module(dir_name, symbol):
+    (file, path, description) = imp.find_module(symbol, [dir_name])
+    return imp.load_module(symbol, file, path, description)
+    
 def find_all_files(directory):
     for root, dirs, files in os.walk(directory):
         for f in files:
@@ -462,7 +470,7 @@ def find_all_directories(directory):
         if len(dirs) == 0:
             yield root
 
-def make_train_data(target_dir, prepared_data_di, resize_mode, channelsr):
+def make_train_data(target_dir, prepared_data_dir, image_insize, resize_mode, channels):
     train = open(prepared_data_dir + os.sep + 'train.txt', 'w')
     test = open(prepared_data_dir + os.sep + 'test.txt', 'w')
     labelsTxt = open(prepared_data_dir + os.sep + 'labels.txt', 'w')
@@ -478,7 +486,7 @@ def make_train_data(target_dir, prepared_data_di, resize_mode, channelsr):
                 if(f.split('.')[-1] not in ["jpg", "jpeg", "gif", "png"]):
                     continue
                 imagepath = prepared_data_dir + os.sep + "image%07d" %count + ".jpg"
-                resize_image(os.path.join(path, f), imagepath, resize_mode, channels)
+                resize_image(os.path.join(path, f), imagepath, image_insize,resize_mode, channels)
                 if count - startCount < length * 0.75:
                     train.write(imagepath + " %d\n" % classNo)
                 else:
@@ -490,8 +498,8 @@ def make_train_data(target_dir, prepared_data_di, resize_mode, channelsr):
     labelsTxt.close()
     return
 
-def resize_image(source, dest,resize_mode,channels):
-    output_side_length = 256
+def resize_image(source, dest,image_insize,resize_mode,channels):
+    output_side_length = image_insize
     
     if channels == '1':
         mode = "L"
@@ -600,8 +608,8 @@ def compute_mean(prepared_data_dir):
     pickle.dump(mean, open(prepared_data_dir + os.sep + 'mean.npy', 'wb'), -1)
     return
 
-def prepare_for_train(target_dir, prepared_data_dir, resize_mode, channels):
-    make_train_data(target_dir, prepared_data_dir, resize_mode, channels)
+def prepare_for_train(target_dir, prepared_data_dir,image_insize, resize_mode, channels):
+    make_train_data(target_dir, prepared_data_dir, image_insize,resize_mode, channels)
     compute_mean(prepared_data_dir)
 
 def start_train(model_id, epoch, prepared_data_dir, gpu, pretrained_model, db):
@@ -640,14 +648,9 @@ def is_prepared_to_train(prepared_data_dir):
     return True
 
 def inspect(image_file_path, target_model, prepared_data_dir, network, resize_mode, channels):
-    # resize
-    head, tail = os.path.split(image_file_path)
-    resized_image = TEMP_IMAGE_DIR + os.sep + get_timestamp() + '_' + tail
-    resize_image(image_file_path, resized_image, resize_mode, channels)
-    # inspection
     gpu_info = get_gpu_info()
     gpu = -1 if 'error' in gpu_info else 0
-    ret = imagenet_inspect.inspect(resized_image, prepared_data_dir + os.sep + 'mean.npy', target_model, prepared_data_dir + os.sep + 'labels.txt', network, resize_mode, channels, gpu)
+    ret = imagenet_inspect.inspect(image_file_path, prepared_data_dir + os.sep + 'mean.npy', target_model, prepared_data_dir + os.sep + 'labels.txt', network, resize_mode, channels, gpu)
     return ret
 
 def count_files(path):
