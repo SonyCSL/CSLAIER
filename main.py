@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 
 import os
+import signal
 import os.path
 import platform
 import sys
@@ -15,7 +16,7 @@ import shutil
 import cv2
 import numpy
 import time
-import threading
+from multiprocessing import Process
 import sqlite3
 import subprocess
 import chainer
@@ -29,7 +30,6 @@ from PIL import Image
 import imagenet_inspect
 import train
 import visualizer
-
 import scipy.misc
 
 
@@ -212,32 +212,43 @@ def show_model_detail(id, db):
             ret['dataset_name'] = '---'
     else:
         ret['dataset_name'] = '---'
+    if model_info[6]:
+        pretrained_models = sorted(os.listdir(model_info[6]), reverse=True)
+        if pretrained_models:
+            pretrained_models = filter(lambda file:file.find('model')>-1, pretrained_models)
+            pretrained_models.append("New")
+        else:
+            pretrained_models=["New"]
+    else:
+        pretrained_models=["New"]
+
     model_txt = open(ret['network_path']).read()
     row_all_datasets = db.execute('select id, name from Dataset')
     all_datasets_info = row_all_datasets.fetchall()
-    return bottle.template('models_detail.html', model_info = ret, datasets = all_datasets_info, model_txt=model_txt,system_info = get_system_info(),gpu_info = get_gpu_info(), chainer_version = get_chainer_version(), python_version = get_python_version())
+    return bottle.template('models_detail.html', model_info = ret, datasets = all_datasets_info, model_txt=model_txt,system_info = get_system_info(),gpu_info = get_gpu_info(), chainer_version = get_chainer_version(), python_version = get_python_version(),pretrained_models=pretrained_models)
 
 @app.route('/models/start/train', method="POST")
 def kick_train_start(db):
     dataset_id = bottle.request.forms.get('dataset_id')
     model_id = bottle.request.forms.get('model_id')
     epoch = bottle.request.forms.get('epoch')
+    pretrained_model = bottle.request.forms.get('pretrained_model')
     gpu_num = bottle.request.forms.get('gpu_num')
-	resize_mode = bottle.request.forms.get('resize_mode')
-	channels = int(bottle.request.forms.get('channels'))
-    row_ds = db.execute('select dataset_path from Dataset where id = ?', (dataset_id,))
-    ds_path = row_ds.fetchone()[0]
+    resize_mode = bottle.request.forms.get('resize_mode')
+    channels = int(bottle.request.forms.get('channels'))
+    row_ds = db.execute('select dataset_path, name from Dataset where id = ?', (dataset_id,))
+    (ds_path, dataset_name) = row_ds.fetchone()
     prepared_file_path = PREPARED_DATA_DIR + os.sep + get_timestamp()
     bottle.response.content_type = 'application/json'
     try:
         os.mkdir(prepared_file_path)
         db.execute('update Model set prepared_file_path = ?, epoch = ?, is_trained = 1, dataset_id = ?, resize_mode = ?, channels = ? where id = ?', (prepared_file_path, epoch, dataset_id, model_id, resize_mode, channels))
-        prepare_for_train(ds_path, prepared_file_path,resize_mode,channels)
-        start_train(model_id, epoch, prepared_file_path, gpu_num)
+        db.commit()
+        prepare_for_train(ds_path, prepared_file_path, resize_mode, channels)
+        start_train(model_id, epoch, prepared_file_path, gpu_num,pretrained_model, db)
     except:
-        db.execute('update Model set is_trained = 0 where id = ?', (model_id,))
         return dumps({"status": "error", "traceback": traceback.format_exc(sys.exc_info()[2])})
-    return dumps({"status": "OK"})
+    return dumps({"status": "OK", "dataset_name": dataset_name})
  
 @app.route('/models/download/<id>/<epoch>')
 def get_trained_model(id, epoch, db):
@@ -291,9 +302,9 @@ def create_new_model(db):
     finally:
         network_file.close()
         
-    t = (model_name, network_file_path, network_type, algorithm, resize_mode, channels)
+    t = (model_name, network_file_path, network_type, algorithm)
     try:
-        row = db.execute("insert into Model(name, network_path, network_name, algorithm,resize_mode, channels) values(?,?,?,?,?,?)", t)
+        row = db.execute("insert into Model(name, network_path, network_name, algorithm) values(?,?,?,?)", t)
     except:
         return show_error_screen(traceback.format_exc(sys.exc_info()[2]))
     return bottle.redirect('/models/show/' + str(row.lastrowid))
@@ -395,9 +406,9 @@ def api_get_training_data(id, db):
     f = open(filename, 'r')
     data = f.read()
     f.close()
-    return dumps({'status': 'ready', 'data': data})
+    return dumps({'status': 'ready', 'data': data, 'is_trained': model[1]})
     
-@app.route('/api/models/chekc_train_progress')
+@app.route('/api/models/check_train_progress')
 def api_check_train_progress(db):
     model_row = db.execute('select id, is_trained from Model')
     models = model_row.fetchall()
@@ -427,6 +438,17 @@ def api_visualize_layer(id, db):
     v_last.visualize_first_conv_layer('epoch' + str(epoch) + '_layer')
     return dumps({'id': id, 'epoch_0': 'epoch0_layer.png', 'last_epoch': 'epoch' + str(epoch) + '_layer.png', 'epoch': epoch})
 
+@app.route('/api/models/kill_train', method='POST')
+def api_kill_train(db):
+    bottle.response.content_type = 'application/json'
+    model_id = bottle.request.forms.get('id')
+    c = db.execute('select pid from Model where id = ?', (model_id,))
+    pid = c.fetchone()[0]
+    if pid is not None:
+        os.kill(pid, signal.SIGTERM)
+        db.execute('update Model set is_trained = 0, pid = null where id = ?', (model_id,))
+    return dumps({'status': 'success', 'message': 'successfully terminated'})
+
 #------- private methods ---------
 def find_all_files(directory):
     for root, dirs, files in os.walk(directory):
@@ -440,7 +462,7 @@ def find_all_directories(directory):
         if len(dirs) == 0:
             yield root
 
-def make_train_data(target_dir, prepared_data_dir,resize_mode,channels):
+def make_train_data(target_dir, prepared_data_di, resize_mode, channelsr):
     train = open(prepared_data_dir + os.sep + 'train.txt', 'w')
     test = open(prepared_data_dir + os.sep + 'test.txt', 'w')
     labelsTxt = open(prepared_data_dir + os.sep + 'labels.txt', 'w')
@@ -456,7 +478,7 @@ def make_train_data(target_dir, prepared_data_dir,resize_mode,channels):
                 if(f.split('.')[-1] not in ["jpg", "jpeg", "gif", "png"]):
                     continue
                 imagepath = prepared_data_dir + os.sep + "image%07d" %count + ".jpg"
-                resize_image(os.path.join(path, f), imagepath,resize_mode,channels)
+                resize_image(os.path.join(path, f), imagepath, resize_mode, channels)
                 if count - startCount < length * 0.75:
                     train.write(imagepath + " %d\n" % classNo)
                 else:
@@ -578,14 +600,14 @@ def compute_mean(prepared_data_dir):
     pickle.dump(mean, open(prepared_data_dir + os.sep + 'mean.npy', 'wb'), -1)
     return
 
-def prepare_for_train(target_dir, prepared_data_dir,resize_mode,channels):
-    make_train_data(target_dir, prepared_data_dir,resize_mode,channels)
+def prepare_for_train(target_dir, prepared_data_dir, resize_mode, channels):
+    make_train_data(target_dir, prepared_data_dir, resize_mode, channels)
     compute_mean(prepared_data_dir)
 
-def start_train(model_id, epoch, prepared_data_dir, gpu):
+def start_train(model_id, epoch, prepared_data_dir, gpu, pretrained_model, db):
     if not is_prepared_to_train(prepared_data_dir):
         raise Exception('preparation is not done')
-    train_th = threading.Thread(
+    train_process = Process(
         target=train.do_train,
         args = (
             DEEPSTATION_ROOT + os.sep + 'deepstation.db',
@@ -599,10 +621,13 @@ def start_train(model_id, epoch, prepared_data_dir, gpu):
             250,
             int(epoch, 10),
             int(gpu, 10),
-            20
+            20,
+            pretrained_model
         )
     )
-    train_th.start()
+    train_process.start()
+    db.execute('update Model set pid = ? where id = ?', (train_process.pid, model_id))
+    db.commit()
     return
     
 def is_prepared_to_train(prepared_data_dir):
@@ -614,15 +639,15 @@ def is_prepared_to_train(prepared_data_dir):
         return False
     return True
 
-def inspect(image_file_path, target_model, prepared_data_dir, network, resize_mode,channels):
+def inspect(image_file_path, target_model, prepared_data_dir, network, resize_mode, channels):
     # resize
     head, tail = os.path.split(image_file_path)
     resized_image = TEMP_IMAGE_DIR + os.sep + get_timestamp() + '_' + tail
-    resize_image(image_file_path, resized_image,resize_mode,channels)
+    resize_image(image_file_path, resized_image, resize_mode, channels)
     # inspection
     gpu_info = get_gpu_info()
     gpu = -1 if 'error' in gpu_info else 0
-    ret = imagenet_inspect.inspect(resized_image, prepared_data_dir + os.sep + 'mean.npy', target_model, prepared_data_dir + os.sep + 'labels.txt', network,resize_mode,channels, gpu)
+    ret = imagenet_inspect.inspect(resized_image, prepared_data_dir + os.sep + 'mean.npy', target_model, prepared_data_dir + os.sep + 'labels.txt', network, resize_mode, channels, gpu)
     return ret
 
 def count_files(path):
