@@ -33,19 +33,11 @@ def load_image_list(path):
         tuples.append((pair[0], np.int32(pair[1])))
     return tuples
 
-def read_image(path, model_insize, mean_image, center=False, flip=False):
-    cropwidth = 256 - model_insize
+def read_image(path, mean_image, flip=False):
     image = np.asarray(Image.open(path)).transpose(2, 0, 1)
-    if center:
-        top = left = cropwidth / 2
-    else:
-        top = random.randint(0, cropwidth - 1)
-        left = random.randint(0, cropwidth - 1)
-    bottom = model_insize + top
-    right = model_insize + left
-    image = image[:, top:bottom, left:right].astype(np.float32)
-    image -= mean_image[:, top:bottom, left:right]
-    image /= 255
+    image = image.astype(np.float32)
+    image -= mean_image
+
     if flip and random.randint(0, 1) == 0:
         return image[:, :, ::-1]
     else:
@@ -69,7 +61,7 @@ def feed_data(train_list, val_list, mean_image, batchsize, val_batchsize, model,
         perm = np.random.permutation(len(train_list))
         for idx in perm:
             path, label = train_list[idx]
-            batch_pool[i] = pool.apply_async(read_image, (path, model.insize, mean_image, False, True))
+            batch_pool[i] = pool.apply_async(read_image, (path, mean_image, True))
             y_batch[i] = label
             i += 1
             
@@ -84,7 +76,7 @@ def feed_data(train_list, val_list, mean_image, batchsize, val_batchsize, model,
                 data_q.put('val')
                 j = 0
                 for path, label in val_list:
-                    val_batch_pool[j] = pool.apply_async(read_image, (path, model.insize, mean_image, True, False))
+                    val_batch_pool[j] = pool.apply_async(read_image, (path, mean_image, False))
                     val_y_batch[j] = label
                     j += 1
                     
@@ -273,4 +265,3 @@ def do_train(db_path, train, test, mean, root_output_dir, model_dir, model_id, b
     db.execute('update Model set is_trained = 2, pid = null where id = ?', (model_id,))
     conn.commit()
     db.close()
-
