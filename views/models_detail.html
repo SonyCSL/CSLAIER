@@ -226,6 +226,13 @@
                         <option value="rgb">RGB</option>
                     </select>
                 </div>
+                <div class="form-group">
+                    <label for="select_flipping_mode" class="label-control">Use image flipping?</label>
+                    <select class="form-control" id="select_flipping_mode">
+                        <option value="0">Yes</option>
+                        <option value="1">No</option>
+                    </select>
+                </div>
                 % if int(model_info['gpu_num']) is 0:
                     <input type="hidden" id="gpu_num" name="gpu_num" value="-1">
                 % else:
