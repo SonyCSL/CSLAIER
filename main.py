@@ -186,6 +186,7 @@ def dataset_delete(id, db):
 def show_model_detail(id, db):
     row_model = db.execute('select id, name, epoch, algorithm, is_trained, network_path, trained_model_path, graph_data_path, dataset_id, created_at, network_name, resize_mode, channels from Model where id = ?', (id,))
     model_info = row_model.fetchone()
+    
     if model_info[12] == 3:
         color_mode = "RGB"
     else:
@@ -241,6 +242,7 @@ def kick_train_start(db):
     gpu_num = bottle.request.forms.get('gpu_num')
     resize_mode = bottle.request.forms.get('resize_mode')
     channels = int(bottle.request.forms.get('channels'))
+    avoid_flipping = int(bottle.request.forms.get('avoid_flipping'))
     row_ds = db.execute('select dataset_path, name, network_path from Dataset where id = ?', (dataset_id,))
     #(ds_path, dataset_name) = row_ds.fetchone()
     net_path = row_ds.fetchone()[2]
@@ -254,7 +256,7 @@ def kick_train_start(db):
         db.execute('update Model set prepared_file_path = ?, epoch = ?, is_trained = 1, dataset_id = ?, resize_mode = ?, channels = ? where id = ?', (prepared_file_path, epoch, dataset_id, model_id, resize_mode, channels))
         db.commit()
         prepare_for_train(ds_path, prepared_file_path,model.insize, resize_mode, channels)
-        start_train(model_id, epoch, prepared_file_path, gpu_num,pretrained_model, db)
+        start_train(model_id, epoch, prepared_file_path, gpu_num,pretrained_model, db, avoid_flipping)
     except:
         return dumps({"status": "error", "traceback": traceback.format_exc(sys.exc_info()[2])})
     return dumps({"status": "OK", "dataset_name": dataset_name})
@@ -617,7 +619,7 @@ def prepare_for_train(target_dir, prepared_data_dir,image_insize, resize_mode, c
     make_train_data(target_dir, prepared_data_dir, image_insize,resize_mode, channels)
     compute_mean(prepared_data_dir)
 
-def start_train(model_id, epoch, prepared_data_dir, gpu, pretrained_model, db):
+def start_train(model_id, epoch, prepared_data_dir, gpu, pretrained_model, db, avoid_flipping):
     if not is_prepared_to_train(prepared_data_dir):
         raise Exception('preparation is not done')
     train_process = Process(
@@ -635,7 +637,8 @@ def start_train(model_id, epoch, prepared_data_dir, gpu, pretrained_model, db):
             int(epoch, 10),
             int(gpu, 10),
             20,
-            pretrained_model
+            pretrained_model,
+            avoid_flipping
         )
     )
     train_process.start()
