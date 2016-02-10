@@ -34,6 +34,7 @@ def load_image_list(path):
     return tuples
 
 def read_image(path, mean_image, flip=False):
+
     image = np.asarray(Image.open(path)).transpose(2, 0, 1)
     image = image.astype(np.float32)
     image -= mean_image
@@ -43,7 +44,7 @@ def read_image(path, mean_image, flip=False):
     else:
         return image
  
-def feed_data(train_list, val_list, mean_image, batchsize, val_batchsize, model, loaderjob, epoch, optimizer, data_q):
+def feed_data(train_list, val_list, mean_image, batchsize, val_batchsize, model, loaderjob, epoch, optimizer, data_q, avoid_flipping):
     i = 0
     count = 0
     x_batch = np.ndarray((batchsize, 3, model.insize, model.insize), dtype=np.float32)
@@ -55,13 +56,18 @@ def feed_data(train_list, val_list, mean_image, batchsize, val_batchsize, model,
     val_batch_pool = [None] * val_batchsize
     pool = multiprocessing.Pool(loaderjob)
     data_q.put('train')
+    use_flip = True
+    
+    if avoid_flipping == 1:
+        use_flip = False
+    
     for epoch in six.moves.range(1, 1 + epoch):
         print('epoch', epoch, file=sys.stderr)
         print('learning rate', optimizer.lr, file=sys.stderr)
         perm = np.random.permutation(len(train_list))
         for idx in perm:
             path, label = train_list[idx]
-            batch_pool[i] = pool.apply_async(read_image, (path, mean_image, True))
+            batch_pool[i] = pool.apply_async(read_image, (path, mean_image, use_flip))
             y_batch[i] = label
             i += 1
             
@@ -205,7 +211,7 @@ def load_module(dir_name, symbol):
     (file, path, description) = imp.find_module(symbol,[dir_name])
     return imp.load_module(symbol, file, path, description)
             
-def do_train(db_path, train, test, mean, root_output_dir, model_dir, model_id, batchsize=32, val_batchsize=250, epoch=10, gpu=-1, loaderjob=20,pretrained_model=""):
+def do_train(db_path, train, test, mean, root_output_dir, model_dir, model_id, batchsize=32, val_batchsize=250, epoch=10, gpu=-1, loaderjob=20,pretrained_model="",avoid_flipping):
     conn = sqlite3.connect(db_path)
     db = conn.cursor()
     cursor = db.execute('select name from Model where id = ?', (model_id,))
@@ -253,7 +259,7 @@ def do_train(db_path, train, test, mean, root_output_dir, model_dir, model_id, b
     conn.commit()
     
     # Invoke threads
-    feeder = threading.Thread(target=feed_data, args=(train_list, val_list, mean_image, batchsize, val_batchsize, model, loaderjob, epoch, optimizer, data_q))
+    feeder = threading.Thread(target=feed_data, args=(train_list, val_list, mean_image, batchsize, val_batchsize, model, loaderjob, epoch, optimizer, data_q, avoid_flipping))
     feeder.daemon = True
     feeder.start()
     logger = threading.Thread(target=log_result, args=(batchsize, val_batchsize, output_dir + os.sep + 'line_graph.tsv',output_dir + os.sep + 'log.html',  res_q))
