@@ -119,17 +119,47 @@
                         </div>
                     </div>
                     <div id="model_detail_layers" class="hidden">
-                        <p id="layers_not_ready">Generating Layer Image</p>
-                        <div id="layer_images" class="hidden">
-                            <div>
-                                <h4>Epoch 0</h4>
-                                <img src="" alt="" class="img-responsive" id="layer_epoch0">
+                        % if model_info['is_trained'] == 2:
+                        <div class="form-horizontal">
+                            <div class="form-group">
+                                <label for="viz_layer_epoch" class="col-sm-2">Epoch:</label>
+                                <div class="col-sm-8">
+                                    <select name="" id="viz_layer_epoch" class="form-control">
+                                        % for i in range(model_info['epoch']):
+                                            <option value="{{i+1}}">{{i+1}}</option>
+                                        % end
+                                    </select>
+                                </div>
+                                <div class="col-sm-2">
+                                    <butotn class="btn btn-cyber" id="viz_layer_submit">Submit</butotn>
+                                </div>
                             </div>
-                            <div>
-                                <h4 id="last_epoch_title">Last Epoch</h4>
-                                <img src="" alt="" class="img-responsive" id="layer_last_epoch">
+                            <div class="form-group hidden" id="viz_layer_select_layer_wrap">
+                                <label for="" class="col-sm-2">Layer:</label>
+                                <div class="col-sm-8">
+                                    <select name="" id="viz_layer_select_layer" class="form-control">
+                                        
+                                    </select>
+                                </div>
+                                <div class="col-sm-2">
+                                    <button class="btn btn-cyber" id="viz_layer_select_layer_submit">Vizualize</button>
+                                </div>
                             </div>
                         </div>
+                        <div>
+                            <div id="viz_layer_loading" class="hidden">
+                                <div class="progress-wrap">
+                                    <h4>Generating Image</h4>
+                                    <div class="progress">
+                                        <div class="progress-bar progress-bar-striped active" role="progressbar" aria-valuenow="100" aria-valuemin="0" aria-valuemax="100" style="width: 100%">
+                                            <span class="sr-only">Generating image</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div id="viz_layer_result"></div>
+                        </div>
+                        % end
                     </div>
                 </div>
             </div>

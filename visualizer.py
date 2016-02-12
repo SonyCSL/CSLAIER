@@ -51,23 +51,31 @@ class LayerVisualizer:
         fig.suptitle(name + " " + W.label, fontweight='bold', color='#ffffff')
         self.plot(W)
         plt.draw()
-        plt.savefig(self.output_dir + os.sep + name + ".png", facecolor="#001100")
-        
-    def visualize_first_conv_layer(self, name=None):
-        candidate = None
-        for layer in sorted(self.model.namedparams()):
-            if layer[0].find('W') > -1:
-                if layer[0].find('conv') > -1:
-                    candidate = layer
-                    break
-                if candidate is None:
-                    candidate = layer
-                   
-        if candidate is not None:
-            if name is None:
-                name = candidate[0].replace('/', '_')
-            self.save_plot(candidate[1], name)
+        output_file_name = name.replace('/', '_') + '.png'
+        plt.savefig(self.output_dir + os.sep + output_file_name, facecolor="#001100")
+        return output_file_name
 
+    def get_layer_list(self):
+        layers = []
+        for layer in sorted(self.model.namedparams()):
+            if layer[0].find("W") > -1:
+                layers.append({"name": layer[0], "params": layer[1].label})
+        return layers
+        
+    def visualize_all(self):
+        for layer in sorted(self.model.namedparams()):
+            if layer[0].find("W") > -1:
+                self.save_plot(layer[1], layer[0])
+
+    def visualize(self, layer_name):
+        output_file_name = None
+        for layer in sorted(self.model.namedparams()):
+            if layer[0].find(layer_name) > -1:
+                output_file_name = self.save_plot(layer[1], layer[0])
+                break
+        return output_file_name
+                
+                
 if __name__ == "__main__":
     import argparse
     parser = argparse.ArgumentParser(description='visualize layer')
@@ -77,5 +85,4 @@ if __name__ == "__main__":
     args = parser.parse_args() 
 
     v = LayerVisualizer(args.network, args.trained_model, args.output_dir)
-    v.visualize_first_conv_layer()
 

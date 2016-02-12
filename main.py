@@ -67,11 +67,11 @@ def download_trained_model(filepath):
     filename = filepath.split('/')[-1]
     return bottle.static_file(filepath, TRAINED_DATA_DIR, download=filename, mimetype="application/octet-stream")
 
-@app.route('/layers/<id>/<filename>')
-def show_layer_image(id, filename, db):
+@app.route('/layers/<id>/<epoch>/<filename>')
+def show_layer_image(id, epoch, filename, db):
     model_row = db.execute('select trained_model_path from Model where id = ?', (id,))
     trained_model_path = model_row.fetchone()[0]
-    return bottle.static_file(filename, trained_model_path)
+    return bottle.static_file(filename, trained_model_path + os.sep + epoch)
 
 # main
 @app.route('/')
@@ -413,25 +413,56 @@ def api_check_train_progress(db):
     bottle.response.content_type = 'application/json'
     return dumps({'progress': progress})
     
-@app.route('/api/models/draw_layer/<id>')
-def api_visualize_layer(id, db):
+@app.route('/api/models/get_layer_viz/<model_id>/<epoch>/<layer_name>')
+def api_get_layer_viz(model_id, epoch, layer_name, db):
     bottle.response.content_type = 'application/json'
-    model_row = db.execute('select epoch, network_path, trained_model_path from Model where id = ?', (id,))
-    (epoch, network, trained_model_path) = model_row.fetchone()
-    trained_models = []
-    if os.path.exists(trained_model_path + os.sep + 'epoch0_layer.png') and os.path.exists(trained_model_path + os.sep + 'epoch' + str(epoch) + '_layer.png'):
-        return dumps({'id': id, 'epoch_0': 'epoch0_layer.png', 'last_epoch': 'epoch' + str(epoch) + '_layer.png', 'epoch': epoch})
+    validation_result = validation_for_layer_viz(model_id, epoch, db)
+    if validation_result['status'] == 'error':
+        dumps(validation_result)
+    else:
+        network = validation_result['network']
+        trained_model_path = validation_result['trained_model_path']
+        trained_model = validation_result['trained_model']
+    if os.path.exists(trained_model_path + os.sep + epoch + os.sep + layer_name + '.png'):
+        return dumps({'status': 'success', 'filename': layer_name + '.png', 'epoch': epoch})
+    if not os.path.exists(trained_model_path + os.sep + epoch):
+        os.mkdir(trained_model_path + os.sep + epoch)
+    v = visualizer.LayerVisualizer(network, trained_model, trained_model_path + os.sep + epoch)
+    layer_name = layer_name.replace('_', '/')
+    filename = v.visualize(layer_name)
+    if filename is None:
+        return dumps({'status': 'error', 'message': 'could not generate layer visualization'})
+    else:
+        return dumps({'status': 'success', 'filename': filename, 'epoch': epoch, })
+
+@app.route('/api/models/get_layer_names/<model_id>/<epoch>')
+def api_get_layer_names(model_id, epoch, db):
+    bottle.response.content_type = 'application/json'
+    validation_result = validation_for_layer_viz(model_id, epoch, db)
+    if validation_result['status'] == 'error':
+        dumps(validation_result)
+    else:
+        network = validation_result['network']
+        trained_model_path = validation_result['trained_model_path']
+        trained_model = validation_result['trained_model']
+    
+    v = visualizer.LayerVisualizer(network, trained_model, trained_model_path)
+    return dumps(v.get_layer_list())
+
+def validation_for_layer_viz(model_id, epoch, db):
+    model_row = db.execute('select epoch, network_path, trained_model_path from Model where id = ?', (model_id,))
+    (epoch_max, network, trained_model_path) = model_row.fetchone()
+    if int(epoch, 10) > epoch_max:
+        return {'status': 'error', 'message': 'selected epoch is bigger than trained epoch.'}
+    epoch_str = "{0:0>4}".format(int(epoch, 10))
+    trained_model = None
     for f in find_all_files(trained_model_path):
-        if os.path.split(f)[1].startswith("model"):
-            trained_models.append(f)
-    trained_models = sorted(trained_models)
-    epoch0_model = trained_models[0]
-    epoch_last_model = trained_models[-1]
-    v0 = visualizer.LayerVisualizer(network, epoch0_model, trained_model_path)
-    v0.visualize_first_conv_layer('epoch0_layer')
-    v_last = visualizer.LayerVisualizer(network, epoch_last_model, trained_model_path)
-    v_last.visualize_first_conv_layer('epoch' + str(epoch) + '_layer')
-    return dumps({'id': id, 'epoch_0': 'epoch0_layer.png', 'last_epoch': 'epoch' + str(epoch) + '_layer.png', 'epoch': epoch})
+        if f.find(epoch_str) > -1:
+            trained_model = f
+            break
+    if trained_model is None:
+        return {'status': 'error', 'message': 'could not find the trained_model'}
+    return {'status': 'OK', 'network': network, 'trained_model_path': trained_model_path, 'trained_model': trained_model}
 
 @app.route('/api/models/kill_train', method='POST')
 def api_kill_train(db):

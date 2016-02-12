@@ -1,3 +1,4 @@
+/* global $ */
 var editor; // コードエディット時のeditorオブジェクト
 
 $(function(){
@@ -335,15 +336,6 @@ $('#network_tab').on('click', function(e){
 
 $('#layer_tab').on('click', function(e){
     if($(this).hasClass('disabled')) return;
-    if($('#layers_not_ready')) {
-        $.get('/api/models/draw_layer/' + $('#model_id').val(), function(ret){
-            $('#last_epoch_title').text('Epoch ' + ret.epoch);
-            $('#layer_epoch0').attr('src', '/layers/' + ret.id + '/' + ret.epoch_0);
-            $('#layer_last_epoch').attr('src', '/layers/' + ret.id + '/' + ret.last_epoch);
-            $('#layer_images').removeClass('hidden');
-            $('#layers_not_ready').remove();
-        });
-    }
     $(this).addClass('active');
     $('#model_detail_network').addClass('hidden');
     $('#model_detail_graph').addClass('hidden');
@@ -354,6 +346,47 @@ $('#layer_tab').on('click', function(e){
     $('#network_tab').removeClass('active');
 });
 
+$('#viz_layer_submit').on('click', function(e){
+    $('#viz_layer_select_layer').empty();
+    $.get('/api/models/get_layer_names/' + $('#model_id').val() + '/' + $('#viz_layer_epoch').val(), function(ret){
+        if(ret.status == 'error') {
+            alert(ret.message);
+            return;
+        }
+        _.each(ret, function(layer){
+            var option = $('<option value="' + layer.name.replace(/\//g, '_') + '">' + layer.name + ' ' + layer.params + '</option>' );
+            $('#viz_layer_select_layer').append(option);
+        });
+        $('#viz_layer_select_layer_wrap').removeClass('hidden');
+    });
+});
+
+var showing_layers = [];
+
+$('#viz_layer_select_layer_submit').on('click', function(e){
+    $('#viz_layer_loading').removeClass("hidden");
+    $.get('/api/models/get_layer_viz/' + $('#model_id').val() + '/' + $('#viz_layer_epoch').val() + '/' + $('#viz_layer_select_layer').val(),
+    function(ret){
+        if(ret.status == 'error') {
+            alert(ret.message);
+            $('#viz_layer_loading').addClass('hidden');
+            return;
+        }
+        var image_path = '/layers/' + $('#model_id').val() + '/' + $('#viz_layer_epoch').val() + '/' + ret.filename;
+        if(_.indexOf(showing_layers, image_path) > -1) {
+            $('#viz_layer_loading').addClass('hidden');
+            return;
+        }
+        var wrap = $('<div></div>');
+        var title_epoch = $('<h4>Epoch: ' + ret.epoch + '</h4>');
+        var layer = $('<img class="img-responsive" src="' + image_path +'">');
+        showing_layers.push(image_path);
+        wrap.append(title_epoch);
+        wrap.append(layer);
+        $('#viz_layer_result').prepend(wrap);
+        $('#viz_layer_loading').addClass('hidden');
+    });
+});
 
 $('#model_edit_cancel').on('click', function(e){
     $('#network_edit_area').text($('#original_network').text());
@@ -626,8 +659,12 @@ var createEditor = function(){
 
 var showResultScreen = function(){
         $('#network_tab').removeClass('active');
+        $('#log_tab').removeClass('active');
+        $('#layer_tab').removeClass('active');
         $('#graph_tab').addClass('active');
         $('#model_detail_network').addClass('hidden');
+        $('#model_detail_log').addClass('hidden');
+        $('#model_detail_layers').addClass('hidden');
         $('#model_detail_graph').removeClass('hidden');
         draw_train_graph();
         setInterval("draw_train_graph()", 30000);

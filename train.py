@@ -11,6 +11,7 @@ import imp
 import re
 import os
 import sqlite3
+import shutil
 
 import numpy as np
 from PIL import Image
@@ -247,6 +248,11 @@ def do_train(db_path, train, test, mean, root_output_dir, model_dir, model_id, b
         for m in pretrained_models:
             if m.startswith('model') and pretrained_model != m:
                 os.remove(output_dir + os.sep + m)
+                
+    # delete layer visualization cache
+    for f in os.listdir(output_dir):
+        if os.path.isdir(output_dir + os.sep + f):
+            shutil.rmtree(output_dir + os.sep + f)
     
     if gpu >= 0:
         cuda.get_device(gpu).use()
