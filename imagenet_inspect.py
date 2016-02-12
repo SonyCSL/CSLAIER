@@ -111,11 +111,10 @@ def read_image(path, height, width, resize_mode = "squash", channels=3, flip=Fal
             noise_size = (padding, width)
             if channels > 1:
                 noise_size += (channels,)
-            print noise_size
             noise = np.random.randint(0, 255, noise_size).astype('uint8')
             image = np.concatenate((noise, image, noise), axis=0)
         else:
-            padding = (width - resize_width)/2
+            padding = int((width - resize_width)/2)
             noise_size = (height, padding)
             if channels > 1:
                 noise_size += (channels,)
@@ -123,15 +122,15 @@ def read_image(path, height, width, resize_mode = "squash", channels=3, flip=Fal
             image = np.concatenate((noise, image, noise), axis=1)
 
     if flip and random.randint(0, 1) == 0:
-        return image[:, :, ::-1]
+        return np.fliplr(image)
     else:
         return image
 
 
-def inspect(image_path, mean, model_path, label, network, resize_mode,channels, gpu=0):
-    network = network.split(os.sep)[-1]
+def inspect(image_path, mean, model_path, label, network_path, resize_mode,channels, gpu=0):
+    network = network_path.split(os.sep)[-1]
     model_name = re.sub(r"\.py$", "", network)
-    model_module = load_module(os.path.dirname(model_path), model_name)
+    model_module = load_module(os.path.dirname(network_path), model_name)
     mean_image = pickle.load(open(mean, 'rb'))
     model = model_module.Network()
     serializers.load_hdf5(model_path, model)
@@ -140,14 +139,15 @@ def inspect(image_path, mean, model_path, label, network, resize_mode,channels, 
         cuda.get_device(gpu).use()
         model.to_gpu()
         
-    output_side_length = 256
+    output_side_length = model.insize
         
     img = read_image(image_path, output_side_length, output_side_length, resize_mode,channels)
-    img = img.transpose(2, 0, 1)
+    if img.ndim == 3:
+        img = img.transpose(2, 0, 1)
     img = img.astype(np.float32)
     img -= mean_image
-
-    x = np.ndarray((1, channels,  output_side_length, output_side_length), dtype=np.float32)
+    
+    x = np.ndarray((1, 3,  output_side_length, output_side_length), dtype=np.float32)
     x[0] = img
     
     if gpu >= 0:

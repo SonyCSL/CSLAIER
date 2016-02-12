@@ -124,15 +124,15 @@ def read_image(path, height, width, resize_mode = "squash", channels=3, flip=Fal
             image = np.concatenate((noise, image, noise), axis=1)
 
     if flip and random.randint(0, 1) == 0:
-        return image[:, :, ::-1]
+        return np.fliplr(image)
     else:
         return image
 
 
-def inspect(image_path, mean, model_path, label, network, resize_mode, channels, gpu=-1):
-    network = network.split(os.sep)[-1]
+def inspect(image_path, mean, model_path, label, network_path, resize_mode, channels, gpu=-1):
+    network = network_path.split(os.sep)[-1]
     model_name = re.sub(r"\.py$", "", network)
-    model_module = load_module(os.path.dirname(model_path), model_name)
+    model_module = load_module(os.path.dirname(network_path), model_name)
     mean_image = pickle.load(open(mean, 'rb'))
     model = model_module.Network()
     serializers.load_hdf5(model_path, model)
@@ -144,13 +144,14 @@ def inspect(image_path, mean, model_path, label, network, resize_mode, channels,
     output_side_length = model.insize
         
     img = read_image(image_path, output_side_length, output_side_length, resize_mode,channels)
-    img = img.transpose(2, 0, 1)
+    if img.ndim == 3:
+        img = img.transpose(2, 0, 1)
     img = img.astype(np.float32)
     img -= mean_image
 
-    x = np.ndarray((1, channels,  output_side_length, output_side_length), dtype=np.float32)
-
+    x = np.ndarray((1, 3,  output_side_length, output_side_length), dtype=np.float32)
     x[0] = img
+    
     if gpu >= 0:
         x = cuda.to_gpu(x)
     score = model.predict(x)

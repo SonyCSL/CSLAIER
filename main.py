@@ -8,6 +8,7 @@ import sys
 import traceback
 import bottle
 from bottle.ext import sqlite
+import imp
 import random
 import re
 import zipfile
@@ -203,8 +204,8 @@ def show_model_detail(id, db):
         "graph_data_path": model_info[7],
         "dataset_id": model_info[8],
         "created_at": model_info[9],
-        "network_name": model_info[10]
-        "resize_mode": model_info[11]
+        "network_name": model_info[10],
+        "resize_mode": model_info[11],
         "channels": color_mode
     }
     gpu_info = get_gpu_info()
@@ -243,17 +244,18 @@ def kick_train_start(db):
     resize_mode = bottle.request.forms.get('resize_mode')
     channels = int(bottle.request.forms.get('channels'))
     avoid_flipping = int(bottle.request.forms.get('avoid_flipping'))
-    row_ds = db.execute('select dataset_path, name, network_path from Dataset where id = ?', (dataset_id,))
-    #(ds_path, dataset_name) = row_ds.fetchone()
-    net_path = row_ds.fetchone()[2]
-    model_name = re.sub(r"\.py$", "", net_path)
-    model_module = load_module(os.path.dirname(model_path), model_name)
+    row_ds = db.execute('select dataset_path, name from Dataset where id = ?', (dataset_id,))
+    row_network = db.execute('select network_path, name from Model where id = ?', (model_id,))
+    (ds_path, dataset_name) = row_ds.fetchone()
+    (net_path,model_name_from_db) = row_network.fetchone()
+    model_name = re.sub(r"\.py$", "", model_name_from_db)
+    model_module = load_module(os.path.dirname(net_path), model_name)
     model = model_module.Network()
     prepared_file_path = PREPARED_DATA_DIR + os.sep + get_timestamp()
     bottle.response.content_type = 'application/json'
     try:
         os.mkdir(prepared_file_path)
-        db.execute('update Model set prepared_file_path = ?, epoch = ?, is_trained = 1, dataset_id = ?, resize_mode = ?, channels = ? where id = ?', (prepared_file_path, epoch, dataset_id, model_id, resize_mode, channels))
+        db.execute('update Model set prepared_file_path = ?, epoch = ?, is_trained = 1, dataset_id = ?, resize_mode = ?, channels = ? where id = ?', (prepared_file_path, epoch, dataset_id, resize_mode, channels,  model_id))
         db.commit()
         prepare_for_train(ds_path, prepared_file_path,model.insize, resize_mode, channels)
         start_train(model_id, epoch, prepared_file_path, gpu_num,pretrained_model, db, avoid_flipping)
@@ -508,27 +510,28 @@ def make_train_data(target_dir, prepared_data_dir, image_insize, resize_mode, ch
 def resize_image(source, dest,image_insize,resize_mode,channels):
     output_side_length = image_insize
     
-    if channels == '1':
+    if channels == 1:
         mode = "L"
     else:
         mode = "RGB"
-
-    image = PIL.Image.open(source)
+    
+    image = Image.open(source)
     image = image.convert(mode)
-    image = np.array(image)
-
-    height, width, depth = image.shape
-
-	if resize_mode not in ['crop', 'squash', 'fill', 'half_crop']:
+    image = numpy.array(image)
+    
+    height = image.shape[0]
+    width = image.shape[1]
+    
+    if resize_mode not in ['crop', 'squash', 'fill', 'half_crop']:
         raise ValueError('resize_mode "%s" not supported' % resize_mode)
-
+    
 	### Resize
     interp = 'bilinear'
-
+    
     width_ratio = float(width) / output_side_length
     height_ratio = float(height) / output_side_length
     if resize_mode == 'squash' or width_ratio == height_ratio:
-        return scipy.misc.imresize(image, (output_side_length, output_side_length), interp=interp)
+        image = scipy.misc.imresize(image, (output_side_length, output_side_length), interp=interp)
     elif resize_mode == 'crop':
         # resize to smallest of ratios (relatively larger image), keeping aspect ratio
         if width_ratio > height_ratio:
@@ -538,14 +541,14 @@ def resize_image(source, dest,image_insize,resize_mode,channels):
             resize_width = output_side_length
             resize_height = int(round(height/ width_ratio))
         image = scipy.misc.imresize(image, (resize_height, resize_width), interp=interp)
-
+        
         # chop off ends of dimension that is still too long
         if width_ratio > height_ratio:
             start = int(round((resize_width-output_side_length)/2.0))
-            return image[:,start:start+output_side_length]
+            image = image[:,start:start+output_side_length]
         else:
             start = int(round((resize_height-output_side_length)/2.0))
-            return image[start:start+output_side_length,:]
+            image = image[start:start+output_side_length,:]
     else:
         if resize_mode == 'fill':
             # resize to biggest of ratios (relatively smaller image), keeping aspect ratio
@@ -564,7 +567,7 @@ def resize_image(source, dest,image_insize,resize_mode,channels):
             # resize to average ratio keeping aspect ratio
             new_ratio = (width_ratio + height_ratio) / 2.0
             resize_width = int(round(width / new_ratio))
-            resize_height = int(round(iheight / new_ratio))
+            resize_height = int(round(height / new_ratio))
             if width_ratio > height_ratio and (output_side_length - resize_height) % 2 == 1:
                 resize_height += 1
             elif width_ratio < height_ratio and (output_side_length - resize_width) % 2 == 1:
@@ -573,30 +576,29 @@ def resize_image(source, dest,image_insize,resize_mode,channels):
             # chop off ends of dimension that is still too long
             if width_ratio > height_ratio:
                 start = int(round((resize_width-output_side_length)/2.0))
-                image = image[:,start:start+width]
+                image = image[:,start:start+output_side_length]
             else:
                 start = int(round((resize_height-output_side_length)/2.0))
-                image = image[start:start+height,:]
+                image = image[start:start+output_side_length,:]
         else:
             raise Exception('unrecognized resize_mode "%s"' % resize_mode)
-
+            
         # fill ends of dimension that is too short with random noise
         if width_ratio > height_ratio:
-            padding = (output_side_length - resize_height)/2
+            padding = int((output_side_length - resize_height)/2)
             noise_size = (padding, output_side_length)
             if channels > 1:
                 noise_size += (channels,)
-            noise = np.random.randint(0, 255, noise_size).astype('uint8')
-            image = np.concatenate((noise, image, noise), axis=0)
+            noise = numpy.random.randint(0, 255, noise_size).astype('uint8')
+            image = numpy.concatenate((noise, image, noise), axis=0)
         else:
-            padding = (output_side_length - resize_width)/2
-            noise_size = (height, padding)
+            padding = int((output_side_length - resize_width)/2)
+            noise_size = (output_side_length, padding)
             if channels > 1:
                 noise_size += (channels,)
-            noise = np.random.randint(0, 255, noise_size).astype('uint8')
-            image = np.concatenate((noise, image, noise), axis=1)
-
-	cv2.imwrite(dest, image)
+            noise = numpy.random.randint(0, 255, noise_size).astype('uint8')
+            image = numpy.concatenate((noise, image, noise), axis=1)
+    cv2.imwrite(dest, image)
     return
 
 def compute_mean(prepared_data_dir):
@@ -604,7 +606,9 @@ def compute_mean(prepared_data_dir):
     count = 0
     for line in open(prepared_data_dir + os.sep + 'train.txt'):
         filepath = line.strip().split()[0]
-        image = numpy.asarray(Image.open(filepath)).transpose(2, 0, 1)
+        image = numpy.asarray(Image.open(filepath))
+        if image.ndim == 3:
+            image = image.transpose(2, 0, 1)
         if sum_image is None:
             sum_image = numpy.ndarray(image.shape, dtype=numpy.float32)
             sum_image[:] = image
