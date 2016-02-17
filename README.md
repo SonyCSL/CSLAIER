@@ -76,7 +76,7 @@ If you have changed hostname and port on `settings.yaml`, use that one.
 `sqlite3 deepstation.db < ./scheme/migration_20160208.sql`
 * Start DEEPstation.
 
-#### Migration v0.2.1 to v0.4.0
+#### Migration v0.3.0 to v0.4.0
 
 * Stop DEEPstation by `ctrl + c`
 * Run command below on root directory of DEEPstation  
