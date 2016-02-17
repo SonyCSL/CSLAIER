@@ -24,10 +24,6 @@ body.noscroll {
     border-bottom-color: #0c0;
 }
 
-.modal-content input.form-control {
-    border-color: #0c0;
-}
-
 .modal-content p.help-block {
     font-weight: bold;
 }
@@ -419,4 +415,12 @@ textarea.form-control {
 
 .navbar-right > .navbar-brand > img {
     height: 38px;
+}
+
+.start_train_section_header {
+    border-bottom: 1px solid #060;
+}
+
+.start_train_section {
+    padding-left: 20px;
 }
