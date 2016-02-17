@@ -37,7 +37,6 @@ def read_image(path, height, width, resize_mode = "squash", channels=3, flip=Fal
     resize_mode -- can be crop, squash, fill or half_crop
     flip -- flag for flipping
     """
-    
     if channels == 1:
         mode = "L"
     else:

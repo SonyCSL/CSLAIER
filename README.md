@@ -1,7 +1,7 @@
 DEEPstation
 ============
 
-DEEPstation version 0.3.0
+DEEPstation version 0.4.0
 
 Browser based GUI deep learning tool.
 
@@ -75,6 +75,14 @@ If you have changed hostname and port on `settings.yaml`, use that one.
 * Run command below on root directory of DEEPstation  
 `sqlite3 deepstation.db < ./scheme/migration_20160208.sql`
 * Start DEEPstation.
+
+#### Migration v0.2.1 to v0.4.0
+
+* Stop DEEPstation by `ctrl + c`
+* Run command below on root directory of DEEPstation  
+`sqlite3 deepstation.db < ./scheme/migration_20160209.sql`
+* Start DEEPstation.
+
 
 Usage
 ------
@@ -182,6 +190,13 @@ Setup
 * DEEPstationを止めてください。DEEPstation実行中のターミナルで`ctrl + c`で止まります。 
 * DEEPstationのルートディレクトリで下記のコマンドを実行してください。  
 `sqlite3 deepstation.db < ./scheme/migration_20160208.sql`
+* DEEPstationを起動してください。
+
+#### v0.3.0 から v 0.4.0 へのあっぷでーと方法
+
+* DEEPstationを止めてください。DEEPstation実行中のターミナルで`ctrl + c`で止まります。 
+* DEEPstationのルートディレクトリで下記のコマンドを実行してください。  
+`sqlite3 deepstation.db < ./scheme/migration_20160209.sql`
 * DEEPstationを起動してください。
 
 使い方

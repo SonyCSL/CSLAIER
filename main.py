@@ -35,7 +35,7 @@ import scipy.misc
 
 
 # initialization
-DEEPSTATION_VERSION = "0.3.0"
+DEEPSTATION_VERSION = "0.4.0"
 DEEPSTATION_ROOT = (os.getcwd() + os.sep + __file__).replace('main.py', '')
 f = open(DEEPSTATION_ROOT + os.sep + 'settings.yaml')
 settings = yaml.load(f)
@@ -229,7 +229,8 @@ def show_model_detail(id, db):
             pretrained_models=["New"]
     else:
         pretrained_models=["New"]
-
+    if ret['resize_mode'] is None or ret['resize_mode'] == '':
+        ret['resize_mode'] = '---'
     model_txt = open(ret['network_path']).read()
     row_all_datasets = db.execute('select id, name from Dataset')
     all_datasets_info = row_all_datasets.fetchall()
@@ -691,7 +692,12 @@ def is_prepared_to_train(prepared_data_dir):
         return False
     return True
 
-def inspect(image_file_path, target_model, prepared_data_dir, network, resize_mode, channels):
+def inspect(image_file_path, target_model, prepared_data_dir, network, resize_mode="fill", channels=3):
+    # for backward compatibility
+    if resize_mode not in ['fill', 'squash', 'crop', 'half_crop']:
+        resize_mode = 'fill'
+    if not isinstance(channels, int):
+        channels = int(channels)
     gpu_info = get_gpu_info()
     gpu = -1 if 'error' in gpu_info else 0
     ret = imagenet_inspect.inspect(image_file_path, prepared_data_dir + os.sep + 'mean.npy', target_model, prepared_data_dir + os.sep + 'labels.txt', network, resize_mode, channels, gpu)
