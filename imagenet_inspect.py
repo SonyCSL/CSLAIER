@@ -137,8 +137,12 @@ def inspect(image_path, mean, model_path, label, network_path, resize_mode,chann
         cuda.check_cuda_available()
         cuda.get_device(gpu).use()
         model.to_gpu()
-        
-    output_side_length = model.insize
+    
+    # for backward compatibility
+    if mean_image.shape[1] != model.insize:
+        output_side_length = mean_image.shape[1]
+    else:
+        output_side_length = model.insize
         
     img = read_image(image_path, output_side_length, output_side_length, resize_mode,channels)
     if img.ndim == 3:
