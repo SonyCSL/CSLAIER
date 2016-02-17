@@ -227,6 +227,14 @@ $('#start_train_btn').on('click', function(e){
     var dataset_id = parseInt($('#select_dataset').val(), 10);
     var epoch = $('#epoch_input').val();
     var pretrained_model = $('#select_pretrainedmodel').val() == -1 ? 'New' : $('#select_pretrainedmodel').val();
+    var resize_mode = $('#select_resize_mode').val();
+    var color_mode = $('#select_color_mode').val();
+    var channels = 1;
+    if(color_mode == "rgb"){
+        channels = 3;
+    }
+    var flipping_mode = $('#select_flipping_mode').val();
+    
     var gpu_num = $('#gpu_num').val() || $('input[name="gpu_num"]:checked').val();
     if(dataset_id < 0) {
         alert('Select Dataset.');
@@ -237,6 +245,9 @@ $('#start_train_btn').on('click', function(e){
             dataset_id: dataset_id,
             epoch: epoch,
             gpu_num: gpu_num,
+            resize_mode: resize_mode,
+            channels: channels,
+            avoid_flipping: flipping_mode,
             pretrained_model: pretrained_model
         }, function(ret){
         if(ret.status === "OK") {
@@ -669,4 +680,3 @@ var showResultScreen = function(){
         draw_train_graph();
         setInterval("draw_train_graph()", 30000);
 };
-

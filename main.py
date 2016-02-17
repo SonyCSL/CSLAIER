@@ -2,11 +2,13 @@
 
 import os
 import signal
+import os.path
 import platform
 import sys
 import traceback
 import bottle
 from bottle.ext import sqlite
+import imp
 import random
 import re
 import zipfile
@@ -29,6 +31,7 @@ from PIL import Image
 import imagenet_inspect
 import train
 import visualizer
+import scipy.misc
 
 
 # initialization
@@ -96,11 +99,11 @@ def do_upload_for_inspection(db):
     new_filename = INSPECTION_RAW_IMAGE + os.sep + timestamp_str + upload.filename
     try:
         upload.save(new_filename)
-        row_model = db.execute('select prepared_file_path, trained_model_path, network_path, name from Model where id = ?', (model_id,))
+        row_model = db.execute('select prepared_file_path, trained_model_path, network_path, name ,resize_mode, channels from Model where id = ?', (model_id,))
     except:
         return show_error_screen(traceback.format_exc(sys.exc_info()[2]))
     model_info = row_model.fetchone()
-    result = inspect(new_filename, model_info[1] + os.sep + 'model%04d'%epoch, model_info[0], model_info[2])
+    result = inspect(new_filename, model_info[1] + os.sep + 'model%04d'%epoch, model_info[0], model_info[2],model_info[4],model_info[5])
     return bottle.template('inspection_result.html',image=timestamp_str + upload.filename,results=result, name=model_info[3], epoch=epoch)
 
 @app.route('/dataset/show/<id>')
@@ -183,8 +186,14 @@ def dataset_delete(id, db):
 
 @app.route('/models/show/<id>')
 def show_model_detail(id, db):
-    row_model = db.execute('select id, name, epoch, algorithm, is_trained, network_path, trained_model_path, graph_data_path, dataset_id, created_at, network_name from Model where id = ?', (id,))
+    row_model = db.execute('select id, name, epoch, algorithm, is_trained, network_path, trained_model_path, graph_data_path, dataset_id, created_at, network_name, resize_mode, channels from Model where id = ?', (id,))
     model_info = row_model.fetchone()
+    
+    if model_info[12] == 3:
+        color_mode = "RGB"
+    else:
+        color_mode = "Grayscale"
+    
     ret = {
         "id": model_info[0],
         "name": model_info[1],
@@ -196,7 +205,9 @@ def show_model_detail(id, db):
         "graph_data_path": model_info[7],
         "dataset_id": model_info[8],
         "created_at": model_info[9],
-        "network_name": model_info[10]
+        "network_name": model_info[10],
+        "resize_mode": model_info[11],
+        "channels": color_mode
     }
     gpu_info = get_gpu_info()
     ret['gpu_num'] = 0 if 'gpus' not in gpu_info else len(gpu_info['gpus'])
@@ -231,16 +242,24 @@ def kick_train_start(db):
     epoch = bottle.request.forms.get('epoch')
     pretrained_model = bottle.request.forms.get('pretrained_model')
     gpu_num = bottle.request.forms.get('gpu_num')
+    resize_mode = bottle.request.forms.get('resize_mode')
+    channels = int(bottle.request.forms.get('channels'))
+    avoid_flipping = int(bottle.request.forms.get('avoid_flipping'))
     row_ds = db.execute('select dataset_path, name from Dataset where id = ?', (dataset_id,))
+    row_network = db.execute('select network_path, name from Model where id = ?', (model_id,))
     (ds_path, dataset_name) = row_ds.fetchone()
+    (net_path,model_name_from_db) = row_network.fetchone()
+    model_name = re.sub(r"\.py$", "", model_name_from_db)
+    model_module = load_module(os.path.dirname(net_path), model_name)
+    model = model_module.Network()
     prepared_file_path = PREPARED_DATA_DIR + os.sep + get_timestamp()
     bottle.response.content_type = 'application/json'
     try:
         os.mkdir(prepared_file_path)
-        db.execute('update Model set prepared_file_path = ?, epoch = ?, dataset_id = ? where id = ?', (prepared_file_path, epoch, dataset_id, model_id))
+        db.execute('update Model set prepared_file_path = ?, epoch = ?, is_trained = 1, dataset_id = ?, resize_mode = ?, channels = ? where id = ?', (prepared_file_path, epoch, dataset_id, resize_mode, channels,  model_id))
         db.commit()
-        prepare_for_train(ds_path, prepared_file_path)
-        start_train(model_id, epoch, prepared_file_path, gpu_num,pretrained_model, db)
+        prepare_for_train(ds_path, prepared_file_path,model.insize, resize_mode, channels)
+        start_train(model_id, epoch, prepared_file_path, gpu_num,pretrained_model, db, avoid_flipping)
     except:
         return dumps({"status": "error", "traceback": traceback.format_exc(sys.exc_info()[2])})
     return dumps({"status": "OK", "dataset_name": dataset_name})
@@ -476,6 +495,10 @@ def api_kill_train(db):
     return dumps({'status': 'success', 'message': 'successfully terminated'})
 
 #------- private methods ---------
+def load_module(dir_name, symbol):
+    (file, path, description) = imp.find_module(symbol, [dir_name])
+    return imp.load_module(symbol, file, path, description)
+    
 def find_all_files(directory):
     for root, dirs, files in os.walk(directory):
         for f in files:
@@ -488,7 +511,7 @@ def find_all_directories(directory):
         if len(dirs) == 0:
             yield root
 
-def make_train_data(target_dir, prepared_data_dir):
+def make_train_data(target_dir, prepared_data_dir, image_insize, resize_mode, channels):
     train = open(prepared_data_dir + os.sep + 'train.txt', 'w')
     test = open(prepared_data_dir + os.sep + 'test.txt', 'w')
     labelsTxt = open(prepared_data_dir + os.sep + 'labels.txt', 'w')
@@ -504,7 +527,7 @@ def make_train_data(target_dir, prepared_data_dir):
                 if(f.split('.')[-1] not in ["jpg", "jpeg", "gif", "png"]):
                     continue
                 imagepath = prepared_data_dir + os.sep + "image%07d" %count + ".jpg"
-                resize_image(os.path.join(path, f), imagepath)
+                resize_image(os.path.join(path, f), imagepath, image_insize,resize_mode, channels)
                 if count - startCount < length * 0.75:
                     train.write(imagepath + " %d\n" % classNo)
                 else:
@@ -516,21 +539,98 @@ def make_train_data(target_dir, prepared_data_dir):
     labelsTxt.close()
     return
 
-def resize_image(source, dest):
-    output_side_length = 256
-    img = cv2.imread(source)
-    height, width, depth = img.shape
-    new_height = output_side_length
-    new_width = output_side_length
-    if height > width:
-        new_height = output_side_length * height / width
+def resize_image(source, dest,image_insize,resize_mode,channels):
+    output_side_length = image_insize
+    
+    if channels == 1:
+        mode = "L"
     else:
-        new_width = output_side_length * width / height
-    resized_img = cv2.resize(img, (new_width, new_height))
-    height_offset = (new_height - output_side_length) / 2
-    width_offset = (new_width - output_side_length) / 2
-    cropped_img = resized_img[height_offset:height_offset + output_side_length, width_offset:width_offset + output_side_length]
-    cv2.imwrite(dest, cropped_img)
+        mode = "RGB"
+    
+    image = Image.open(source)
+    image = image.convert(mode)
+    image = numpy.array(image)
+    
+    height = image.shape[0]
+    width = image.shape[1]
+    
+    if resize_mode not in ['crop', 'squash', 'fill', 'half_crop']:
+        raise ValueError('resize_mode "%s" not supported' % resize_mode)
+    
+	### Resize
+    interp = 'bilinear'
+    
+    width_ratio = float(width) / output_side_length
+    height_ratio = float(height) / output_side_length
+    if resize_mode == 'squash' or width_ratio == height_ratio:
+        image = scipy.misc.imresize(image, (output_side_length, output_side_length), interp=interp)
+    elif resize_mode == 'crop':
+        # resize to smallest of ratios (relatively larger image), keeping aspect ratio
+        if width_ratio > height_ratio:
+            resize_height = output_side_length
+            resize_width = int(round(width / height_ratio))
+        else:
+            resize_width = output_side_length
+            resize_height = int(round(height/ width_ratio))
+        image = scipy.misc.imresize(image, (resize_height, resize_width), interp=interp)
+        
+        # chop off ends of dimension that is still too long
+        if width_ratio > height_ratio:
+            start = int(round((resize_width-output_side_length)/2.0))
+            image = image[:,start:start+output_side_length]
+        else:
+            start = int(round((resize_height-output_side_length)/2.0))
+            image = image[start:start+output_side_length,:]
+    else:
+        if resize_mode == 'fill':
+            # resize to biggest of ratios (relatively smaller image), keeping aspect ratio
+            if width_ratio > height_ratio:
+                resize_width = output_side_length
+                resize_height = int(round(height / width_ratio))
+                if (output_side_length - resize_height) % 2 == 1:
+                    resize_height += 1
+            else:
+                resize_height = output_side_length
+                resize_width = int(round(width/ height_ratio))
+                if (output_side_length - resize_width) % 2 == 1:
+                    resize_width += 1
+            image = scipy.misc.imresize(image, (resize_height, resize_width), interp=interp)
+        elif resize_mode == 'half_crop':
+            # resize to average ratio keeping aspect ratio
+            new_ratio = (width_ratio + height_ratio) / 2.0
+            resize_width = int(round(width / new_ratio))
+            resize_height = int(round(height / new_ratio))
+            if width_ratio > height_ratio and (output_side_length - resize_height) % 2 == 1:
+                resize_height += 1
+            elif width_ratio < height_ratio and (output_side_length - resize_width) % 2 == 1:
+                resize_width += 1
+            image = scipy.misc.imresize(image, (resize_height, resize_width), interp=interp)
+            # chop off ends of dimension that is still too long
+            if width_ratio > height_ratio:
+                start = int(round((resize_width-output_side_length)/2.0))
+                image = image[:,start:start+output_side_length]
+            else:
+                start = int(round((resize_height-output_side_length)/2.0))
+                image = image[start:start+output_side_length,:]
+        else:
+            raise Exception('unrecognized resize_mode "%s"' % resize_mode)
+            
+        # fill ends of dimension that is too short with random noise
+        if width_ratio > height_ratio:
+            padding = int((output_side_length - resize_height)/2)
+            noise_size = (padding, output_side_length)
+            if channels > 1:
+                noise_size += (channels,)
+            noise = numpy.random.randint(0, 255, noise_size).astype('uint8')
+            image = numpy.concatenate((noise, image, noise), axis=0)
+        else:
+            padding = int((output_side_length - resize_width)/2)
+            noise_size = (output_side_length, padding)
+            if channels > 1:
+                noise_size += (channels,)
+            noise = numpy.random.randint(0, 255, noise_size).astype('uint8')
+            image = numpy.concatenate((noise, image, noise), axis=1)
+    cv2.imwrite(dest, image)
     return
 
 def compute_mean(prepared_data_dir):
@@ -538,7 +638,9 @@ def compute_mean(prepared_data_dir):
     count = 0
     for line in open(prepared_data_dir + os.sep + 'train.txt'):
         filepath = line.strip().split()[0]
-        image = numpy.asarray(Image.open(filepath)).transpose(2, 0, 1)
+        image = numpy.asarray(Image.open(filepath))
+        if image.ndim == 3:
+            image = image.transpose(2, 0, 1)
         if sum_image is None:
             sum_image = numpy.ndarray(image.shape, dtype=numpy.float32)
             sum_image[:] = image
@@ -549,11 +651,11 @@ def compute_mean(prepared_data_dir):
     pickle.dump(mean, open(prepared_data_dir + os.sep + 'mean.npy', 'wb'), -1)
     return
 
-def prepare_for_train(target_dir, prepared_data_dir):
-    make_train_data(target_dir, prepared_data_dir)
+def prepare_for_train(target_dir, prepared_data_dir,image_insize, resize_mode, channels):
+    make_train_data(target_dir, prepared_data_dir, image_insize,resize_mode, channels)
     compute_mean(prepared_data_dir)
 
-def start_train(model_id, epoch, prepared_data_dir, gpu, pretrained_model, db):
+def start_train(model_id, epoch, prepared_data_dir, gpu, pretrained_model, db, avoid_flipping):
     if not is_prepared_to_train(prepared_data_dir):
         raise Exception('preparation is not done')
     train_process = Process(
@@ -571,7 +673,8 @@ def start_train(model_id, epoch, prepared_data_dir, gpu, pretrained_model, db):
             int(epoch, 10),
             int(gpu, 10),
             20,
-            pretrained_model
+            pretrained_model,
+            avoid_flipping
         )
     )
     train_process.start()
@@ -588,15 +691,10 @@ def is_prepared_to_train(prepared_data_dir):
         return False
     return True
 
-def inspect(image_file_path, target_model, prepared_data_dir, network):
-    # resize
-    head, tail = os.path.split(image_file_path)
-    resized_image = TEMP_IMAGE_DIR + os.sep + get_timestamp() + '_' + tail
-    resize_image(image_file_path, resized_image)
-    # inspection
+def inspect(image_file_path, target_model, prepared_data_dir, network, resize_mode, channels):
     gpu_info = get_gpu_info()
     gpu = -1 if 'error' in gpu_info else 0
-    ret = imagenet_inspect.inspect(resized_image, prepared_data_dir + os.sep + 'mean.npy', target_model, prepared_data_dir + os.sep + 'labels.txt', network, gpu)
+    ret = imagenet_inspect.inspect(image_file_path, prepared_data_dir + os.sep + 'mean.npy', target_model, prepared_data_dir + os.sep + 'labels.txt', network, resize_mode, channels, gpu)
     return ret
 
 def count_files(path):
@@ -711,4 +809,3 @@ def show_error_screen(error):
     return bottle.template('errors.html', detail=error)
     
 app.run(server=settings['server_engine'], host=settings['host'], port=settings['port'], debug=settings['debug'])
-
