@@ -40,6 +40,7 @@ DEEPstation is tested on Ubuntu 14.04. We recommend them to use DEEPstation, tho
 * NVIDIA CUDA Technology GPU and drivers 
 * Python 2.7
   * python-opencv
+  * python-scipy
 * SQLite3
 
 ### Python Libraries
@@ -156,6 +157,7 @@ DEEPstationはUbuntu14.04でテストしています。 Ubuntu上で動かすこ
 * NVIDIA CUDA Technology GPU and drivers 
 * Python 2.7
   * python-opencv
+  * python-scipy
 * SQLite3
 
 ### Python Libraries

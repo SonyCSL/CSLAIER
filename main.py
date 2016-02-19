@@ -527,6 +527,8 @@ def make_train_data(target_dir, prepared_data_dir, image_insize, resize_mode, ch
             for f in files:
                 if(f.split('.')[-1] not in ["jpg", "jpeg", "gif", "png"]):
                     continue
+                if (os.path.getsize(os.path.join(path, f))) <= 0:
+                    continue
                 imagepath = prepared_data_dir + os.sep + "image%07d" %count + ".jpg"
                 resize_image(os.path.join(path, f), imagepath, image_insize,resize_mode, channels)
                 if count - startCount < length * 0.75:
