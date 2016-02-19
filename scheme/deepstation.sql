@@ -12,7 +12,7 @@ create table Model(
     dataset_id integer,
     prepared_file_path integer,
     created_at timestamp default current_timestamp,
-    pid integer Default null
+    pid integer Default null,
     resize_mode text,
     channels integer Default 3
 );
