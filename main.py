@@ -493,10 +493,6 @@ def api_kill_train(db):
     return dumps({'status': 'success', 'message': 'successfully terminated'})
 
 #------- private methods ---------
-def load_module(dir_name, symbol):
-    (file, path, description) = imp.find_module(symbol, [dir_name])
-    return imp.load_module(symbol, file, path, description)
-    
 def find_all_files(directory):
     for root, dirs, files in os.walk(directory):
         for f in files:
