@@ -1,4 +1,4 @@
-create table Model(
+create table if not exists Model(
     id integer primary key AUTOINCREMENT,
     name text unique not null,
     epoch integer Default 1,
@@ -17,7 +17,7 @@ create table Model(
     channels integer Default 3
 );
 
-create table Dataset(
+create table if not exists Dataset(
     id integer primary key AUTOINCREMENT,
     name text unique not null,
     dataset_path text,
