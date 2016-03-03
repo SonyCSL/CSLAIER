@@ -35,7 +35,7 @@ import scipy.misc
 
 
 # initialization
-DEEPSTATION_VERSION = "0.4.0"
+DEEPSTATION_VERSION = "0.4.1"
 DEEPSTATION_ROOT = (os.getcwd() + os.sep + __file__).replace('main.py', '')
 f = open(DEEPSTATION_ROOT + os.sep + 'settings.yaml')
 settings = yaml.load(f)
