@@ -35,7 +35,7 @@ import scipy.misc
 
 
 # initialization
-DEEPSTATION_VERSION = "0.4.0"
+DEEPSTATION_VERSION = "0.4.1"
 DEEPSTATION_ROOT = (os.getcwd() + os.sep + __file__).replace('main.py', '')
 f = open(DEEPSTATION_ROOT + os.sep + 'settings.yaml')
 settings = yaml.load(f)
@@ -246,20 +246,17 @@ def kick_train_start(db):
     resize_mode = bottle.request.forms.get('resize_mode')
     channels = int(bottle.request.forms.get('channels'))
     avoid_flipping = int(bottle.request.forms.get('avoid_flipping'))
+    # image_size = int(bottle.request.forms.get('image_size'))
+    image_size = 256
     row_ds = db.execute('select dataset_path, name from Dataset where id = ?', (dataset_id,))
-    row_network = db.execute('select network_path, name from Model where id = ?', (model_id,))
     (ds_path, dataset_name) = row_ds.fetchone()
-    (net_path,model_name_from_db) = row_network.fetchone()
-    model_name = re.sub(r"\.py$", "", model_name_from_db)
-    model_module = load_module(os.path.dirname(net_path), model_name)
-    model = model_module.Network()
     prepared_file_path = PREPARED_DATA_DIR + os.sep + get_timestamp()
     bottle.response.content_type = 'application/json'
     try:
         os.mkdir(prepared_file_path)
         db.execute('update Model set prepared_file_path = ?, epoch = ?, is_trained = 1, dataset_id = ?, resize_mode = ?, channels = ? where id = ?', (prepared_file_path, epoch, dataset_id, resize_mode, channels,  model_id))
         db.commit()
-        prepare_for_train(ds_path, prepared_file_path,model.insize, resize_mode, channels)
+        prepare_for_train(ds_path, prepared_file_path,image_size, resize_mode, channels)
         start_train(model_id, epoch, prepared_file_path, gpu_num,pretrained_model, db, avoid_flipping)
     except:
         return dumps({"status": "error", "traceback": traceback.format_exc(sys.exc_info()[2])})
@@ -496,10 +493,6 @@ def api_kill_train(db):
     return dumps({'status': 'success', 'message': 'successfully terminated'})
 
 #------- private methods ---------
-def load_module(dir_name, symbol):
-    (file, path, description) = imp.find_module(symbol, [dir_name])
-    return imp.load_module(symbol, file, path, description)
-    
 def find_all_files(directory):
     for root, dirs, files in os.walk(directory):
         for f in files:

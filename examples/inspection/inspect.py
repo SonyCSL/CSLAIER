@@ -143,11 +143,18 @@ def inspect(image_path, mean, model_path, label, network_path, resize_mode, chan
         
     output_side_length = model.insize
         
-    img = read_image(image_path, output_side_length, output_side_length, resize_mode,channels)
+    img = read_image(image_path, 256, 256, resize_mode,channels)
+    cropwidth = 256 - output_side_length
+    top = left = cropwidth / 2
+    bottom = output_side_length + top
+    right = output_side_length + left
+    img = img[:, top:bottom, left:right]
+    
     if img.ndim == 3:
         img = img.transpose(2, 0, 1)
     img = img.astype(np.float32)
     img -= mean_image
+    img /= 255
 
     x = np.ndarray((1, 3,  output_side_length, output_side_length), dtype=np.float32)
     x[0] = img
