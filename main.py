@@ -150,7 +150,7 @@ def dataset_delete_a_category(id):
 def dataset_add_image_to_category(id, filepath):
     upload = bottle.request.files.get('fileInput')
     name, ext = os.path.splitext(upload.filename)
-    if ext not in ('.jpg'):
+    if ext not in ('.jpg', '.jpeg', '.gif', '.png'):
         return show_error_screen('File extension not allowed.')
     new_filename = UPLOADED_IMAGES_DIR + os.sep + filepath + os.sep + get_timestamp() + '_' + upload.filename
     try:
