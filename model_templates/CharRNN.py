@@ -9,8 +9,8 @@ import chainer.links as L
 ##############################
 
 class Network(chainer.Chain):
-    def __init__(self, n_vocab, n_units, train=True):
-        super(CharRNN,self).__init__(
+    def __init__(self, n_vocab, n_units, dropout_ratio = 0.0,train=True):
+        super(Network,self).__init__(
         
             embed = L.EmbedID(n_vocab, n_units),
             l1 = L.LSTM(n_units,n_units),
@@ -23,6 +23,7 @@ class Network(chainer.Chain):
         )
         
         self.train = train
+        self.dropout_ratio = dropout_ratio
         
     def reset_state(self):
         self.l1.reset_state()
@@ -31,24 +32,24 @@ class Network(chainer.Chain):
         self.l4.reset_state()
         self.l5.reset_state()
 
-    def __call__(self,x):
+    def __call__(self,x):	
         h0 = self.embed(x)
-        h1 = self.l1(F.dropout(h0, train=self.train))
-        h2 = self.l2(F.dropout(h1, train=self.train))
-        h3 = self.l3(F.dropout(h2, train=self.train))
-        h4 = self.l4(F.dropout(h3, train=self.train))
-        h5 = self.l5(F.dropout(h4, train=self.train))
-        y = self.l6(F.dropout(h5, train=self.train))
-        
+        h1 = self.l1(F.dropout(h0, ratio=self.dropout_ratio,train=self.train))
+        h2 = self.l2(F.dropout(h1, ratio=self.dropout_ratio,train=self.train))
+        h3 = self.l3(F.dropout(h2, ratio=self.dropout_ratio, train=self.train))
+        h4 = self.l4(F.dropout(h3, ratio=self.dropout_ratio, train=self.train))
+        h5 = self.l5(F.dropout(h4, ratio=self.dropout_ratio, train=self.train))
+        y = self.l6(F.dropout(h5, ratio=self.dropout_ratio, train=self.train))
+		
         return y
-    
+	
     def predict(self,x):
-        h0 = self.embed(x)
-        h1 = self.l1(F.dropout(h0, train=self.train))
-        h2 = self.l2(F.dropout(h1, train=self.train))
-        h3 = self.l3(F.dropout(h2, train=self.train))
-        h4 = self.l4(F.dropout(h3, train=self.train))
-        h5 = self.l5(F.dropout(h4, train=self.train))
-        y = self.l6(h5)
-        
-        return F.softmax(y)
+		h0 = self.embed(x)
+		h1 = self.l1(F.dropout(h0, ratio=self.dropout_ratio,train=self.train))
+		h2 = self.l2(F.dropout(h1, ratio=self.dropout_ratio,train=self.train))
+		h3 = self.l3(F.dropout(h2, ratio=self.dropout_ratio, train=self.train))
+		h4 = self.l4(F.dropout(h3, ratio=self.dropout_ratio, train=self.train))
+		h5 = self.l5(F.dropout(h4, ratio=self.dropout_ratio, train=self.train))
+		y = self.l6(F.dropout(h5, ratio=self.dropout_ratio, train=self.train))
+		
+		return F.softmax(y)
