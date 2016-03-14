@@ -36,7 +36,7 @@ import scipy.misc
 
 
 # initialization
-DEEPSTATION_VERSION = "0.4.1"
+DEEPSTATION_VERSION = "0.4.2"
 DEEPSTATION_ROOT = (os.getcwd() + os.sep + __file__).replace('main.py', '')
 f = open(DEEPSTATION_ROOT + os.sep + 'settings.yaml')
 settings = yaml.load(f)
@@ -684,7 +684,7 @@ def compute_mean(prepared_data_dir):
             sum_image = numpy.ndarray(image.shape, dtype=numpy.float32)
             sum_image[:] = image
         else:
-            sum_image += 1
+            sum_image += image
         count += 1
     mean = sum_image / count
     pickle.dump(mean, open(prepared_data_dir + os.sep + 'mean.npy', 'wb'), -1)

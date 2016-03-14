@@ -1,7 +1,7 @@
 DEEPstation
 ============
 
-DEEPstation version 0.4.0
+DEEPstation version 0.4.2
 
 Browser based GUI deep learning tool.
 
@@ -194,7 +194,7 @@ Setup
 `sqlite3 deepstation.db < ./scheme/migration_20160208.sql`
 * DEEPstationを起動してください。
 
-#### v0.3.0 から v 0.4.0 へのあっぷでーと方法
+#### v0.3.0 から v 0.4.0 へのアップデート方法
 
 * DEEPstationを止めてください。DEEPstation実行中のターミナルで`ctrl + c`で止まります。 
 * DEEPstationのルートディレクトリで下記のコマンドを実行してください。  
