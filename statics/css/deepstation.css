@@ -24,6 +24,10 @@ body.noscroll {
     border-bottom-color: #0c0;
 }
 
+.modal-footer {
+    border-top-color: #0c0;
+}
+
 .modal-content p.help-block {
     font-weight: bold;
 }
@@ -205,6 +209,7 @@ h3 {
     border: 1px solid #0c0;
     border-radius: 5px;
     padding: 0px 3px;
+    padding-bottom: 10px;
 }
 
 .category {
@@ -218,6 +223,7 @@ h3 {
 .category:hover {
     border: 1px solid white;
     border-radius: 5px;
+    padding: 3px;
 }
 
 .thumbnail-30 {
@@ -424,4 +430,35 @@ textarea.form-control {
 
 .start_train_section {
     padding-left: 20px;
+}
+
+.sample_text {
+    margin: 4px;
+    overflow: hidden;
+    color: white;
+}
+
+.text_detail {
+    width: 220px;
+    height: 200px;
+    display: inline-block;
+    padding: 5px;
+    vertical-align: top;  
+    margin: 4px;
+    overflow: hidden;
+    color: white; 
+}
+
+.text_detail:hover {
+    border: 1px solid white;
+    border-radius: 5px;
+    padding: 3px;
+}
+
+.modal .close {
+    color: #0c0;
+}
+
+#show_text_detail_modal .modal-header {
+    text-align: right;
 }

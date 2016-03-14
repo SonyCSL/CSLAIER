@@ -21,6 +21,7 @@ from multiprocessing import Process
 import sqlite3
 import subprocess
 import chainer
+import nkf
 from xml.etree.ElementTree import *
 import six
 import cPickle as pickle
@@ -79,12 +80,15 @@ def show_layer_image(id, epoch, filename, db):
 # main
 @app.route('/')
 def index(db):
-    models = db.execute('select Model.id, Model.name, Model.epoch, Model.is_trained, Model.created_at, Model.network_name, Model.algorithm, Dataset.name from Model left join Dataset on Model.dataset_id = Dataset.id order by Model.id DESC')
-    dataset_cur = db.execute('select id, name, dataset_path from Dataset')
+    models = db.execute('select Model.id, Model.name, Model.epoch, Model.is_trained, Model.created_at, Model.network_name, Model.type, Dataset.name from Model left join Dataset on Model.dataset_id = Dataset.id order by Model.id DESC')
+    dataset_cur = db.execute('select id, name, dataset_path, type from Dataset')
     dataset_rows = dataset_cur.fetchall()
     datasets = []
     for d in dataset_rows:
-        datasets.append({"id": d[0], "name": d[1], "dataset_path": d[2], "thumbnails": get_files_in_random_order(d[2], 4), "file_num": count_files(d[2]), "category_num": count_categories(d[2])})
+        if d[3] == "image":
+            datasets.append({"id": d[0], "name": d[1], "dataset_path": d[2], "dataset_type": d[3], "thumbnails": get_files_in_random_order(d[2], 4), "file_num": count_files(d[2]), "category_num": count_categories(d[2])})
+        elif d[3] == "text":
+            datasets.append({"id": d[0], "name": d[1], "dataset_path": d[2], "dataset_type": d[3], "sample_text": get_texts_in_random_order(d[2], 1, 180), "file_num": count_files(d[2]), "category_num": count_categories(d[2])})
     return bottle.template('index.html', models = models.fetchall(), datasets = datasets, system_info = get_system_info(), gpu_info = get_gpu_info(), chainer_version = get_chainer_version(), python_version = get_python_version(), deepstation_version = DEEPSTATION_VERSION)
 
 @app.route('/inspection/upload', method='POST')
@@ -108,7 +112,7 @@ def do_upload_for_inspection(db):
 
 @app.route('/dataset/show/<id>')
 def dataset_show(id, db):
-    row = db.execute('select name, dataset_path from Dataset where id = ?', (id,))
+    row = db.execute('select name, dataset_path, type from Dataset where id = ?', (id,))
     dataset_info = row.fetchone()
     name = dataset_info[0]
     dataset_root_path = dataset_info[1]
@@ -116,17 +120,23 @@ def dataset_show(id, db):
         dataset_root_path = dataset_root_path + os.sep + os.listdir(dataset_root_path)[0]
     dataset = []
     for path in find_all_directories(dataset_root_path):
-        dataset.append({"path": path.replace(UPLOADED_IMAGES_DIR, ""), "file_num": count_files(path), "category": path.split(os.sep)[-1], "thumbnails": get_files_in_random_order(path, 4)})
-    return bottle.template('dataset_show.html', dataset = dataset, name=name, dataset_id = id)
+        if dataset_info[2] == "image":
+            dataset.append({"dataset_type": dataset_info[2],"path": path.replace(UPLOADED_IMAGES_DIR, ""), "file_num": count_files(path), "category": path.split(os.sep)[-1], "thumbnails": get_files_in_random_order(path, 4)})
+        elif dataset_info[2] == "text":
+            dataset.append({"dataset_type": dataset_info[2], "path": path.replace(UPLOADED_IMAGES_DIR, ""), "file_num": count_files(path), "category": path.split(os.sep)[-1], "sample_text": get_texts_in_random_order(path, 1, 180)})
+    return bottle.template('dataset_show.html', dataset = dataset, name=name, dataset_id = id, dataset_type = dataset_info[2])
 
 @app.route('/dataset/show/<id>/<filepath:path>')
 def dataset_category_show(id, filepath, db):
-    row = db.execute('select name from Dataset where id = ?', (id,))
-    dataset_name = row.fetchone()[0]
-    images = []
+    row = db.execute('select name, type from Dataset where id = ?', (id,))
+    (dataset_name, dataset_type) = row.fetchone()
+    ret = []
     for path in find_all_files(UPLOADED_IMAGES_DIR + os.sep + filepath):
-        images.append(path.replace(UPLOADED_IMAGES_DIR + os.sep, ''))
-    return bottle.template('dataset_category_detail.html', name = dataset_name, count = len(images), images = images, category = filepath.split(os.sep)[-1], dataset_id = id, dataset_path = filepath)
+        if dataset_type == "image":
+            ret.append(path.replace(UPLOADED_IMAGES_DIR + os.sep, ''))
+        elif dataset_type == "text":
+            ret.append({"sample_text": get_text_sample(path, 180), "text_path": path.replace(UPLOADED_IMAGES_DIR + os.sep, '')})
+    return bottle.template('dataset_category_detail.html', name = dataset_name, count = len(ret), files = ret, category = filepath.split(os.sep)[-1], dataset_id = id, dataset_path = filepath, dataset_type = dataset_type)
 
 @app.route('/dataset/delete/file/<id>/<filepath:path>', method="POST")
 def dataset_delete_an_image(id, filepath):
@@ -148,15 +158,28 @@ def dataset_delete_a_category(id):
 
 @app.route('/dataset/upload/<id>/<filepath:path>', method="POST")
 def dataset_add_image_to_category(id, filepath):
+    dataset_type = bottle.request.forms.get('dataset_type')
     upload = bottle.request.files.get('fileInput')
     name, ext = os.path.splitext(upload.filename)
-    if ext not in ('.jpg', '.jpeg', '.gif', '.png'):
-        return show_error_screen('File extension not allowed.')
     new_filename = UPLOADED_IMAGES_DIR + os.sep + filepath + os.sep + get_timestamp() + '_' + upload.filename
-    try:
-        upload.save(new_filename)
-    except:
-        return show_error_screen(traceback.format_exc(sys.exc_info()[2]))
+    if dataset_type == 'image':
+        if ext not in ('.jpg', '.jpeg', '.gif', '.png'):
+            return show_error_screen('File extension not allowed.')
+        try:
+            upload.save(new_filename)
+        except:
+            return show_error_screen(traceback.format_exc(sys.exc_info()[2]))
+    elif dataset_type == 'text':
+        text = upload.file.read()
+        if nkf.guess(text) == 'binary':
+            return show_error_screen('Uploade file is a Binary file. Text data is needed.')
+        try:
+            f = open(new_filename, 'w')
+            f.write(text)
+        except:
+            return show_error_screen(traceback.format_exc(sys.exc_info()[2]))
+        finally:
+            f.close()
     return bottle.redirect('/dataset/show/' + id + '/' + filepath)
 
 @app.route('/dataset/create/category/<id>', method="POST")
@@ -165,7 +188,9 @@ def dataset_create_category(id, db):
     result = db.execute('select dataset_path from Dataset where id = ?', (id,))
     dataset_path = result.fetchone()[0]
     if len(os.listdir(dataset_path)) == 1:
-        dataset_path = dataset_path + os.sep + os.listdir(dataset_path)[0]
+        sample = UPLOADED_IMAGES_DIR + get_files_in_random_order(dataset_path + os.sep + os.listdir(dataset_path)[0], 1)[0]
+        if os.path.split(sample)[0] != dataset_path + os.sep + os.listdir(dataset_path)[0]:
+            dataset_path = dataset_path + os.sep + os.listdir(dataset_path)[0]
     try:
         os.mkdir(dataset_path + os.sep + category_name)
     except:
@@ -186,7 +211,7 @@ def dataset_delete(id, db):
 
 @app.route('/models/show/<id>')
 def show_model_detail(id, db):
-    row_model = db.execute('select id, name, epoch, algorithm, is_trained, network_path, trained_model_path, graph_data_path, dataset_id, created_at, network_name, resize_mode, channels from Model where id = ?', (id,))
+    row_model = db.execute('select id, name, epoch, algorithm, is_trained, network_path, trained_model_path, graph_data_path, dataset_id, created_at, network_name, resize_mode, channels, type from Model where id = ?', (id,))
     model_info = row_model.fetchone()
     
     if model_info[12] == 3:
@@ -207,7 +232,8 @@ def show_model_detail(id, db):
         "created_at": model_info[9],
         "network_name": model_info[10],
         "resize_mode": model_info[11],
-        "channels": color_mode
+        "channels": color_mode,
+        "type": model_info[13]
     }
     gpu_info = get_gpu_info()
     ret['gpu_num'] = 0 if 'gpus' not in gpu_info else len(gpu_info['gpus'])
@@ -232,7 +258,7 @@ def show_model_detail(id, db):
     if ret['resize_mode'] is None or ret['resize_mode'] == '':
         ret['resize_mode'] = '---'
     model_txt = open(ret['network_path']).read()
-    row_all_datasets = db.execute('select id, name from Dataset')
+    row_all_datasets = db.execute('select id, name from Dataset where type = ?', (ret['type'],))
     all_datasets_info = row_all_datasets.fetchall()
     return bottle.template('models_detail.html', model_info = ret, datasets = all_datasets_info, model_txt=model_txt,system_info = get_system_info(),gpu_info = get_gpu_info(), chainer_version = get_chainer_version(), python_version = get_python_version(),pretrained_models=pretrained_models, deepstation_version = DEEPSTATION_VERSION)
 
@@ -293,6 +319,7 @@ def create_new_model(db):
     my_network = bottle.request.forms.get('my_network')
     model_template = bottle.request.forms.get('model_template')
     network_type = bottle.request.forms.get('network_type').strip()
+    model_type = bottle.request.forms.get('model_type')
     algorithm = None
     
     if not re.match(r".+\.py", model_name):
@@ -314,9 +341,9 @@ def create_new_model(db):
     finally:
         network_file.close()
         
-    t = (model_name, network_file_path, network_type, algorithm)
+    t = (model_name, network_file_path, network_type, algorithm, model_type)
     try:
-        row = db.execute("insert into Model(name, network_path, network_name, algorithm) values(?,?,?,?)", t)
+        row = db.execute("insert into Model(name, network_path, network_name, algorithm, type) values(?,?,?,?,?)", t)
     except:
         return show_error_screen(traceback.format_exc(sys.exc_info()[2]))
     return bottle.redirect('/models/show/' + str(row.lastrowid))
@@ -350,6 +377,7 @@ def cleanup(db):
 def do_upload(db):
     bottle.response.content_type = 'application/json'
     dataset_name = bottle.request.forms.get('dataset_name')
+    dataset_type = bottle.request.forms.get('dataset_type')
     upload = bottle.request.files.get('fileInput')
     name, ext = os.path.splitext(upload.filename)
     if ext not in ('.zip'):
@@ -361,7 +389,7 @@ def do_upload(db):
         zf = zipfile.ZipFile(UPLOADED_RAW_FILES_DIR + os.sep + new_filename, 'r')
         upload_image_dir_root = UPLOADED_IMAGES_DIR + os.sep + timestamp_str
         os.mkdir(upload_image_dir_root)
-        db.execute('insert into Dataset(name, dataset_path, updated_at) values(?, ?, current_timestamp)', (dataset_name, upload_image_dir_root))
+        db.execute('insert into Dataset(name, dataset_path, updated_at, type) values(?, ?, current_timestamp, ?)', (dataset_name, upload_image_dir_root, dataset_type))
         for f in zf.namelist():
             temp_file_path = upload_image_dir_root + os.sep + f
             if ('__MACOSX' in f) or ('.DS_Store' in f):
@@ -371,6 +399,13 @@ def do_upload(db):
                     continue
                 os.mkdir(temp_file_path)
             else:
+                temp, ext = os.path.splitext(f)
+                if dataset_type == 'image':
+                    if ext not in ('.jpg', '.jpeg', '.png', '.gif'):
+                        continue
+                elif dataset_type == 'text':
+                    if ext not in ('.txt',):
+                        continue
                 if os.path.exists(temp_file_path):
                     uzf = file(temp_file_path, 'w+b')
                 else:
@@ -491,6 +526,14 @@ def api_kill_train(db):
         os.kill(pid, signal.SIGTERM)
         db.execute('update Model set is_trained = 0, pid = null where id = ?', (model_id,))
     return dumps({'status': 'success', 'message': 'successfully terminated'})
+
+@app.route('/api/dataset/get_full_text/<filepath:path>')
+def api_get_full_text(filepath):
+    bottle.response.content_type = 'application/json'
+    text = get_text_sample(UPLOADED_IMAGES_DIR + os.sep + filepath)
+    text = text.replace("\r", '')
+    text = text.replace("\n", '<br>')
+    return dumps({'text': text})
 
 #------- private methods ---------
 def find_all_files(directory):
@@ -711,7 +754,13 @@ def count_files(path):
 # path配下の画像をランダムでnum枚取り出す。
 # path配下がディレクトリしか無い場合は配下のディレクトリから
 def get_files_in_random_order(path, num):
-    children_files = os.listdir(path)
+    children_files = []
+    for cf in os.listdir(path):
+        if os.path.isdir(path + os.sep + cf):
+            if len(os.listdir(path + os.sep + cf)) != 0:
+                children_files.append(cf)
+        else:
+            children_files.append(cf)
     children_files_num = len(children_files)
     if children_files_num is 0:
         return []
@@ -734,6 +783,23 @@ def get_files_in_random_order(path, num):
             files.append(f.replace(UPLOADED_IMAGES_DIR, ''))
     return files;
     
+def get_texts_in_random_order(path, num, character_num=-1):
+    files = get_files_in_random_order(path, num)
+    ret = []
+    for f in files:
+        if os.path.exists(UPLOADED_IMAGES_DIR + f):
+            ret.append(get_text_sample(UPLOADED_IMAGES_DIR + f, character_num))
+    return ret
+
+def get_text_sample(path, character_num=-1):
+    raw_text = open(path).read()
+    encoding = nkf.guess(raw_text)
+    text = raw_text.decode(encoding)
+    if character_num > -1:
+        return text[0:character_num]
+    else:
+        return text
+
 def get_timestamp():
     return datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
     

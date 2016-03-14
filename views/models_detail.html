@@ -55,6 +55,16 @@
                             <li>Date: {{model_info["created_at"]}}</li>
                             <li>Epoch: <span id="epoch_info">{{model_info["epoch"]}}</span></li>
                             <li data-datasetid="{{model_info['dataset_id']}}">Dataset: <span id="dataset_name_info">{{model_info["dataset_name"]}}</span></li>
+                            <li>
+                                Train Type:
+                                % if model_info["type"] == 'image':
+                                    Image Classification
+                                % elif model_info["type"] == 'text':
+                                    Natural Language Processing
+                                % else:
+                                    ---
+                                % end
+                            </li>
                             <li>Network:
                                 % if model_info['network_name']:
                                     {{model_info['network_name']}}

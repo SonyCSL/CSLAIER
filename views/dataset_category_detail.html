@@ -22,12 +22,24 @@
         <div class="subtitle">
             <h3><a href="/dataset/show/{{dataset_id}}">{{name}}</a> - {{category}} ({{count}})</h3>
             <div class="button_div right">
-                <button class="btn btn-cyber" id="btn_delete_category" data-path="{{dataset_path}}">Delete Category</button>
+                % if dataset_type == 'image':
+                    <button class="btn btn-cyber" id="btn_delete_category" data-path="{{dataset_path}}" data-type="{{dataset_type}}">Delete Category</button>
+                % elif dataset_type == 'text':
+                    <button class="btn btn-cyber" id="btn_delete_category" data-path="{{dataset_path}}" data-type="{{dataset_type}}">Delete Folder</button>
+                % end
                 <button class="btn btn-cyber" data-toggle="modal" data-target="#file_upload_modal"><span class="glyphicon glyphicon-plus"></span>New</button>
             </div>
         </div>
-        % for image in images:
-            <img src="/uploaded_images/{{image}}" class="img-responsive img-rounded category-image" data-path="{{image}}">
+        % if dataset_type == 'image':
+            % for file in files:
+                <img src="/uploaded_images/{{file}}" class="img-responsive img-rounded category-image" data-path="{{file}}">
+            % end
+        % elif dataset_type == 'text':
+            % for file in files:
+                <div class="text_detail" data-path="{{file["text_path"]}}">
+                    {{file["sample_text"]}}
+                </div>
+            % end
         % end
     </div>
 </div>
@@ -36,17 +48,48 @@
     <div class="modal-dialog" role="document">
         <div class="modal-content">
             <div class="modal-header">
-                <h4 class="modal-title" id="upload_modal_title">Add a New Image</h4>
+                <h4 class="modal-title" id="upload_modal_title">
+                    % if dataset_type == 'image':
+                        Add a New Image
+                    % elif dataset_type == 'text':
+                        Add a New Text File
+                    % end
+                </h4>
             </div>
             <div class="modal-body">
                 <form action="/dataset/upload/{{dataset_id}}/{{dataset_path}}" method="POST" enctype="multipart/form-data">
                     <div class="form-group">
                         <input type="file" id="fileInput" name="fileInput">
-                        <p class="help-block">Slect image(.jpg) to add to category.</p>
+                        <p class="help-block">
+                            % if dataset_type == 'image':
+                                Select image(.jpg, .png, .gif) to add to category.
+                            % elif dataset_type == 'text':
+                                Select Text File to add to Folder
+                            %end
+                        </p>
                     </div>
+                    <input type="hidden" name="dataset_type" value="{{dataset_type}}">
                     <button type="submit" class="btn btn-cyber">Submit</button>
                     <button type="cancel" class="btn btn-cyber" data-dismiss="modal">Cancel</button>
                 </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="show_text_detail_modal" tabindex="-1" role="dialog" aria-labelledby="show_text_detail_modal">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button class="btn btn-cyber btn_delete_text">Delete Text</button>
+                <button class="btn btn-cyber" data-dismiss="modal">Close</button>
+            </div>
+            <div class="modal-body">
+                <div class="sample_text" id="text_detail"></div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-cyber btn_delete_text">Delete Text</button>
+                <button class="btn btn-cyber" data-dismiss="modal">Close</button>
             </div>
         </div>
     </div>

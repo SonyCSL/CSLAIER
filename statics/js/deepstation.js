@@ -43,6 +43,7 @@ $('#uploadDataset #submit_dataset').on('click', function(e){
     $('body').addClass('noscroll');
     var fd = new FormData();
     fd.append('dataset_name', $('#uploadDataset #dataset_name_input').val());
+    fd.append('dataset_type', $('#uploadDataset input[name=dataset_type]:checked').val());
     fd.append('fileInput', $('#uploadDataset #fileInput').prop('files')[0]);
     $.ajax({
         async: true,
@@ -123,6 +124,17 @@ $('#dataset_more').on('click',function(){
     $("#hidden-dataset").toggle();
 })
 
+$('.text_detail').on('click', function(e){
+    var filepath = $(this).data('path');
+    $.get('/api/dataset/get_full_text/' + filepath, function(ret){
+        _.each($('.btn_delete_text'), function(btn){
+            $(btn).attr('data-path', filepath);
+        });
+        $('#text_detail').html(ret.text);
+        $('#show_text_detail_modal').modal('show');
+    });
+});
+
 $('.category').on('click', function(e){
     var path = $(this).data('path');
     var dataset_id = $(this).data('id');
@@ -130,17 +142,26 @@ $('.category').on('click', function(e){
     location.href = '/dataset/show/' + dataset_id + path;
 });
 
-$('.category-image').on('click', function(e){
-    if(window.confirm('Is it okay to remove this image?')) {
-        var form = '<input type="hidden" name="file_path" value="'+ $(this).data('path') +'">';
-        $('<form action="/dataset/delete/file/' + $("#dataset-id").val() + '/' + $("#dataset-path").val() + '" method="POST">' + form + '</form>').append('body').submit();
+$('.category-image, .btn_delete_text').on('click', function(e){
+    if(window.confirm('Is it okay to remove this file?')) {
+        var form_input = '<input type="hidden" name="file_path" value="'+ $(this).data('path') +'">';
+        var form = $('<form action="/dataset/delete/file/' + $("#dataset-id").val() + '/' + $("#dataset-path").val() + '" method="POST">' + form_input + '</form>');
+        $('body').append(form);
+        form.submit();
     }
 });
 
 $('#btn_delete_category').on('click', function(e){
-    if(window.confirm('Is it okay to remove this category? Images will be also removed.')) {
-        var form = '<input type="hidden" name="category_path" value="'+ $(this).data('path') +'">';
-        $('<form action="/dataset/delete/category/' + $("#dataset-id").val() + '" method="POST">' + form + '</form>').append('body').submit();
+    var dataset_type = $(this).data('type');
+    var confirm_message = 'Is it okay to remove this category? Files will be also removed.';
+    if(dataset_type == 'text') {
+        confirm_message = 'Is it okay to remove this folder? Files will be also removed.';
+    }
+    if(window.confirm(confirm_message)) {
+        var form_input = '<input type="hidden" name="category_path" value="'+ $(this).data('path') +'">';
+        var form = $('<form action="/dataset/delete/category/' + $("#dataset-id").val() + '" method="POST">' + form_input + '</form>');
+        $('body').append(form);
+        form.submit();
     }
 });
 
@@ -172,6 +193,20 @@ $('#model_template_list').on('change', function(e){
         $('#model_name_input').val(now + model_name);
         $('#network_name_input').val(model_name);
         $('#network_edit_area').val(ret.model_template);
+        var model_lines = ret.model_template.split("\n");
+        var hint = '';
+        for(var i = 0, l = model_lines.length; i < l; i++) {
+            if(/#\s*HINT\s*:/.test(model_lines[i])){
+                hint = model_lines[i].split(':');
+                hint = hint[1].trim();
+                break;
+            }
+        }
+        if(hint == 'image') {
+            $('#model_type_image').prop('checked', true);
+        } else if(hint == 'text') {
+            $('#model_type_text').prop('checked', true);
+        }
         createEditor();
     });
 });
