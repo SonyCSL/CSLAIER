@@ -70,7 +70,6 @@ def train_lstm(
     
     model_name = re.sub(r"\.py$", model_name)
     model_module = load_module(model_dir, model_name)
-    model_pre = model_module.Network()
     
     output_dir = root_output_dir + os.sep + model_name
     if not os.path.exists(output_dir):
@@ -84,7 +83,7 @@ def train_lstm(
     pickle.dump(vocab, open('%s/vocab2.bin'%data_dir, 'wb'))
     
     # Prepare model
-    lm = model_pre(len(vocab), rnn_size ,dropout_ratio = dropout)
+    lm = model_module.Network(len(vocab), rnn_size, dropout_ratio=args.dropout, train=False)
     model = L.Classifier(lm)
     model.compute_accuracy = False  # we only want the perplexity
     for param in model.params():

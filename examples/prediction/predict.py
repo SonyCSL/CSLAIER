@@ -7,6 +7,10 @@ import sys
 import argparse
 import cPickle as pickle
 
+import os
+import re
+import imp
+
 import random
 import bisect
 
@@ -61,11 +65,9 @@ n_units = args.unit
 
 network = args.network.split(os.sep)[-1]
 model_name = re.sub(r"\.py$", "", network)
-model_module = load_module(os.path.dirname(network_path), model_name)
-mean_image = pickle.load(open(mean, 'rb'))
-model_pre = model_module.Network()
+model_module = load_module(os.path.dirname(args.network), model_name)
+lm = model_module.Network(len(vocab), n_units, dropout_ratio=args.dropout, train=False)
  
-lm = model_pre(len(vocab), n_units, dropout_ratio=args.dropout, train=False)
 model = L.Classifier(lm)
 model.compute_accuracy = False  # we only want the perplexity
 for param in model.params():
