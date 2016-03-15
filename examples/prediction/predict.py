@@ -1,6 +1,11 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
+""" Sample script of recurrent neural network language model for generating text
+    This code is ported from following implementation.
+    https://github.com/longjie/chainer-char-rnn/blob/master/sample.py
+"""
+
 import time
 import math
 import sys
