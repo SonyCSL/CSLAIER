@@ -72,6 +72,11 @@ def download_trained_model(filepath):
     filename = filepath.split('/')[-1]
     return bottle.static_file(filepath, TRAINED_DATA_DIR, download=filename, mimetype="application/octet-stream")
 
+@app.route('/download/vocab/<filepath:path>')
+def download_trained_model(filepath):
+    filename = filepath.split('/')[-1]
+    return bottle.static_file(filepath, TRAINED_DATA_DIR, download=filename, mimetype="application/octet-stream")
+
 @app.route('/layers/<id>/<epoch>/<filename>')
 def show_layer_image(id, epoch, filename, db):
     model_row = db.execute('select trained_model_path from Model where id = ?', (id,))
@@ -305,6 +310,13 @@ def get_trained_model(id, epoch, db):
     epoch = int(epoch)
     path = path.replace(TRAINED_DATA_DIR, '')
     return bottle.redirect('/trained_models/download' + path + '/model%04d'%epoch)
+
+@app.route('/models/download_vocab/<id>')
+def get_vocab_file(id, db):
+    row_model = db.execute('select trained_model_path from Model where id = ?', (id,))
+    path = row_model.fetchone()[0]
+    path = path.replace(TRAINED_DATA_DIR, '')
+    return bottle.redirect('/download/vocab' + path + '/vocab2.bin')
 
 @app.route('/models/labels/download/<id>')
 def get_label_text(id, db):

@@ -350,6 +350,12 @@ $('#model_dl_btn').on('click', function(e){
     window.open('/models/download/' + model_id + '/' + epoch);
 });
 
+$('#vocab_dl_btn').on('click', function(e){
+    var model_id = $('#model_id').val();
+    var epoch = $('#epoch_select').val();
+    window.open('/models/download_vocab/' + model_id);
+});
+
 $('#mean_dl_btn').on('click', function(e){
     var model_id = $('#model_id').val();
     window.open('/models/mean/download/' + model_id);
