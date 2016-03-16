@@ -26,10 +26,10 @@ def load_module(dir_name, symbol):
 
 def load_data(filename, use_mecab):
     vocab = {}
-    if use_mecab == 0:
-        words = open(args.filename).read().replace('\n', '<eos>').strip().split()
+    if use_mecab:
+        words = open(filename).read().replace('\n', '<eos>').strip().split()
     else:
-        words = codecs.open(args.filename, 'rb', 'utf-8').read()
+        words = codecs.open(filename, 'rb', 'utf-8').read()
         words = list(words)
     dataset = np.ndarray((len(words),), dtype=np.int32)
     for i, word in enumerate(words):
@@ -46,29 +46,34 @@ def train_lstm(
     model_dir,
     root_output_dir,
     filename,
-    data_dir,
-    use_mecab = 0,
+    use_mecab = False,
     initmodel = None,
     resume = None,
     gpu = -1,
     rnn_size = 128,
     learning_rate = 2e-3,
     learning_rate_decay = 0.97,
-    learning_rate_decay_after = 10
+    learning_rate_decay_after = 10,
     decay_rate = 0.95,
     dropout = 0.0,
     seq_length = 50,
     batchsize = 50,
-    epoch = 50,
+    epochs = 50,
     grad_clip = 5
 ):
+    n_epoch = int(epochs)   # number of epochs
+    n_units = rnn_size  # number of units per layer
+    batchsize = batchsize   # minibatch size
+    bprop_len = seq_length   # length of truncated BPTT
+    grad_clip = grad_clip    # gradient norm threshold to clip
+    
     conn = sqlite3.connect(db_path)
     db = conn.cursor()
     cursor = db.execute('select name from Model where id = ?', (model_id,))
     row = cursor.fetchone()
     model_name = row[0]
     
-    model_name = re.sub(r"\.py$", model_name)
+    model_name = re.sub(r"\.py$","", model_name)
     model_module = load_module(model_dir, model_name)
     
     output_dir = root_output_dir + os.sep + model_name
@@ -79,18 +84,18 @@ def train_lstm(
         cuda.check_cuda_available()
     xp = cuda.cupy if gpu >= 0 else np
     
-    train_data, words, vocab = load_data(filename)
-    pickle.dump(vocab, open('%s/vocab2.bin'%data_dir, 'wb'))
+    train_data, words, vocab = load_data(filename, use_mecab)
+    pickle.dump(vocab, open('%s/vocab2.bin'%output_dir, 'wb'))
     
     # Prepare model
-    lm = model_module.Network(len(vocab), rnn_size, dropout_ratio=args.dropout, train=False)
+    lm = model_module.Network(len(vocab), rnn_size, dropout_ratio=dropout, train=False)
     model = L.Classifier(lm)
     model.compute_accuracy = False  # we only want the perplexity
     for param in model.params():
         data = param.data
         data[:] = np.random.uniform(-0.1, 0.1, data.shape)
-    if args.gpu >= 0:
-        cuda.get_device(args.gpu).use()
+    if gpu >= 0:
+        cuda.get_device(gpu).use()
         model.to_gpu()
 
     # Setup optimizer
@@ -101,14 +106,26 @@ def train_lstm(
     if initmodel is not None and initmodel.find("model") > -1:
         print("Load model from : "+output_dir + os.sep + initmodel)
         serializers.load_npz(output_dir + os.sep + initmodel, model)
-        # TODO: delete old models ??
+        # delete old models
+        pretrained_models = sorted(os.listdir(output_dir), reverse=True)
+        for m in pretrained_models:
+            if m.startswith('model') and initmodel != m:
+                os.remove(output_dir + os.sep + m)
         
-    # Load pretrained model
+    # Load pretrained optimizer
     if resume is not None and resume.find("state") > -1:
         print("Load optimizer state from : "+output_dir + os.sep + resume)
-        serializers.load_npz(output_dir + os.sep +pretrained_model, model)
+        serializers.load_npz(output_dir + os.sep +resume, optimizer)
     # TODO: delete old states ??
-
+    
+    # TODO: delete layer visualization cache
+    
+    db.execute('update Model set epoch = ?, trained_model_path = ?, is_trained = 1, line_graph_data_path = ? where id = ?', (n_epoch, output_dir, output_dir + os.sep + 'line_graph.tsv', model_id))
+    conn.commit()
+    
+    log_file = open(output_dir + os.sep + 'log.html', 'w')
+    #graph_tsv = open(output_dir + os.sep + 'line_graph.tsv', 'w')
+    
     # Learning loop
     whole_len = train_data.shape[0]
     jump = whole_len // batchsize
@@ -118,8 +135,8 @@ def train_lstm(
     cur_at = start_at
     accum_loss = 0
     batch_idxs = list(range(batchsize))
-    print('going to train {} iterations'.format(jump * n_epoch))
-
+    log_file.write("going to train {} iterations<br>".format(jump * n_epoch))
+    log_file.flush()
     for i in six.moves.range(jump * n_epoch):
         x = chainer.Variable(xp.asarray(
                                     [train_data[(jump * j + i) % whole_len] for j in batch_idxs]))
@@ -140,8 +157,8 @@ def train_lstm(
             now = time.time()
             throuput = 10000. / (now - cur_at)
             perp = math.exp(float(cur_log_perp) / 10000)
-            print('iter {} training perplexity: {:.2f} ({:.2f} iters/sec)'.format(
-                                                                              i + 1, perp, throuput))
+            log_file.write('iter {} training perplexity: {:.2f} ({:.2f} iters/sec)<br>'.format(i + 1, perp, throuput))
+            log_file.flush()
             cur_at = now
             cur_log_perp.fill(0)
     
@@ -152,15 +169,20 @@ def train_lstm(
         
             if epoch >= 6:
                 optimizer.lr /= 1.2
-                print('learning rate =', optimizer.lr)
-    
+                log_file.write('learning rate = {:.10f}<br>'.format(optimizer.lr))
+                log_file.flush()
+            # Save the model and the optimizer
+            serializers.save_npz(output_dir + os.sep + 'model%04d'%epoch, model)
+            log_file('--- epoch: {} ------------------------'.format(epoch))
+            serializers.save_npz(output_dir + os.sep + 'rnnlm.state', optimizer)
+
         sys.stdout.flush()
-
-
-    # Save the model and the optimizer
-    print('save the model')
-    serializers.save_npz('rnnlm.model', model)
-    print('save the optimizer')
-    serializers.save_npz('rnnlm.state', optimizer)
+        
+    log_file.write('===== finish train. =====')
+    log_file.close()
+    #graph_tsv.close()
+    db.execute('update Model set is_trained = 2, pid = null where id = ?', (model_id,))
+    conn.commit()
+    db.close()
     
     return

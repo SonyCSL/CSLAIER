@@ -269,6 +269,7 @@ $('#start_train_btn').on('click', function(e){
         channels = 3;
     }
     var flipping_mode = $('#select_flipping_mode').val();
+    var model_type = $(this).data('modeltype');
     
     var gpu_num = $('#gpu_num').val() || $('input[name="gpu_num"]:checked').val();
     if(dataset_id < 0) {
@@ -283,7 +284,8 @@ $('#start_train_btn').on('click', function(e){
             resize_mode: resize_mode,
             channels: channels,
             avoid_flipping: flipping_mode,
-            pretrained_model: pretrained_model
+            pretrained_model: pretrained_model,
+            model_type: model_type
         }, function(ret){
         if(ret.status === "OK") {
             $('#processing_screen').addClass('hidden');
@@ -704,14 +706,23 @@ var createEditor = function(){
 };
 
 var showResultScreen = function(){
-        $('#network_tab').removeClass('active');
-        $('#log_tab').removeClass('active');
-        $('#layer_tab').removeClass('active');
-        $('#graph_tab').addClass('active');
-        $('#model_detail_network').addClass('hidden');
-        $('#model_detail_log').addClass('hidden');
-        $('#model_detail_layers').addClass('hidden');
-        $('#model_detail_graph').removeClass('hidden');
-        draw_train_graph();
-        setInterval("draw_train_graph()", 30000);
+        if($('#graph_tab').is('*')) {
+            $('#network_tab').removeClass('active');
+            $('#log_tab').removeClass('active');
+            $('#layer_tab').removeClass('active');
+            $('#graph_tab').addClass('active');
+            $('#model_detail_network').addClass('hidden');
+            $('#model_detail_log').addClass('hidden');
+            $('#model_detail_layers').addClass('hidden');
+            $('#model_detail_graph').removeClass('hidden');
+            draw_train_graph();
+            setInterval("draw_train_graph()", 30000);
+        } else {
+            $('#network_tab').removeClass('active');
+            $('#log_tab').addClass('active');
+            $('#layer_tab').removeClass('active');
+            $('#model_detail_network').addClass('hidden');
+            $('#model_detail_log').removeClass('hidden');
+            $('#model_detail_layers').addClass('hidden');
+        }
 };

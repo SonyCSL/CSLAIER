@@ -33,6 +33,7 @@ import imagenet_inspect
 import train
 import visualizer
 import scipy.misc
+import train_lstm
 
 
 # initialization
@@ -269,21 +270,30 @@ def kick_train_start(db):
     epoch = bottle.request.forms.get('epoch')
     pretrained_model = bottle.request.forms.get('pretrained_model')
     gpu_num = bottle.request.forms.get('gpu_num')
-    resize_mode = bottle.request.forms.get('resize_mode')
-    channels = int(bottle.request.forms.get('channels'))
-    avoid_flipping = int(bottle.request.forms.get('avoid_flipping'))
-    # image_size = int(bottle.request.forms.get('image_size'))
-    image_size = 256
+    model_type = bottle.request.forms.get('model_type')
+    if model_type == 'image':
+        resize_mode = bottle.request.forms.get('resize_mode')
+        channels = int(bottle.request.forms.get('channels'))
+        avoid_flipping = int(bottle.request.forms.get('avoid_flipping'))
+        image_size = 256
+    else:
+        resize_mode = None
+        channels = None
+        avoid_flipping = None
     row_ds = db.execute('select dataset_path, name from Dataset where id = ?', (dataset_id,))
     (ds_path, dataset_name) = row_ds.fetchone()
     prepared_file_path = PREPARED_DATA_DIR + os.sep + get_timestamp()
     bottle.response.content_type = 'application/json'
     try:
         os.mkdir(prepared_file_path)
-        db.execute('update Model set prepared_file_path = ?, epoch = ?, is_trained = 1, dataset_id = ?, resize_mode = ?, channels = ? where id = ?', (prepared_file_path, epoch, dataset_id, resize_mode, channels,  model_id))
+        db.execute('update Model set prepared_file_path = ?, epoch = ?, dataset_id = ?, resize_mode = ?, channels = ? where id = ?', (prepared_file_path, epoch, dataset_id, resize_mode, channels,  model_id))
         db.commit()
-        prepare_for_train(ds_path, prepared_file_path,image_size, resize_mode, channels)
-        start_train(model_id, epoch, prepared_file_path, gpu_num,pretrained_model, db, avoid_flipping)
+        if model_type == 'image':
+            prepare_images_for_train(ds_path, prepared_file_path,image_size, resize_mode, channels)
+            start_imagenet_train(model_id, epoch, prepared_file_path, gpu_num,pretrained_model, db, avoid_flipping)
+        else:
+            input_data_path = prepare_texts_for_train(ds_path, prepared_file_path)
+            start_lstm_train(model_id, epoch, prepared_file_path, gpu_num, pretrained_model, db)
     except:
         return dumps({"status": "error", "traceback": traceback.format_exc(sys.exc_info()[2])})
     return dumps({"status": "OK", "dataset_name": dataset_name})
@@ -690,11 +700,24 @@ def compute_mean(prepared_data_dir):
     pickle.dump(mean, open(prepared_data_dir + os.sep + 'mean.npy', 'wb'), -1)
     return
 
-def prepare_for_train(target_dir, prepared_data_dir,image_insize, resize_mode, channels):
+def prepare_images_for_train(target_dir, prepared_data_dir,image_insize, resize_mode, channels):
     make_train_data(target_dir, prepared_data_dir, image_insize,resize_mode, channels)
     compute_mean(prepared_data_dir)
 
-def start_train(model_id, epoch, prepared_data_dir, gpu, pretrained_model, db, avoid_flipping):
+def prepare_texts_for_train(target_dir, prepared_data_dir):
+    input_text = open(prepared_data_dir + os.sep + 'input.txt', 'w')
+    for f in find_all_files(target_dir):
+        temp_text = open(f, 'r').read()
+        encoding = nkf.guess(temp_text)
+        decoded_text = temp_text.decode(encoding, 'ignore')
+        decoded_text = decoded_text.replace('\r', '')
+        encoded_text = decoded_text.encode('UTF-8')
+        input_text.write(encoded_text)
+        input_text.flush()
+    input_text.close()
+    return prepared_data_dir + os.sep + 'input.txt'
+
+def start_imagenet_train(model_id, epoch, prepared_data_dir, gpu, pretrained_model, db, avoid_flipping):
     if not is_prepared_to_train(prepared_data_dir):
         raise Exception('preparation is not done')
     train_process = Process(
@@ -714,6 +737,36 @@ def start_train(model_id, epoch, prepared_data_dir, gpu, pretrained_model, db, a
             20,
             pretrained_model,
             avoid_flipping
+        )
+    )
+    train_process.start()
+    db.execute('update Model set pid = ? where id = ?', (train_process.pid, model_id))
+    db.commit()
+    return
+    
+def start_lstm_train(model_id, epoch, prepared_data_dir, gpu, pretrained_model, db):
+    train_process = Process(
+        target=train_lstm.train_lstm,
+        args = (
+            DEEPSTATION_ROOT + os.sep + 'deepstation.db',
+            model_id,
+            'models',
+            TRAINED_DATA_DIR,
+            prepared_data_dir + os.sep + 'input.txt',
+            False,
+            pretrained_model,
+            None,
+            gpu,
+            128,
+            2e-3,
+            0.97,
+            10,
+            0.95,
+            0.0,
+            50,
+            50,
+            epoch,
+            5
         )
     )
     train_process.start()

@@ -72,8 +72,10 @@
                                     ---
                                 % end
                             </li>
-                            <li>Resize mode: {{model_info["resize_mode"]}}</li>
-                            <li>Color mode: {{model_info["channels"]}}</li>
+                            % if model_info['type'] == 'image':
+                                <li>Resize mode: {{model_info["resize_mode"]}}</li>
+                                <li>Color mode: {{model_info["channels"]}}</li>
+                            % end
                         </ul>
                     </div>
                     <div>
@@ -89,9 +91,14 @@
                                     <input id="epoch_select" type="number" min="1" max="{{model_info['epoch']}}" class="form-control" value="{{model_info['epoch']}}">
                                 </div>
                                 <button class="btn btn-cyber btn-block need-epoch" id="model_dl_btn">Download Model</button>
-                                <button class="btn btn-cyber btn-block need-epoch" id="label_dl_btn">Download Label</button>
-                                <button class="btn btn-cyber btn-block need-epoch" id="mean_dl_btn">Download Mean File</button>
-                                <button class="btn btn-cyber btn-block need-epoch" data-toggle="modal" data-target="#inspection_modal">Inspect</button>
+                                % if model_info['type'] == 'image':
+                                    <button class="btn btn-cyber btn-block need-epoch" id="label_dl_btn">Download Label</button>
+                                    <button class="btn btn-cyber btn-block need-epoch" id="mean_dl_btn">Download Mean File</button>
+                                    <button class="btn btn-cyber btn-block need-epoch" data-toggle="modal" data-target="#inspection_modal">Inspect</button>
+                                % elif model_info['type'] == 'text':
+                                    <button class="btn btn-cyber btn-block need-epoch" id="vocab_dl_btn">Download Vocabulary</button>
+                                    <button class="btn btn-cyber btn-block need-epoch" data-toggle="modal" data-target="#prediction_modal">Prediction</button>
+                                % end
                             </div>
                         % end
                     </div>
@@ -99,7 +106,9 @@
                 <div class="col-md-8 full-height">
                     <ul class="nav nav-tabs">
                         <li role="presentation" class="" id="log_tab"><a href="#">Log</a></li>
-                        <li role="presentation" class="" id="graph_tab"><a href="#">Result</a></li>
+                        % if model_info['type'] == 'image':
+                            <li role="presentation" class="" id="graph_tab"><a href="#">Result</a></li>
+                        % end
                         <li role="presentation" class="active" id="network_tab"><a href="#">Network</a></li>
                         % if model_info['is_trained'] is 2:
                             <li role="presentation" class="" id="layer_tab"><a href="#">Layers</a></li>
@@ -112,9 +121,11 @@
                             <pre id="training_log"></pre>
                         </div>
                     </div>
-                    <div id="model_detail_graph" class="hidden">
-                        <p id="training_graph">Graph Not Ready</p>
-                    </div>
+                    % if model_info['type'] == 'image':
+                        <div id="model_detail_graph" class="hidden">
+                            <p id="training_graph">Graph Not Ready</p>
+                        </div>
+                    % end
                     <div id="model_detail_network" class="full-height">
                         <div class="form-group has-textarea">
                             % if model_info['is_trained'] is 1:
@@ -273,34 +284,36 @@
                         </div>
                     % end
                 </div>
-                <h4 class="start_train_section_header">Image Preprocessing Settings</h4>
-                <div class="start_train_section">
-                    <div class="form-group">
-                        <label for="select_resize_mode" class="label-control">Select Image Re-sizing method</label>
-                        <select class="form-control" id="select_resize_mode">
-                            <option value="fill">fill</option>
-                            <option value="crop">crop</option>
-                            <option value="squash">squash</option>
-                            <option value="half_crop">half_crop</option>
-                        </select>
+                % if model_info['type'] == 'image':
+                    <h4 class="start_train_section_header">Image Preprocessing Settings</h4>
+                    <div class="start_train_section">
+                        <div class="form-group">
+                            <label for="select_resize_mode" class="label-control">Select Image Re-sizing method</label>
+                            <select class="form-control" id="select_resize_mode">
+                                <option value="fill">fill</option>
+                                <option value="crop">crop</option>
+                                <option value="squash">squash</option>
+                                <option value="half_crop">half_crop</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="select_color_mode" class="label-control">Select Color mode</label>
+                            <select class="form-control" id="select_color_mode">
+                                <option value="rgb">RGB</option>
+                                <option value="grayscale">Grayscale</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="select_flipping_mode" class="label-control">Use image flipping?</label>
+                            <select class="form-control" id="select_flipping_mode">
+                                <option value="0">Yes</option>
+                                <option value="1">No</option>
+                            </select>
+                        </div>
                     </div>
-                    <div class="form-group">
-                        <label for="select_color_mode" class="label-control">Select Color mode</label>
-                        <select class="form-control" id="select_color_mode">
-                            <option value="rgb">RGB</option>
-                            <option value="grayscale">Grayscale</option>
-                        </select>
-                    </div>
-                    <div class="form-group">
-                        <label for="select_flipping_mode" class="label-control">Use image flipping?</label>
-                        <select class="form-control" id="select_flipping_mode">
-                            <option value="0">Yes</option>
-                            <option value="1">No</option>
-                        </select>
-                    </div>
-                </div>
+                % end
 
-                <button type="button" id="start_train_btn" class="btn btn-cyber">Start</button>
+                <button type="button" id="start_train_btn" class="btn btn-cyber" data-modeltype="{{model_info['type']}}">Start</button>
                 <button type="cancel" class="btn btn-cyber" data-dismiss="modal">Calcel</button>
             </div>
         </div>
@@ -324,6 +337,37 @@
                     <button type="submit" class="btn btn-cyber">Submit</button>
                     <button type="cancel" class="btn btn-cyber" data-dismiss="modal">Cancel</button>
                 </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="prediction_modal" tabindex="-1" role="dialog" aria-labelledby="inspection_modal">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h4 class="modal-title" id="inspection_modal_title">Prediction<small><span id="epoch_on_modal_title"></span></small></h4>
+            </div>
+            <div class="modal-body">
+                <div id="prediction_div">
+                    <div class="form-group">
+                        <label for="prediction_epoch" describedby="epoch_select">Epoch (1 〜 {{model_info['epoch']}})</label>
+                        <input id="prediction_epoch" type="number" min="1" max="{{model_info['epoch']}}" class="form-control" value="{{model_info['epoch']}}">
+                    </div>
+                    <div class="form-group">
+                        <label for="prediction_primetext">Prime Text</label>
+                        <input class="form-control" type="text" name="prediction_primetext" id="prediction_primetext">
+                    </div>
+                    <button class="btn btn-cyber" id="do_predict">Predict</button>
+                    <hr class="cyber">
+                    <div class="form-group">
+                        <label for="prediction_result">Prediction Result</label>
+                        <textarea class="form-control" name="prediction_result" id="prediction_result" cols="30" rows="10"></textarea>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-cyber" data-dismiss="modal">Close</button>
             </div>
         </div>
     </div>
