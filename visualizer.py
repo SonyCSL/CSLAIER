@@ -11,7 +11,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import math
 import chainer.functions as F
-from chainer.links import caffe
+import chainer.links as L
 from matplotlib.ticker import * 
 from chainer import serializers
 
@@ -22,11 +22,16 @@ def load_module(dir_name, symbol):
     return imp.load_module(symbol, file, path, description)
 
 class LayerVisualizer:
-    def __init__(self, network_path, trained_model_path, output_dir):
+    def __init__(self, network_path, trained_model_path, output_dir, **kwargs):
         model_name = re.sub(r"\.py$", "", os.path.basename(network_path))
         model_module = load_module(os.path.dirname(network_path), model_name)
-        self.model = model_module.Network()
-        serializers.load_hdf5(trained_model_path, self.model)
+        if len(kwargs) == 0:
+            self.model = model_module.Network()
+            serializers.load_hdf5(trained_model_path, self.model)
+        else:
+            lm = model_module.Network(kwargs['vocab_len'], kwargs['n_units'], kwargs['dropout'], train=False)
+            self.model = L.Classifier(lm)
+            serializers.load_npz(trained_model_path, self.model)
         self.output_dir = output_dir
         
     def plot(self, W):

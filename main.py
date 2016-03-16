@@ -498,11 +498,17 @@ def api_get_layer_viz(model_id, epoch, layer_name, db):
         network = validation_result['network']
         trained_model_path = validation_result['trained_model_path']
         trained_model = validation_result['trained_model']
+        model_type = validation_result['type']
     if os.path.exists(trained_model_path + os.sep + epoch + os.sep + layer_name + '.png'):
         return dumps({'status': 'success', 'filename': layer_name + '.png', 'epoch': epoch})
     if not os.path.exists(trained_model_path + os.sep + epoch):
         os.mkdir(trained_model_path + os.sep + epoch)
-    v = visualizer.LayerVisualizer(network, trained_model, trained_model_path + os.sep + epoch)
+    if model_type == 'image':
+        v = visualizer.LayerVisualizer(network, trained_model, trained_model_path + os.sep + epoch)
+    else:
+        vocab_path = trained_model_path + os.sep + 'vocab2.bin'
+        vocab = pickle.load(open(vocab_path, 'rb'))
+        v = visualizer.LayerVisualizer(network, trained_model, trained_model_path + os.sep + epoch, vocab_len=len(vocab), n_units=128, dropout=0.5)
     layer_name = layer_name.replace('_', '/')
     filename = v.visualize(layer_name)
     if filename is None:
@@ -520,13 +526,18 @@ def api_get_layer_names(model_id, epoch, db):
         network = validation_result['network']
         trained_model_path = validation_result['trained_model_path']
         trained_model = validation_result['trained_model']
-    
-    v = visualizer.LayerVisualizer(network, trained_model, trained_model_path)
+        model_type = validation_result['type']
+    if model_type == 'image':
+        v = visualizer.LayerVisualizer(network, trained_model, trained_model_path + os.sep + epoch)
+    else:
+        vocab_path = trained_model_path + os.sep + 'vocab2.bin'
+        vocab = pickle.load(open(vocab_path, 'rb'))
+        v = visualizer.LayerVisualizer(network, trained_model, trained_model_path + os.sep + epoch, vocab_len=len(vocab), n_units=128, dropout=0.5)
     return dumps(v.get_layer_list())
 
 def validation_for_layer_viz(model_id, epoch, db):
-    model_row = db.execute('select epoch, network_path, trained_model_path from Model where id = ?', (model_id,))
-    (epoch_max, network, trained_model_path) = model_row.fetchone()
+    model_row = db.execute('select epoch, network_path, trained_model_path, type from Model where id = ?', (model_id,))
+    (epoch_max, network, trained_model_path, type) = model_row.fetchone()
     if int(epoch, 10) > epoch_max:
         return {'status': 'error', 'message': 'selected epoch is bigger than trained epoch.'}
     epoch_str = "{0:0>4}".format(int(epoch, 10))
@@ -537,7 +548,7 @@ def validation_for_layer_viz(model_id, epoch, db):
             break
     if trained_model is None:
         return {'status': 'error', 'message': 'could not find the trained_model'}
-    return {'status': 'OK', 'network': network, 'trained_model_path': trained_model_path, 'trained_model': trained_model}
+    return {'status': 'OK', 'network': network, 'trained_model_path': trained_model_path, 'trained_model': trained_model, 'type': type}
 
 @app.route('/api/models/kill_train', method='POST')
 def api_kill_train(db):
