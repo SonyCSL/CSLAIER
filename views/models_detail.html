@@ -355,10 +355,14 @@
                         <input id="prediction_epoch" type="number" min="1" max="{{model_info['epoch']}}" class="form-control" value="{{model_info['epoch']}}">
                     </div>
                     <div class="form-group">
+                        <label for="prediction_result_length">Prediction Result Length</label>
+                        <input id="prediction_result_length" type="number" min="1" value="200" class="form-control">
+                    </div>
+                    <div class="form-group">
                         <label for="prediction_primetext">Prime Text</label>
                         <input class="form-control" type="text" name="prediction_primetext" id="prediction_primetext">
                     </div>
-                    <button class="btn btn-cyber" id="do_predict">Predict</button>
+                    <button class="btn btn-cyber disabled" id="do_predict">Predict</button>
                     <hr class="cyber">
                     <div class="form-group">
                         <label for="prediction_result">Prediction Result</label>

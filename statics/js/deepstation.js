@@ -479,6 +479,39 @@ $('#create_new_network_modal_form').submit(function(){
     }
 });
 
+$('#prediction_epoch, #prediction_result_length, #prediction_primetext').on("change, keyup", function(e){
+    var epoch = $('#prediction_epoch').val();
+    var result_length = $('#prediction_result_length').val();
+    var primetext = $('#prediction_primetext').val();
+    var submit_ok = true;
+    if(!/^\d+$/.test(epoch)) submit_ok = false;
+    if(!/^\d+$/.test(result_length)) submit_ok = false;
+    if(primetext == '') submit_ok = false;
+    if(submit_ok) {
+        $('#do_predict').removeClass('disabled');
+    } else {
+        $('#do_predict').addClass('disabled');
+    } 
+});
+
+$('#do_predict').on('click', function(e){
+    if($('#do_predict').hasClass('disabled')) return;
+    var model_id = $('#model_id').val();
+    var epoch = $('#prediction_epoch').val();
+    var result_length = $('#prediction_result_length').val();
+    var primetext = $('#prediction_primetext').val();
+    
+    $.post('/api/text/predict/', {
+        model_id: model_id,
+        epoch: epoch,
+        result_length: result_length,
+        primetext: primetext
+    }, function(ret){
+        $('#prediction_result').text('');
+        $('#prediction_result').text(ret.result);
+    });
+});
+
 
 $('#log_tab').on('click', function(e){
     $(this).addClass('active');

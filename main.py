@@ -30,6 +30,7 @@ from json import dumps
 from PIL import Image
 
 import imagenet_inspect
+import text_predict
 import train
 import visualizer
 import scipy.misc
@@ -556,6 +557,31 @@ def api_get_full_text(filepath):
     text = text.replace("\r", '')
     text = text.replace("\n", '<br>')
     return dumps({'text': text})
+
+@app.route('/api/text/predict/', method='POST')
+def api_text_predict(db):
+    bottle.response.content_type = 'application/json'
+    model_id = bottle.request.forms.get('model_id')
+    epoch = int(bottle.request.forms.get('epoch'))
+    result_length = int(bottle.request.forms.get('result_length'))
+    primetext = bottle.request.forms.get('primetext')
+    row = db.execute('select name, trained_model_path, network_path from Model where id = ?', (model_id,))
+    (model_name, trained_model_path, network_path) = row.fetchone()
+    seed = int(random.random() * 10000)
+    
+    predict_result = text_predict.predict(
+        trained_model_path + os.sep + 'model%04d'%epoch,
+        trained_model_path + os.sep + 'vocab2.bin',
+        network_path,
+        primetext,
+        seed, #
+        128,  # unit
+        0.0,  # dropout
+        1,    # sample
+        result_length,
+        use_mecab=False,
+    )
+    return dumps({'result': predict_result})
 
 #------- private methods ---------
 def find_all_files(directory):

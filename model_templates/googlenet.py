@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+# HINT:image
 import chainer
 import chainer.functions as F
 import chainer.links as L
