@@ -39,7 +39,7 @@ import train_lstm
 
 
 # initialization
-DEEPSTATION_VERSION = "0.4.2"
+DEEPSTATION_VERSION = "0.5.0"
 DEEPSTATION_ROOT = (os.getcwd() + os.sep + __file__).replace('main.py', '')
 f = open(DEEPSTATION_ROOT + os.sep + 'settings.yaml')
 settings = yaml.load(f)
