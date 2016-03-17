@@ -44,7 +44,11 @@ def predict(model_path, vocab_path, network_path, primetext,seed, unit,dropout,s
     ret = []
     if use_mecab:
         if len(primetext) > 0:
-            prev_char = Variable(np.ones((1,)).astype(np.int32) * vocab[primetext])
+            primetext = unicode(primetext, 'utf-8')
+            if primetext not in vocab:
+                prev_char = Variable(np.ones((1,)).astype(np.int32) * 0)
+            else:
+                prev_char = Variable(np.ones((1,)).astype(np.int32) * vocab[primetext])
         prob = F.softmax(model.predictor(prev_char))
         ret.append(primetext)
     else:

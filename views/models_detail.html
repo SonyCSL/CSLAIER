@@ -311,6 +311,17 @@
                             </select>
                         </div>
                     </div>
+                % else:
+                    % if mecab_available:
+                        <h4 class="start_train_section_header">Text Preprocessing Settings</h4>
+                        <div class="start_train_section">
+                            <div class="form-group">
+                                <label>
+                                    <input type="checkbox" id="use_wakachigaki"> Use separating words in Japanese with spaces (分かち書き)
+                                </label>
+                            </div>
+                        </div>
+                    % end
                 % end
 
                 <button type="button" id="start_train_btn" class="btn btn-cyber" data-modeltype="{{model_info['type']}}">Start</button>

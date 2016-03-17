@@ -169,6 +169,7 @@ DEEPstationはUbuntu14.04でテストしています。 Ubuntu上で動かすこ
   * python-opencv
   * python-scipy
 * SQLite3
+* nkf
 
 ### Python Libraries
 * Chainer 1.5 http://chainer.org
@@ -177,6 +178,16 @@ DEEPstationはUbuntu14.04でテストしています。 Ubuntu上で動かすこ
 * cv2
 * PyYAML
 * matplotlib
+* python-nkf
+
+### LSTMで分かち書きを利用したい場合
+
+* 下記を`apt-get`などでインストールする
+  * mecab
+  * libmecab-dev
+  * mecab-ipadic
+  * mecab-ipadic-utf8
+  * python-mecab
 
 Setup
 ------

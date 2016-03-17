@@ -27,7 +27,7 @@ def load_module(dir_name, symbol):
 def load_data(filename, use_mecab):
     vocab = {}
     if use_mecab:
-        words = open(filename).read().replace('\n', '<eos>').strip().split()
+        words = codecs.open(filename, 'rb', 'utf-8').read().replace('\n', '<eos>').strip().split()
     else:
         words = codecs.open(filename, 'rb', 'utf-8').read()
         words = list(words)
@@ -120,7 +120,8 @@ def train_lstm(
     
     # TODO: delete layer visualization cache
     
-    db.execute('update Model set epoch = ?, trained_model_path = ?, is_trained = 1, line_graph_data_path = ? where id = ?', (n_epoch, output_dir, output_dir + os.sep + 'line_graph.tsv', model_id))
+    use_wakatigaki = 1 if use_mecab else 0
+    db.execute('update Model set epoch = ?, trained_model_path = ?, is_trained = 1, line_graph_data_path = ?, use_wakatigaki = ? where id = ?', (n_epoch, output_dir, output_dir + os.sep + 'line_graph.tsv', use_wakatigaki, model_id))
     conn.commit()
     
     log_file = open(output_dir + os.sep + 'log.html', 'w')
@@ -173,7 +174,8 @@ def train_lstm(
                 log_file.flush()
             # Save the model and the optimizer
             serializers.save_npz(output_dir + os.sep + 'model%04d'%epoch, model)
-            log_file('--- epoch: {} ------------------------'.format(epoch))
+            log_file.write('--- epoch: {} ------------------------<br>'.format(epoch))
+            log_file.flush()
             serializers.save_npz(output_dir + os.sep + 'rnnlm.state', optimizer)
 
         sys.stdout.flush()

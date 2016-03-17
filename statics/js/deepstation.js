@@ -36,46 +36,100 @@ $(function(){
     }
 });
 
+$('input[name=select_how_to_indicate_dataset], #fileInput').on('change', function(e){
+    validate_setting_dataset();
+    var selection = $('input[name=select_how_to_indicate_dataset]:checked').val();
+    if(selection == 'upload') {
+        $('#upload_dataset').removeClass('hidden');
+        $('#set_dataset_path_div').addClass('hidden');
+    } else {
+        $('#upload_dataset').addClass('hidden');
+        $('#set_dataset_path_div').removeClass('hidden');
+    }
+});
+
+var validate_setting_dataset = function(){
+    var is_valid_input = true;
+    if(!/^[\w][\w|\ |\-]*$/.test($('#dataset_name_input').val())) is_valid_input = false;
+    var selection = $('input[name=select_how_to_indicate_dataset]:checked').val() || null;
+    if(selection == 'upload') {
+        if(!$('#fileInput')[0].files[0]) is_valid_input = false;
+    } else if(selection == 'set_path') {
+        if(!/^[\w\/\.\-][\w\/\.\-/s]*$/.test($('#set_dataset_path_input').val())) is_valid_input = false;
+    } else {
+        is_valid_input = false;
+    }
+    if(is_valid_input) {
+        $('#submit_dataset').removeClass('disabled');
+    } else {
+        $('#submit_dataset').addClass('disabled');
+    }
+};
+
+$('#dataset_name_input, #set_dataset_path_input').on('keyup', function(e){
+    validate_setting_dataset();
+});
+
 $('#uploadDataset #submit_dataset').on('click', function(e){
     if($('#submit_dataset').hasClass('disabled')) return;
-    $('#upload_modal').modal('hide');
-    $('#uploading_progress_div').removeClass('hidden');
-    $('body').addClass('noscroll');
-    var fd = new FormData();
-    fd.append('dataset_name', $('#uploadDataset #dataset_name_input').val());
-    fd.append('dataset_type', $('#uploadDataset input[name=dataset_type]:checked').val());
-    fd.append('fileInput', $('#uploadDataset #fileInput').prop('files')[0]);
-    $.ajax({
-        async: true,
-        xhr: function(){
-            XHR = $.ajaxSettings.xhr();
-            if(XHR.upload){
-                XHR.upload.addEventListener('progress', function(e){
-                    var progress_rate = ~~(parseInt(e.loaded/e.total*10000, 10)/100) ;
-                    $('#progress-bar')
-                        .attr('aria-valuenow', progress_rate)
-                        .css('width', progress_rate + '%')
-                        .html('<span class="sr-only">' + progress_rate +'% Complete</span>');
-                    $('#progress_rate').text(progress_rate + '%');
-                }, false);
+    if($("input[name=select_how_to_indicate_dataset]:checked").val() == 'upload') {
+        $('#upload_modal').modal('hide');
+        $('#uploading_progress_div').removeClass('hidden');
+        $('body').addClass('noscroll');
+        var fd = new FormData();
+        fd.append('dataset_name', $('#uploadDataset #dataset_name_input').val());
+        fd.append('dataset_type', $('#uploadDataset input[name=dataset_type]:checked').val());
+        fd.append('fileInput', $('#uploadDataset #fileInput').prop('files')[0]);
+        $.ajax({
+            async: true,
+            xhr: function(){
+                XHR = $.ajaxSettings.xhr();
+                if(XHR.upload){
+                    XHR.upload.addEventListener('progress', function(e){
+                        var progress_rate = ~~(parseInt(e.loaded/e.total*10000, 10)/100) ;
+                        $('#progress-bar')
+                            .attr('aria-valuenow', progress_rate)
+                            .css('width', progress_rate + '%')
+                            .html('<span class="sr-only">' + progress_rate +'% Complete</span>');
+                        $('#progress_rate').text(progress_rate + '%');
+                    }, false);
+                }
+                return XHR;
+            },
+            url: "/api/upload",
+            type: "POST",
+            data: fd,
+            contentType: false,
+            processData: false
+        })
+        .done(function(){
+            location.reload();
+        })
+        .fail(function(jqXHR, textStatus, errorThrown){
+            console.log(errorThrown);
+            $('#uploading_progress_div').addClass('hidden');
+            $('body').removeClass('noscroll');
+            alert('Could not upload Dataset.');
+        });
+    } else {
+        var dataset_name = $('#dataset_name_input').val();
+        var dataset_path = $('#set_dataset_path_input').val();
+        var dataset_type = $('#uploadDataset input[name=dataset_type]:checked').val();
+        $.post('/api/dataset/check_files_existence',{dataset_path: dataset_path}, function(result){
+            if(result.status == 'error') {
+                alert('Indicated path is no exist.');
+                return;
             }
-            return XHR;
-        },
-        url: "/api/upload",
-        type: "POST",
-        data: fd,
-        contentType: false,
-        processData: false
-    })
-    .done(function(){
-        location.reload();
-    })
-    .fail(function(jqXHR, textStatus, errorThrown){
-        console.log(errorThrown);
-        $('#uploading_progress_div').addClass('hidden');
-        $('body').removeClass('noscroll');
-        alert('Could not upload Dataset.');
-    });
+            $.post('/api/dataset/set_path', {
+                dataset_name: dataset_name,
+                dataset_path: result.path,
+                dataset_type: dataset_type
+            }, function(ret){
+                $('#upload_modal').modal('hide');
+                location.reload();
+            });
+        });
+    }
 });
 
 var check_train_progress = function(){
@@ -104,15 +158,6 @@ var check_train_progress = function(){
 
 $('#uploading_progress_div').on('click', function(e){
     e.preventDefault();
-});
-
-$('#dataset_name_input').on('keyup', function(e){
-    if(/^[\w][\w|\ |\-]*$/.test($(this).val())){
-        $('#submit_dataset').removeClass('disabled');
-    } else {
-        $('#submit_dataset').addClass('disabled');
-    }
-    
 });
 
 $('.dataset').on('click', function(e){
@@ -270,6 +315,7 @@ $('#start_train_btn').on('click', function(e){
     }
     var flipping_mode = $('#select_flipping_mode').val();
     var model_type = $(this).data('modeltype');
+    var use_wakatigaki = $('#use_wakachigaki').prop('checked') ? 1 : 0;
     
     var gpu_num = $('#gpu_num').val() || $('input[name="gpu_num"]:checked').val();
     if(dataset_id < 0) {
@@ -285,7 +331,8 @@ $('#start_train_btn').on('click', function(e){
             channels: channels,
             avoid_flipping: flipping_mode,
             pretrained_model: pretrained_model,
-            model_type: model_type
+            model_type: model_type,
+            use_wakatigaki: use_wakatigaki
         }, function(ret){
         if(ret.status === "OK") {
             $('#processing_screen').addClass('hidden');

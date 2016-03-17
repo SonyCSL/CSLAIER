@@ -17,6 +17,7 @@ import shutil
 import cv2
 import numpy
 import time
+import pkg_resources
 from multiprocessing import Process
 import sqlite3
 import subprocess
@@ -62,7 +63,12 @@ def server_static(filepath):
     
 @app.route('/uploaded_images/<filepath:path>')
 def uploaded_files(filepath):
-    return bottle.static_file(filepath, UPLOADED_IMAGES_DIR )
+    if os.path.exists('/' + filepath):
+        filepath = '/' + filepath
+        (head, tail) = os.path.split(filepath)
+        return bottle.static_file(tail, head)
+    else:
+        return bottle.static_file(filepath, UPLOADED_IMAGES_DIR )
 
 @app.route('/inspection/images/<filepath:path>')
 def images_for_inspection(filepath):
@@ -138,18 +144,22 @@ def dataset_category_show(id, filepath, db):
     row = db.execute('select name, type from Dataset where id = ?', (id,))
     (dataset_name, dataset_type) = row.fetchone()
     ret = []
-    for path in find_all_files(UPLOADED_IMAGES_DIR + os.sep + filepath):
+    dataset_path = '/' + filepath if os.path.exists('/' + filepath) else UPLOADED_IMAGES_DIR + os.sep + filepath
+    for path in find_all_files(dataset_path):
         if dataset_type == "image":
-            ret.append(path.replace(UPLOADED_IMAGES_DIR + os.sep, ''))
+            ret.append(path)
         elif dataset_type == "text":
-            ret.append({"sample_text": get_text_sample(path, 180), "text_path": path.replace(UPLOADED_IMAGES_DIR + os.sep, '')})
+            ret.append({"sample_text": get_text_sample(path, 180), "text_path": path})
     return bottle.template('dataset_category_detail.html', name = dataset_name, count = len(ret), files = ret, category = filepath.split(os.sep)[-1], dataset_id = id, dataset_path = filepath, dataset_type = dataset_type)
 
 @app.route('/dataset/delete/file/<id>/<filepath:path>', method="POST")
 def dataset_delete_an_image(id, filepath):
     file_name = bottle.request.forms.get('file_path')
     try:
-        os.remove(UPLOADED_IMAGES_DIR + os.sep + file_name)
+        if os.path.exists(file_name):
+            os.remove(file_name)
+        else:
+            os.remove(UPLOADED_IMAGES_DIR + os.sep + file_name)
     except:
         return show_error_screen(traceback.format_exc(sys.exc_info()[2]))
     return bottle.redirect('/dataset/show/' + id + '/' + filepath)
@@ -158,7 +168,10 @@ def dataset_delete_an_image(id, filepath):
 def dataset_delete_a_category(id):
     category_path = bottle.request.forms.get('category_path')
     try:
-        shutil.rmtree(UPLOADED_IMAGES_DIR + os.sep + category_path)
+        if os.path.exists('/' + category_path):
+            shutil.rmtree('/' + category_path)
+        else:
+            shutil.rmtree(UPLOADED_IMAGES_DIR + os.sep + category_path)
     except:
         return show_error_screen(traceback.format_exc(sys.exc_info()[2]))
     return bottle.redirect('/dataset/show/' + id)
@@ -168,7 +181,10 @@ def dataset_add_image_to_category(id, filepath):
     dataset_type = bottle.request.forms.get('dataset_type')
     upload = bottle.request.files.get('fileInput')
     name, ext = os.path.splitext(upload.filename)
-    new_filename = UPLOADED_IMAGES_DIR + os.sep + filepath + os.sep + get_timestamp() + '_' + upload.filename
+    if os.path.exists('/' + filepath):
+        new_filename = '/' + filepath + os.sep + get_timestamp() + '_' + upload.filename
+    else:
+        new_filename = UPLOADED_IMAGES_DIR + os.sep + filepath + os.sep + get_timestamp() + '_' + upload.filename
     if dataset_type == 'image':
         if ext not in ('.jpg', '.jpeg', '.gif', '.png'):
             return show_error_screen('File extension not allowed.')
@@ -267,7 +283,19 @@ def show_model_detail(id, db):
     model_txt = open(ret['network_path']).read()
     row_all_datasets = db.execute('select id, name from Dataset where type = ?', (ret['type'],))
     all_datasets_info = row_all_datasets.fetchall()
-    return bottle.template('models_detail.html', model_info = ret, datasets = all_datasets_info, model_txt=model_txt,system_info = get_system_info(),gpu_info = get_gpu_info(), chainer_version = get_chainer_version(), python_version = get_python_version(),pretrained_models=pretrained_models, deepstation_version = DEEPSTATION_VERSION)
+    mecab_available = is_module_available('MeCab')
+    return bottle.template(
+        'models_detail.html',
+        model_info = ret,
+        datasets = all_datasets_info,
+        model_txt=model_txt,
+        system_info = get_system_info(),
+        gpu_info = get_gpu_info(),
+        chainer_version = get_chainer_version(),
+        python_version = get_python_version(),
+        pretrained_models=pretrained_models,
+        mecab_available = mecab_available,
+        deepstation_version = DEEPSTATION_VERSION)
 
 @app.route('/models/start/train', method="POST")
 def kick_train_start(db):
@@ -277,6 +305,7 @@ def kick_train_start(db):
     pretrained_model = bottle.request.forms.get('pretrained_model')
     gpu_num = bottle.request.forms.get('gpu_num')
     model_type = bottle.request.forms.get('model_type')
+    use_wakatigaki = False
     if model_type == 'image':
         resize_mode = bottle.request.forms.get('resize_mode')
         channels = int(bottle.request.forms.get('channels'))
@@ -286,6 +315,8 @@ def kick_train_start(db):
         resize_mode = None
         channels = None
         avoid_flipping = None
+        use_wakati_temp = int(bottle.request.forms.get('use_wakatigaki'))
+        use_wakatigaki = True if use_wakati_temp == 1 else False
     row_ds = db.execute('select dataset_path, name from Dataset where id = ?', (dataset_id,))
     (ds_path, dataset_name) = row_ds.fetchone()
     prepared_file_path = PREPARED_DATA_DIR + os.sep + get_timestamp()
@@ -298,8 +329,8 @@ def kick_train_start(db):
             prepare_images_for_train(ds_path, prepared_file_path,image_size, resize_mode, channels)
             start_imagenet_train(model_id, epoch, prepared_file_path, gpu_num,pretrained_model, db, avoid_flipping)
         else:
-            input_data_path = prepare_texts_for_train(ds_path, prepared_file_path)
-            start_lstm_train(model_id, epoch, prepared_file_path, gpu_num, pretrained_model, db)
+            input_data_path = prepare_texts_for_train(ds_path, prepared_file_path, use_wakatigaki)
+            start_lstm_train(model_id, epoch, prepared_file_path, gpu_num, pretrained_model, use_wakatigaki, db)
     except:
         return dumps({"status": "error", "traceback": traceback.format_exc(sys.exc_info()[2])})
     return dumps({"status": "OK", "dataset_name": dataset_name})
@@ -444,6 +475,34 @@ def do_upload(db):
             uzf.close()
     return dumps({'status': 'success'})
 
+@app.route('/api/dataset/check_files_existence', method="POST")
+def api_check_file_existence():
+    given_path = bottle.request.forms.get('dataset_path')
+    is_valid_path = False
+    real_path = ''
+    if given_path.startswith('/'): #absolute path
+        if os.path.exists(given_path):
+            is_valid_path = True
+            real_path = given_path
+    else: # related path
+        real_path = os.path.normpath(DEEPSTATION_ROOT + os.sep + givin_path)
+        if os.path.exists(real_path):
+            is_valid_path = True
+    bottle.response.content_type = 'application/json'
+    if is_valid_path:
+        return dumps({'status':'success', 'path':real_path})
+    else:
+        return dumps({'status':'error'})
+
+@app.route('/api/dataset/set_path', method="POST")
+def api_set_dataset_path(db):
+    name = bottle.request.forms.get('dataset_name')
+    dataset_path = bottle.request.forms.get('dataset_path')
+    dataset_type = bottle.request.forms.get('dataset_type')
+    db.execute('insert into Dataset(name, dataset_path, updated_at, type) values(?, ?, current_timestamp, ?)', (name, dataset_path, dataset_type))
+    bottle.response.content_type = 'application/json'
+    return dumps({'status': 'success'})
+
 @app.route('/api/models/get_model_template/<model_name>')
 def api_get_model_template(model_name):
     model_template = open(DEEPSTATION_ROOT + os.sep + 'model_templates' + os.sep + model_name).read()
@@ -576,8 +635,9 @@ def api_text_predict(db):
     epoch = int(bottle.request.forms.get('epoch'))
     result_length = int(bottle.request.forms.get('result_length'))
     primetext = bottle.request.forms.get('primetext')
-    row = db.execute('select name, trained_model_path, network_path from Model where id = ?', (model_id,))
-    (model_name, trained_model_path, network_path) = row.fetchone()
+    row = db.execute('select name, trained_model_path, network_path, use_wakatigaki from Model where id = ?', (model_id,))
+    (model_name, trained_model_path, network_path, use_wakatigaki) = row.fetchone()
+    is_wakatigaki = True if use_wakatigaki == 1 else False
     seed = int(random.random() * 10000)
     
     predict_result = text_predict.predict(
@@ -590,7 +650,7 @@ def api_text_predict(db):
         0.0,  # dropout
         1,    # sample
         result_length,
-        use_mecab=False,
+        use_mecab=is_wakatigaki,
     )
     return dumps({'result': predict_result})
 
@@ -753,16 +813,36 @@ def prepare_images_for_train(target_dir, prepared_data_dir,image_insize, resize_
     make_train_data(target_dir, prepared_data_dir, image_insize,resize_mode, channels)
     compute_mean(prepared_data_dir)
 
-def prepare_texts_for_train(target_dir, prepared_data_dir):
+def prepare_texts_for_train(target_dir, prepared_data_dir, use_wakatigaki):
     input_text = open(prepared_data_dir + os.sep + 'input.txt', 'w')
-    for f in find_all_files(target_dir):
-        temp_text = open(f, 'r').read()
-        encoding = nkf.guess(temp_text)
-        decoded_text = temp_text.decode(encoding, 'ignore')
-        decoded_text = decoded_text.replace('\r', '')
-        encoded_text = decoded_text.encode('UTF-8')
-        input_text.write(encoded_text)
-        input_text.flush()
+    if use_wakatigaki:
+        import MeCab
+        none = None
+        m = MeCab.Tagger("-Owakati")
+        for f in find_all_files(target_dir):
+            raw_text = open(f, 'r').read()
+            encoding = nkf.guess(raw_text)
+            if encoding == 'BINARY':
+                continue
+            text = raw_text.decode(encoding, 'ignore')
+            text = text.replace('\r', '')
+            encoded_text = text.encode('UTF-8')
+            lines = encoded_text.splitlines()
+            for line in lines:
+                result = m.parse(line)
+                if isinstance(none, type(result)):
+                    continue
+                input_text.write(result)
+                input_text.flush()
+    else:
+        for f in find_all_files(target_dir):
+            temp_text = open(f, 'r').read()
+            encoding = nkf.guess(temp_text)
+            decoded_text = temp_text.decode(encoding, 'ignore')
+            decoded_text = decoded_text.replace('\r', '')
+            encoded_text = decoded_text.encode('UTF-8')
+            input_text.write(encoded_text)
+            input_text.flush()
     input_text.close()
     return prepared_data_dir + os.sep + 'input.txt'
 
@@ -793,7 +873,7 @@ def start_imagenet_train(model_id, epoch, prepared_data_dir, gpu, pretrained_mod
     db.commit()
     return
     
-def start_lstm_train(model_id, epoch, prepared_data_dir, gpu, pretrained_model, db):
+def start_lstm_train(model_id, epoch, prepared_data_dir, gpu, pretrained_model, use_wakatigaki, db):
     train_process = Process(
         target=train_lstm.train_lstm,
         args = (
@@ -802,7 +882,7 @@ def start_lstm_train(model_id, epoch, prepared_data_dir, gpu, pretrained_model, 
             'models',
             TRAINED_DATA_DIR,
             prepared_data_dir + os.sep + 'input.txt',
-            False,
+            use_wakatigaki,
             pretrained_model,
             None,
             gpu,
@@ -976,5 +1056,11 @@ def get_python_version():
     
 def show_error_screen(error):
     return bottle.template('errors.html', detail=error)
+    
+def is_module_available(module_name):
+    for dist in pkg_resources.working_set:
+        if dist.project_name.lower().find(module_name.lower()) > -1:
+            return True
+    return False
     
 app.run(server=settings['server_engine'], host=settings['host'], port=settings['port'], debug=settings['debug'])
