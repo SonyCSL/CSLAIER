@@ -28,58 +28,58 @@
             </div>
             <div class="datasets">
                 % if len(datasets)>3:
-                % for dataset in datasets[:3]:
-                    % if dataset["dataset_type"] == "image":
-                        <div class="dataset image" id="dataset_{{dataset['id']}}" data-id="{{dataset['id']}}">
-                            <h3>
-                                {{dataset["name"]}}
-                            </h3>
-                            <span class="desc">Total {{dataset["category_num"]}} Classes, {{dataset["file_num"]}} Images</span>
-                            % for img in dataset['thumbnails']:
-                                <img src="/uploaded_images{{img}}" class="img-responsive img-rounded thumbnail-30">
-                            % end
-                        </div>
-                    % elif dataset["dataset_type"] == "text":
-                        <div class="dataset text" id="dataset_{{dataset['id']}}" data-id="{{dataset['id']}}">
-                            <h3>
-                                {{dataset["name"]}}
-                            </h3>
-                            <span class="desc">{{dataset["file_num"]}} Text Files</span>
-                            <div class="sample_text">
-                                % for t in dataset["sample_text"]:
-                                    {{t}}
+                    % for dataset in datasets[:3]:
+                        % if dataset["dataset_type"] == "image":
+                            <div class="dataset image" id="dataset_{{dataset['id']}}" data-id="{{dataset['id']}}">
+                                <h3>
+                                    {{dataset["name"]}}
+                                </h3>
+                                <span class="desc">Total {{dataset["category_num"]}} Classes, {{dataset["file_num"]}} Images</span>
+                                % for img in dataset['thumbnails']:
+                                    <img src="/uploaded_images{{img}}" class="img-responsive img-rounded thumbnail-30">
                                 % end
                             </div>
-                        </div>
+                        % elif dataset["dataset_type"] == "text":
+                            <div class="dataset text" id="dataset_{{dataset['id']}}" data-id="{{dataset['id']}}">
+                                <h3>
+                                    {{dataset["name"]}}
+                                </h3>
+                                <span class="desc">{{dataset["file_num"]}} Text Files</span>
+                                <div class="sample_text">
+                                    % for t in dataset["sample_text"]:
+                                        {{t}}
+                                    % end
+                                </div>
+                            </div>
+                        % end
                     % end
-                % end
-                   <button class="btn btn-cyber" id="dataset_more" >more</button>
-                   <div  class="datasets" id="hidden-dataset" style="display:none">
-                % for dataset in datasets[3:]:
-                    % if dataset["dataset_type"] == "image":
-                        <div class="dataset image" id="dataset_{{dataset['id']}}" data-id="{{dataset['id']}}">
-                            <h3>
-                                {{dataset["name"]}}
-                            </h3>
-                            <span class="desc">Total {{dataset["category_num"]}} Classes, {{dataset["file_num"]}} Images</span>
-                            % for img in dataset['thumbnails']:
-                                <img src="/uploaded_images{{img}}" class="img-responsive img-rounded thumbnail-30">
-                            % end
-                        </div>
-                    % elif dataset["dataset_type"] == "text":
-                        <div class="dataset text" id="dataset_{{dataset['id']}}" data-id="{{dataset['id']}}">
-                            <h3>
-                                {{dataset["name"]}}
-                            </h3>
-                            <span class="desc">{{dataset["file_num"]}} Text Files</span>
-                            <div class="sample_text">
-                                % for t in dataset["sample_text"]:
-                                    {{t}}
+                    <button class="btn btn-cyber" id="dataset_more" >more</button>
+                    <div  class="datasets" id="hidden-dataset" style="display:none">
+                    % for dataset in datasets[3:]:
+                        % if dataset["dataset_type"] == "image":
+                            <div class="dataset image" id="dataset_{{dataset['id']}}" data-id="{{dataset['id']}}">
+                                <h3>
+                                    {{dataset["name"]}}
+                                </h3>
+                                <span class="desc">Total {{dataset["category_num"]}} Classes, {{dataset["file_num"]}} Images</span>
+                                % for img in dataset['thumbnails']:
+                                    <img src="/uploaded_images{{img}}" class="img-responsive img-rounded thumbnail-30">
                                 % end
                             </div>
-                        </div>
+                        % elif dataset["dataset_type"] == "text":
+                            <div class="dataset text" id="dataset_{{dataset['id']}}" data-id="{{dataset['id']}}">
+                                <h3>
+                                    {{dataset["name"]}}
+                                </h3>
+                                <span class="desc">{{dataset["file_num"]}} Text Files</span>
+                                <div class="sample_text">
+                                    % for t in dataset["sample_text"]:
+                                        {{t}}
+                                    % end
+                                </div>
+                            </div>
+                        % end
                     % end
-                % end
                     </div>
                 % else:
                     % for dataset in datasets:

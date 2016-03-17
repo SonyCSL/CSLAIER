@@ -623,7 +623,10 @@ def api_kill_train(db):
 @app.route('/api/dataset/get_full_text/<filepath:path>')
 def api_get_full_text(filepath):
     bottle.response.content_type = 'application/json'
-    text = get_text_sample(UPLOADED_IMAGES_DIR + os.sep + filepath)
+    if os.path.exists('/' + filepath):
+        text = get_text_sample('/' + filepath)
+    else:
+        text = get_text_sample(UPLOADED_IMAGES_DIR + os.sep + filepath)
     text = text.replace("\r", '')
     text = text.replace("\n", '<br>')
     return dumps({'text': text})
@@ -969,7 +972,9 @@ def get_texts_in_random_order(path, num, character_num=-1):
     files = get_files_in_random_order(path, num)
     ret = []
     for f in files:
-        if os.path.exists(UPLOADED_IMAGES_DIR + f):
+        if os.path.exists(f):
+            ret.append(get_text_sample(f, character_num))
+        elif os.path.exists(UPLOADED_IMAGES_DIR + f):
             ret.append(get_text_sample(UPLOADED_IMAGES_DIR + f, character_num))
     return ret
 
