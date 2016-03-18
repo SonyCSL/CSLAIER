@@ -655,6 +655,7 @@ def api_text_predict(db):
         result_length,
         use_mecab=is_wakatigaki,
     )
+    predict_result = predict_result.replace('<eos>', '\n')
     return dumps({'result': predict_result})
 
 #------- private methods ---------
