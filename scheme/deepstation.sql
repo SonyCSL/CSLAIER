@@ -14,7 +14,8 @@ create table if not exists Model(
     created_at timestamp default current_timestamp,
     pid integer Default null,
     resize_mode text,
-    channels integer Default 3
+    channels integer Default 3,
+    type text
 );
 
 create table if not exists Dataset(
@@ -22,5 +23,6 @@ create table if not exists Dataset(
     name text unique not null,
     dataset_path text,
     updated_at timestamp,
-    created_at timestamp default current_timestamp
+    created_at timestamp default current_timestamp,
+    type text
 );

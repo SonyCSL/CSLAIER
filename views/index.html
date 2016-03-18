@@ -28,42 +28,84 @@
             </div>
             <div class="datasets">
                 % if len(datasets)>3:
-                % for dataset in datasets[:3]:
-                    <div class="dataset" id="dataset_{{dataset['id']}}" data-id="{{dataset['id']}}">
-                        <h3>
-                            {{dataset["name"]}}
-                        </h3>
-                        <span class="desc">Total {{dataset["category_num"]}} Classes, {{dataset["file_num"]}} Images</span>
-                        % for img in dataset['thumbnails']:
-                            <img src="/uploaded_images{{img}}" class="img-responsive img-rounded thumbnail-30">
+                    % for dataset in datasets[:3]:
+                        % if dataset["dataset_type"] == "image":
+                            <div class="dataset image" id="dataset_{{dataset['id']}}" data-id="{{dataset['id']}}">
+                                <h3>
+                                    {{dataset["name"]}}
+                                </h3>
+                                <span class="desc">Total {{dataset["category_num"]}} Classes, {{dataset["file_num"]}} Images</span>
+                                % for img in dataset['thumbnails']:
+                                    <img src="/uploaded_images{{img}}" class="img-responsive img-rounded thumbnail-30">
+                                % end
+                            </div>
+                        % elif dataset["dataset_type"] == "text":
+                            <div class="dataset text" id="dataset_{{dataset['id']}}" data-id="{{dataset['id']}}">
+                                <h3>
+                                    {{dataset["name"]}}
+                                </h3>
+                                <span class="desc">{{dataset["file_num"]}} Text Files</span>
+                                <div class="sample_text">
+                                    % for t in dataset["sample_text"]:
+                                        {{t}}
+                                    % end
+                                </div>
+                            </div>
                         % end
-                    </div>
-                % end
-                   <button class="btn btn-cyber" id="dataset_more" >more</button>
-                   <div  class="datasets" id="hidden-dataset" style="display:none">
-                % for dataset in datasets[3:]:
-                    <div class="dataset" id="dataset_{{dataset['id']}}" data-id="{{dataset['id']}}">
-                        <h3>
-                            {{dataset["name"]}}
-                        </h3>
-                        <span class="desc">Total {{dataset["category_num"]}} Classes, {{dataset["file_num"]}} Images</span>
-                        % for img in dataset['thumbnails']:
-                            <img src="/uploaded_images{{img}}" class="img-responsive img-rounded thumbnail-30">
+                    % end
+                    <button class="btn btn-cyber" id="dataset_more" >more</button>
+                    <div  class="datasets" id="hidden-dataset" style="display:none">
+                    % for dataset in datasets[3:]:
+                        % if dataset["dataset_type"] == "image":
+                            <div class="dataset image" id="dataset_{{dataset['id']}}" data-id="{{dataset['id']}}">
+                                <h3>
+                                    {{dataset["name"]}}
+                                </h3>
+                                <span class="desc">Total {{dataset["category_num"]}} Classes, {{dataset["file_num"]}} Images</span>
+                                % for img in dataset['thumbnails']:
+                                    <img src="/uploaded_images{{img}}" class="img-responsive img-rounded thumbnail-30">
+                                % end
+                            </div>
+                        % elif dataset["dataset_type"] == "text":
+                            <div class="dataset text" id="dataset_{{dataset['id']}}" data-id="{{dataset['id']}}">
+                                <h3>
+                                    {{dataset["name"]}}
+                                </h3>
+                                <span class="desc">{{dataset["file_num"]}} Text Files</span>
+                                <div class="sample_text">
+                                    % for t in dataset["sample_text"]:
+                                        {{t}}
+                                    % end
+                                </div>
+                            </div>
                         % end
-                    </div>
-                % end
+                    % end
                     </div>
                 % else:
                     % for dataset in datasets:
-                        <div class="dataset" id="dataset_{{dataset['id']}}" data-id="{{dataset['id']}}">
-                            <h3>
-                                {{dataset["name"]}}
-                            </h3>
-                            <span class="desc">Total {{dataset["category_num"]}} Classes, {{dataset["file_num"]}} Images</span>
-                            % for img in dataset['thumbnails']:
-                                <img src="/uploaded_images{{img}}" class="img-responsive img-rounded thumbnail-30">
-                            % end
-                        </div>
+                        % if dataset["dataset_type"] == "image":
+                            <div class="dataset image" id="dataset_{{dataset['id']}}" data-id="{{dataset['id']}}">
+                                <h3>
+                                    {{dataset["name"]}}
+                                </h3>
+                                <span class="desc">Total {{dataset["category_num"]}} Classes, {{dataset["file_num"]}} Images</span>
+                                % for img in dataset['thumbnails']:
+                                    <img src="/uploaded_images{{img}}" class="img-responsive img-rounded thumbnail-30">
+                                % end
+                            </div>
+                        % elif dataset["dataset_type"] == "text":
+                            <div class="dataset text" id="dataset_{{dataset['id']}}" data-id="{{dataset['id']}}">
+                                <h3>
+                                    {{dataset["name"]}}
+                                </h3>
+                                <span class="desc">{{dataset["file_num"]}} Text Files</span>
+                                <div class="sample_text">
+                                    % for t in dataset["sample_text"]:
+                                        {{t}}
+                                    % end
+                                </div>
+                            </div>
+                        % end
                     % end
                 % end
             </div>
@@ -98,6 +140,13 @@
                         <ul>
                             <li>Date: {{model[4]}}</li>
                             <li>Epoch: {{model[2]}}</li>
+                            <li>
+                                % if model[6] == 'image':
+                                    Image Classification
+                                % elif model[6] == 'text':
+                                    Natural Language Processing
+                                % end
+                            </li>
                             <li>Dataset: 
                                 % if model[7]:
                                     {{model[7]}}
@@ -185,12 +234,39 @@
             <div class="modal-body">
                 <div id="uploadDataset">
                     <div class="form-group">
+                        <label>Dataset Type</label><br>
+                        <label for="dataset_type_image" class="radio-inline">
+                            <input type="radio" id="dataset_type_image" name="dataset_type" value="image" checked> Images
+                        </label>
+                        <label for="dataset_type_text" class="radio-inline">
+                            <input type="radio" id="dataset_type_text" name="dataset_type" value="text"> Texts
+                        </label>
+                    </div>
+                    <div class="form-group">
                         <label for="dataset_name_input">Dataset Name</label>
                         <input type="text" class="form-control" id="dataset_name_input" name="dataset_name" placeholder="input dataset name">
                     </div>
-                    <div class="form-group">
+                    <div>
+                        <h4>Select how to indicate dataset</h4>
+                        <div class="radio-inline">
+                            <label>
+                                <input type="radio" name="select_how_to_indicate_dataset" value="upload"> Upload Dataset<br>
+                            </label>
+                        </div>
+                        <div class="radio-inline">
+                            <label>
+                                <input type="radio" name="select_how_to_indicate_dataset" value="set_path"> Set Dataset Path
+                            </label>
+                        </div>
+                    </div>
+                    <div class="form-group hidden" id="upload_dataset">
                         <input type="file" id="fileInput" name="fileInput">
-                        <p class="help-block">Select image set which is compressed by zip.</p>
+                        <p class="help-block">Select data set file which is compressed by zip.</p>
+                    </div>
+                    <div class="form-group hidden" id="set_dataset_path_div">
+                        <label for="set_dataset_path_input">Set dataset path on DEEPstation</label>
+                        <input type="text" id="set_dataset_path_input" class="form-control" name="dataset_path">
+                        <p class="help-block">Input dataset path on DEEPstation</p>
                     </div>
                     <button type="submit" class="btn btn-cyber disabled" id="submit_dataset">Submit</button>
                     <button type="cancel" class="btn btn-cyber" data-dismiss="modal">Cancel</button>

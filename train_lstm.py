@@ -1,0 +1,190 @@
+# -*- coding: utf-8 -*-
+
+from __future__ import print_function
+import math
+import sys
+import time
+import os
+import codecs
+import imp
+import re
+import sqlite3
+
+import numpy as np
+import six
+import cPickle as pickle
+import copy
+import chainer
+from chainer import cuda
+import chainer.links as L
+from chainer import optimizers
+from chainer import serializers
+
+def load_module(dir_name, symbol):
+    (file, path, description) = imp.find_module(symbol,[dir_name])
+    return imp.load_module(symbol, file, path, description)
+
+def load_data(filename, use_mecab):
+    vocab = {}
+    if use_mecab:
+        words = codecs.open(filename, 'rb', 'utf-8').read().replace('\n', '<eos>').strip().split()
+    else:
+        words = codecs.open(filename, 'rb', 'utf-8').read()
+        words = list(words)
+    dataset = np.ndarray((len(words),), dtype=np.int32)
+    for i, word in enumerate(words):
+        if word not in vocab:
+            vocab[word] = len(vocab)
+        dataset[i] = vocab[word]
+    print('corpus length:', len(words))
+    print('vocab size:', len(vocab))
+    return dataset, words, vocab
+
+def train_lstm(
+    db_path,
+    model_id,
+    model_dir,
+    root_output_dir,
+    filename,
+    use_mecab = False,
+    initmodel = None,
+    resume = None,
+    gpu = -1,
+    rnn_size = 128,
+    learning_rate = 2e-3,
+    learning_rate_decay = 0.97,
+    learning_rate_decay_after = 10,
+    decay_rate = 0.95,
+    dropout = 0.0,
+    seq_length = 50,
+    batchsize = 50,
+    epochs = 50,
+    grad_clip = 5
+):
+    n_epoch = int(epochs)   # number of epochs
+    n_units = rnn_size  # number of units per layer
+    batchsize = batchsize   # minibatch size
+    bprop_len = seq_length   # length of truncated BPTT
+    grad_clip = grad_clip    # gradient norm threshold to clip
+    
+    conn = sqlite3.connect(db_path)
+    db = conn.cursor()
+    cursor = db.execute('select name from Model where id = ?', (model_id,))
+    row = cursor.fetchone()
+    model_name = row[0]
+    
+    model_name = re.sub(r"\.py$","", model_name)
+    model_module = load_module(model_dir, model_name)
+    
+    output_dir = root_output_dir + os.sep + model_name
+    if not os.path.exists(output_dir):
+        os.mkdir(output_dir)
+    
+    if gpu >= 0:
+        cuda.check_cuda_available()
+    xp = cuda.cupy if gpu >= 0 else np
+    
+    train_data, words, vocab = load_data(filename, use_mecab)
+    pickle.dump(vocab, open('%s/vocab2.bin'%output_dir, 'wb'))
+    
+    # Prepare model
+    lm = model_module.Network(len(vocab), rnn_size, dropout_ratio=dropout, train=False)
+    model = L.Classifier(lm)
+    model.compute_accuracy = False  # we only want the perplexity
+    for param in model.params():
+        data = param.data
+        data[:] = np.random.uniform(-0.1, 0.1, data.shape)
+    if gpu >= 0:
+        cuda.get_device(gpu).use()
+        model.to_gpu()
+
+    # Setup optimizer
+    optimizer = optimizers.RMSprop(lr=learning_rate, alpha=decay_rate, eps=1e-8)
+    optimizer.setup(model)
+    
+    # Load pretrained model
+    if initmodel is not None and initmodel.find("model") > -1:
+        print("Load model from : "+output_dir + os.sep + initmodel)
+        serializers.load_npz(output_dir + os.sep + initmodel, model)
+        # delete old models
+        pretrained_models = sorted(os.listdir(output_dir), reverse=True)
+        for m in pretrained_models:
+            if m.startswith('model') and initmodel != m:
+                os.remove(output_dir + os.sep + m)
+        
+    # Load pretrained optimizer
+    if resume is not None and resume.find("state") > -1:
+        print("Load optimizer state from : "+output_dir + os.sep + resume)
+        serializers.load_npz(output_dir + os.sep +resume, optimizer)
+    # TODO: delete old states ??
+    
+    # TODO: delete layer visualization cache
+    
+    use_wakatigaki = 1 if use_mecab else 0
+    db.execute('update Model set epoch = ?, trained_model_path = ?, is_trained = 1, line_graph_data_path = ?, use_wakatigaki = ? where id = ?', (n_epoch, output_dir, output_dir + os.sep + 'line_graph.tsv', use_wakatigaki, model_id))
+    conn.commit()
+    
+    log_file = open(output_dir + os.sep + 'log.html', 'w')
+    #graph_tsv = open(output_dir + os.sep + 'line_graph.tsv', 'w')
+    
+    # Learning loop
+    whole_len = train_data.shape[0]
+    jump = whole_len // batchsize
+    cur_log_perp = xp.zeros(())
+    epoch = 0
+    start_at = time.time()
+    cur_at = start_at
+    accum_loss = 0
+    batch_idxs = list(range(batchsize))
+    log_file.write("going to train {} iterations<br>".format(jump * n_epoch))
+    log_file.flush()
+    for i in six.moves.range(jump * n_epoch):
+        x = chainer.Variable(xp.asarray(
+                                    [train_data[(jump * j + i) % whole_len] for j in batch_idxs]))
+        t = chainer.Variable(xp.asarray(
+                                    [train_data[(jump * j + i + 1) % whole_len] for j in batch_idxs]))
+        loss_i = model(x, t)
+        accum_loss += loss_i
+        cur_log_perp += loss_i.data
+    
+        if (i + 1) % bprop_len == 0:  # Run truncated BPTT
+            model.zerograds()
+            accum_loss.backward()
+            accum_loss.unchain_backward()  # truncate
+            accum_loss = 0
+            optimizer.update()
+    
+        if (i + 1) % 10000 == 0:
+            now = time.time()
+            throuput = 10000. / (now - cur_at)
+            perp = math.exp(float(cur_log_perp) / 10000)
+            log_file.write('iter {} training perplexity: {:.2f} ({:.2f} iters/sec)<br>'.format(i + 1, perp, throuput))
+            log_file.flush()
+            cur_at = now
+            cur_log_perp.fill(0)
+    
+        if (i + 1) % jump == 0:
+            epoch += 1
+            now = time.time()
+            cur_at += time.time() - now  # skip time of evaluation
+        
+            if epoch >= 6:
+                optimizer.lr /= 1.2
+                log_file.write('learning rate = {:.10f}<br>'.format(optimizer.lr))
+                log_file.flush()
+            # Save the model and the optimizer
+            serializers.save_npz(output_dir + os.sep + 'model%04d'%epoch, model)
+            log_file.write('--- epoch: {} ------------------------<br>'.format(epoch))
+            log_file.flush()
+            serializers.save_npz(output_dir + os.sep + 'rnnlm.state', optimizer)
+
+        sys.stdout.flush()
+        
+    log_file.write('===== finish train. =====')
+    log_file.close()
+    #graph_tsv.close()
+    db.execute('update Model set is_trained = 2, pid = null where id = ?', (model_id,))
+    conn.commit()
+    db.close()
+    
+    return

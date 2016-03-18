@@ -36,45 +36,100 @@ $(function(){
     }
 });
 
+$('input[name=select_how_to_indicate_dataset], #fileInput').on('change', function(e){
+    validate_setting_dataset();
+    var selection = $('input[name=select_how_to_indicate_dataset]:checked').val();
+    if(selection == 'upload') {
+        $('#upload_dataset').removeClass('hidden');
+        $('#set_dataset_path_div').addClass('hidden');
+    } else {
+        $('#upload_dataset').addClass('hidden');
+        $('#set_dataset_path_div').removeClass('hidden');
+    }
+});
+
+var validate_setting_dataset = function(){
+    var is_valid_input = true;
+    if(!/^[\w][\w|\ |\-]*$/.test($('#dataset_name_input').val())) is_valid_input = false;
+    var selection = $('input[name=select_how_to_indicate_dataset]:checked').val() || null;
+    if(selection == 'upload') {
+        if(!$('#fileInput')[0].files[0]) is_valid_input = false;
+    } else if(selection == 'set_path') {
+        if(!/^[\w\/\.\-][\w\/\.\-/s]*$/.test($('#set_dataset_path_input').val())) is_valid_input = false;
+    } else {
+        is_valid_input = false;
+    }
+    if(is_valid_input) {
+        $('#submit_dataset').removeClass('disabled');
+    } else {
+        $('#submit_dataset').addClass('disabled');
+    }
+};
+
+$('#dataset_name_input, #set_dataset_path_input').on('keyup', function(e){
+    validate_setting_dataset();
+});
+
 $('#uploadDataset #submit_dataset').on('click', function(e){
     if($('#submit_dataset').hasClass('disabled')) return;
-    $('#upload_modal').modal('hide');
-    $('#uploading_progress_div').removeClass('hidden');
-    $('body').addClass('noscroll');
-    var fd = new FormData();
-    fd.append('dataset_name', $('#uploadDataset #dataset_name_input').val());
-    fd.append('fileInput', $('#uploadDataset #fileInput').prop('files')[0]);
-    $.ajax({
-        async: true,
-        xhr: function(){
-            XHR = $.ajaxSettings.xhr();
-            if(XHR.upload){
-                XHR.upload.addEventListener('progress', function(e){
-                    var progress_rate = ~~(parseInt(e.loaded/e.total*10000, 10)/100) ;
-                    $('#progress-bar')
-                        .attr('aria-valuenow', progress_rate)
-                        .css('width', progress_rate + '%')
-                        .html('<span class="sr-only">' + progress_rate +'% Complete</span>');
-                    $('#progress_rate').text(progress_rate + '%');
-                }, false);
+    if($("input[name=select_how_to_indicate_dataset]:checked").val() == 'upload') {
+        $('#upload_modal').modal('hide');
+        $('#uploading_progress_div').removeClass('hidden');
+        $('body').addClass('noscroll');
+        var fd = new FormData();
+        fd.append('dataset_name', $('#uploadDataset #dataset_name_input').val());
+        fd.append('dataset_type', $('#uploadDataset input[name=dataset_type]:checked').val());
+        fd.append('fileInput', $('#uploadDataset #fileInput').prop('files')[0]);
+        $.ajax({
+            async: true,
+            xhr: function(){
+                XHR = $.ajaxSettings.xhr();
+                if(XHR.upload){
+                    XHR.upload.addEventListener('progress', function(e){
+                        var progress_rate = ~~(parseInt(e.loaded/e.total*10000, 10)/100) ;
+                        $('#progress-bar')
+                            .attr('aria-valuenow', progress_rate)
+                            .css('width', progress_rate + '%')
+                            .html('<span class="sr-only">' + progress_rate +'% Complete</span>');
+                        $('#progress_rate').text(progress_rate + '%');
+                    }, false);
+                }
+                return XHR;
+            },
+            url: "/api/upload",
+            type: "POST",
+            data: fd,
+            contentType: false,
+            processData: false
+        })
+        .done(function(){
+            location.reload();
+        })
+        .fail(function(jqXHR, textStatus, errorThrown){
+            console.log(errorThrown);
+            $('#uploading_progress_div').addClass('hidden');
+            $('body').removeClass('noscroll');
+            alert('Could not upload Dataset.');
+        });
+    } else {
+        var dataset_name = $('#dataset_name_input').val();
+        var dataset_path = $('#set_dataset_path_input').val();
+        var dataset_type = $('#uploadDataset input[name=dataset_type]:checked').val();
+        $.post('/api/dataset/check_files_existence',{dataset_path: dataset_path}, function(result){
+            if(result.status == 'error') {
+                alert('Indicated path is no exist.');
+                return;
             }
-            return XHR;
-        },
-        url: "/api/upload",
-        type: "POST",
-        data: fd,
-        contentType: false,
-        processData: false
-    })
-    .done(function(){
-        location.reload();
-    })
-    .fail(function(jqXHR, textStatus, errorThrown){
-        console.log(errorThrown);
-        $('#uploading_progress_div').addClass('hidden');
-        $('body').removeClass('noscroll');
-        alert('Could not upload Dataset.');
-    });
+            $.post('/api/dataset/set_path', {
+                dataset_name: dataset_name,
+                dataset_path: result.path,
+                dataset_type: dataset_type
+            }, function(ret){
+                $('#upload_modal').modal('hide');
+                location.reload();
+            });
+        });
+    }
 });
 
 var check_train_progress = function(){
@@ -105,15 +160,6 @@ $('#uploading_progress_div').on('click', function(e){
     e.preventDefault();
 });
 
-$('#dataset_name_input').on('keyup', function(e){
-    if(/^[\w][\w|\ |\-]*$/.test($(this).val())){
-        $('#submit_dataset').removeClass('disabled');
-    } else {
-        $('#submit_dataset').addClass('disabled');
-    }
-    
-});
-
 $('.dataset').on('click', function(e){
     var dataset_id = $(this).data('id');
     location.href = '/dataset/show/' + dataset_id;
@@ -123,6 +169,17 @@ $('#dataset_more').on('click',function(){
     $("#hidden-dataset").toggle();
 })
 
+$('.text_detail').on('click', function(e){
+    var filepath = $(this).data('path');
+    $.get('/api/dataset/get_full_text/' + filepath, function(ret){
+        _.each($('.btn_delete_text'), function(btn){
+            $(btn).attr('data-path', filepath);
+        });
+        $('#text_detail').html(ret.text);
+        $('#show_text_detail_modal').modal('show');
+    });
+});
+
 $('.category').on('click', function(e){
     var path = $(this).data('path');
     var dataset_id = $(this).data('id');
@@ -130,17 +187,26 @@ $('.category').on('click', function(e){
     location.href = '/dataset/show/' + dataset_id + path;
 });
 
-$('.category-image').on('click', function(e){
-    if(window.confirm('Is it okay to remove this image?')) {
-        var form = '<input type="hidden" name="file_path" value="'+ $(this).data('path') +'">';
-        $('<form action="/dataset/delete/file/' + $("#dataset-id").val() + '/' + $("#dataset-path").val() + '" method="POST">' + form + '</form>').append('body').submit();
+$('.category-image, .btn_delete_text').on('click', function(e){
+    if(window.confirm('Is it okay to remove this file?')) {
+        var form_input = '<input type="hidden" name="file_path" value="'+ $(this).data('path') +'">';
+        var form = $('<form action="/dataset/delete/file/' + $("#dataset-id").val() + '/' + $("#dataset-path").val() + '" method="POST">' + form_input + '</form>');
+        $('body').append(form);
+        form.submit();
     }
 });
 
 $('#btn_delete_category').on('click', function(e){
-    if(window.confirm('Is it okay to remove this category? Images will be also removed.')) {
-        var form = '<input type="hidden" name="category_path" value="'+ $(this).data('path') +'">';
-        $('<form action="/dataset/delete/category/' + $("#dataset-id").val() + '" method="POST">' + form + '</form>').append('body').submit();
+    var dataset_type = $(this).data('type');
+    var confirm_message = 'Is it okay to remove this category? Files will be also removed.';
+    if(dataset_type == 'text') {
+        confirm_message = 'Is it okay to remove this folder? Files will be also removed.';
+    }
+    if(window.confirm(confirm_message)) {
+        var form_input = '<input type="hidden" name="category_path" value="'+ $(this).data('path') +'">';
+        var form = $('<form action="/dataset/delete/category/' + $("#dataset-id").val() + '" method="POST">' + form_input + '</form>');
+        $('body').append(form);
+        form.submit();
     }
 });
 
@@ -172,6 +238,20 @@ $('#model_template_list').on('change', function(e){
         $('#model_name_input').val(now + model_name);
         $('#network_name_input').val(model_name);
         $('#network_edit_area').val(ret.model_template);
+        var model_lines = ret.model_template.split("\n");
+        var hint = '';
+        for(var i = 0, l = model_lines.length; i < l; i++) {
+            if(/#\s*HINT\s*:/.test(model_lines[i])){
+                hint = model_lines[i].split(':');
+                hint = hint[1].trim();
+                break;
+            }
+        }
+        if(hint == 'image') {
+            $('#model_type_image').prop('checked', true);
+        } else if(hint == 'text') {
+            $('#model_type_text').prop('checked', true);
+        }
         createEditor();
     });
 });
@@ -234,6 +314,8 @@ $('#start_train_btn').on('click', function(e){
         channels = 3;
     }
     var flipping_mode = $('#select_flipping_mode').val();
+    var model_type = $(this).data('modeltype');
+    var use_wakatigaki = $('#use_wakachigaki').prop('checked') ? 1 : 0;
     
     var gpu_num = $('#gpu_num').val() || $('input[name="gpu_num"]:checked').val();
     if(dataset_id < 0) {
@@ -248,7 +330,9 @@ $('#start_train_btn').on('click', function(e){
             resize_mode: resize_mode,
             channels: channels,
             avoid_flipping: flipping_mode,
-            pretrained_model: pretrained_model
+            pretrained_model: pretrained_model,
+            model_type: model_type,
+            use_wakatigaki: use_wakatigaki
         }, function(ret){
         if(ret.status === "OK") {
             $('#processing_screen').addClass('hidden');
@@ -311,6 +395,12 @@ $('#model_dl_btn').on('click', function(e){
     var model_id = $('#model_id').val();
     var epoch = $('#epoch_select').val();
     window.open('/models/download/' + model_id + '/' + epoch);
+});
+
+$('#vocab_dl_btn').on('click', function(e){
+    var model_id = $('#model_id').val();
+    var epoch = $('#epoch_select').val();
+    window.open('/models/download_vocab/' + model_id);
 });
 
 $('#mean_dl_btn').on('click', function(e){
@@ -434,6 +524,39 @@ $('#create_new_network_modal_form').submit(function(){
         alert('Network definition is needed');
         return false;
     }
+});
+
+$('#prediction_epoch, #prediction_result_length, #prediction_primetext').on("change, keyup", function(e){
+    var epoch = $('#prediction_epoch').val();
+    var result_length = $('#prediction_result_length').val();
+    var primetext = $('#prediction_primetext').val();
+    var submit_ok = true;
+    if(!/^\d+$/.test(epoch)) submit_ok = false;
+    if(!/^\d+$/.test(result_length)) submit_ok = false;
+    if(primetext == '') submit_ok = false;
+    if(submit_ok) {
+        $('#do_predict').removeClass('disabled');
+    } else {
+        $('#do_predict').addClass('disabled');
+    } 
+});
+
+$('#do_predict').on('click', function(e){
+    if($('#do_predict').hasClass('disabled')) return;
+    var model_id = $('#model_id').val();
+    var epoch = $('#prediction_epoch').val();
+    var result_length = $('#prediction_result_length').val();
+    var primetext = $('#prediction_primetext').val();
+    
+    $.post('/api/text/predict/', {
+        model_id: model_id,
+        epoch: epoch,
+        result_length: result_length,
+        primetext: primetext
+    }, function(ret){
+        $('#prediction_result').text('');
+        $('#prediction_result').text(ret.result);
+    });
 });
 
 
@@ -669,14 +792,23 @@ var createEditor = function(){
 };
 
 var showResultScreen = function(){
-        $('#network_tab').removeClass('active');
-        $('#log_tab').removeClass('active');
-        $('#layer_tab').removeClass('active');
-        $('#graph_tab').addClass('active');
-        $('#model_detail_network').addClass('hidden');
-        $('#model_detail_log').addClass('hidden');
-        $('#model_detail_layers').addClass('hidden');
-        $('#model_detail_graph').removeClass('hidden');
-        draw_train_graph();
-        setInterval("draw_train_graph()", 30000);
+        if($('#graph_tab').is('*')) {
+            $('#network_tab').removeClass('active');
+            $('#log_tab').removeClass('active');
+            $('#layer_tab').removeClass('active');
+            $('#graph_tab').addClass('active');
+            $('#model_detail_network').addClass('hidden');
+            $('#model_detail_log').addClass('hidden');
+            $('#model_detail_layers').addClass('hidden');
+            $('#model_detail_graph').removeClass('hidden');
+            draw_train_graph();
+            setInterval("draw_train_graph()", 30000);
+        } else {
+            $('#network_tab').removeClass('active');
+            $('#log_tab').addClass('active');
+            $('#layer_tab').removeClass('active');
+            $('#model_detail_network').addClass('hidden');
+            $('#model_detail_log').removeClass('hidden');
+            $('#model_detail_layers').addClass('hidden');
+        }
 };
