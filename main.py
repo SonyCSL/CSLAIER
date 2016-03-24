@@ -679,8 +679,9 @@ def make_train_data(target_dir, prepared_data_dir, image_insize, resize_mode, ch
     count = 0
     for path, dirs, files in os.walk(target_dir):
         if not dirs:
-            start = path.rfind(os.sep) + 1
-            labelsTxt.write(path[start:].split(os.sep)[0] + "\n")
+            (head, tail) = os.path.split(path)
+            label_name = os.path.basename(head)
+            labelsTxt.write(label_name.encode('utf-8') + "\n")
             startCount = count
             length = len(files)
             for f in files:
