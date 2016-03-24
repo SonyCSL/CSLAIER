@@ -315,6 +315,20 @@ def kick_train_start(db):
         resize_mode = None
         channels = None
         avoid_flipping = None
+        upload = bottle.request.files.get('vocab_file')
+        name, ext = os.path.splitext(upload.filename)
+        if name == "":
+            pretrained_vocab = ""
+        else:
+            if ext not in ('.bin'):
+                return show_error_screen("File extension not allowed.")
+            timestamp_str = get_timestamp()
+            new_filename = PREPARED_DATA_DIR + os.sep + timestamp_str + upload.filename
+            try:
+                upload.save(new_filename)
+                pretrained_vocab = new_filename
+            except:
+                return show_error_screen(traceback.format_exc(sys.exc_info()[2]))
         use_wakati_temp = int(bottle.request.forms.get('use_wakatigaki'))
         use_wakatigaki = True if use_wakati_temp == 1 else False
     row_ds = db.execute('select dataset_path, name from Dataset where id = ?', (dataset_id,))
@@ -330,7 +344,7 @@ def kick_train_start(db):
             start_imagenet_train(model_id, epoch, prepared_file_path, gpu_num,pretrained_model, db, avoid_flipping)
         else:
             input_data_path = prepare_texts_for_train(ds_path, prepared_file_path, use_wakatigaki)
-            start_lstm_train(model_id, epoch, prepared_file_path, gpu_num, pretrained_model, use_wakatigaki, db)
+            start_lstm_train(model_id, epoch, prepared_file_path, gpu_num, pretrained_model, pretrained_vocab, use_wakatigaki, db)
     except:
         return dumps({"status": "error", "traceback": traceback.format_exc(sys.exc_info()[2])})
     return dumps({"status": "OK", "dataset_name": dataset_name})
@@ -877,7 +891,7 @@ def start_imagenet_train(model_id, epoch, prepared_data_dir, gpu, pretrained_mod
     db.commit()
     return
     
-def start_lstm_train(model_id, epoch, prepared_data_dir, gpu, pretrained_model, use_wakatigaki, db):
+def start_lstm_train(model_id, epoch, prepared_data_dir, gpu, pretrained_model,pretrained_vocab, use_wakatigaki, db):
     train_process = Process(
         target=train_lstm.train_lstm,
         args = (
@@ -886,6 +900,7 @@ def start_lstm_train(model_id, epoch, prepared_data_dir, gpu, pretrained_model, 
             'models',
             TRAINED_DATA_DIR,
             prepared_data_dir + os.sep + 'input.txt',
+            pretrained_vocab,
             use_wakatigaki,
             pretrained_model,
             None,

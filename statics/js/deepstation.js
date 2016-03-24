@@ -315,8 +315,8 @@ $('#start_train_btn').on('click', function(e){
     }
     var flipping_mode = $('#select_flipping_mode').val();
     var model_type = $(this).data('modeltype');
+    var vocab_file = $('#vocabulary_fileInput').val();
     var use_wakatigaki = $('#use_wakachigaki').prop('checked') ? 1 : 0;
-    
     var gpu_num = $('#gpu_num').val() || $('input[name="gpu_num"]:checked').val();
     if(dataset_id < 0) {
         alert('Select Dataset.');
@@ -332,6 +332,7 @@ $('#start_train_btn').on('click', function(e){
             avoid_flipping: flipping_mode,
             pretrained_model: pretrained_model,
             model_type: model_type,
+            vocab_file: vocab_file,
             use_wakatigaki: use_wakatigaki
         }, function(ret){
         if(ret.status === "OK") {
