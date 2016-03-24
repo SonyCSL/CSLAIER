@@ -20,12 +20,38 @@ import chainer.links as L
 from chainer import optimizers
 from chainer import serializers
 
+# gotten from http://qiita.com/tabe2314/items/6c0c1b769e12ab1e2614
+def copy_model(src, dst):
+    assert isinstance(src, link.Chain)
+    assert isinstance(dst, link.Chain)
+    for child in src.children():
+        if child.name not in dst.__dict__: continue
+        dst_child = dst[child.name]
+        if type(child) != type(dst_child): continue
+        if isinstance(child, link.Chain):
+            copy_model(child, dst_child)
+        if isinstance(child, link.Link):
+            match = True
+            for a, b in zip(child.namedparams(), dst_child.namedparams()):
+                if a[0] != b[0]:
+                    match = False
+                    break
+                if a[1].data.shape != b[1].data.shape:
+                    match = False
+                    break
+            if not match:
+                print ('Ignore %s because of parameter mismatch' % child.name)
+                continue
+            for a, b in zip(child.namedparams(), dst_child.namedparams()):
+                b[1].data = a[1].data
+            print ('Copy %s' % child.name)
+
 def load_module(dir_name, symbol):
     (file, path, description) = imp.find_module(symbol,[dir_name])
     return imp.load_module(symbol, file, path, description)
 
-def load_data(filename, use_mecab):
-    vocab = {}
+def load_data(filename, use_mecab,vocab):
+    # vocab = {}
     if use_mecab:
         words = codecs.open(filename, 'rb', 'utf-8').read().replace('\n', '<eos>').strip().split()
     else:
@@ -46,6 +72,7 @@ def train_lstm(
     model_dir,
     root_output_dir,
     filename,
+    vocabulary,
     use_mecab = False,
     initmodel = None,
     resume = None,
@@ -76,6 +103,13 @@ def train_lstm(
     model_name = re.sub(r"\.py$","", model_name)
     model_module = load_module(model_dir, model_name)
     
+    vocab = {}
+    vocab_size = 0
+    
+    if vocabulary != '':
+        vocab = pickle.load(open(vocabulary, 'rb'))
+        vocab_size = len(vocab)
+    
     output_dir = root_output_dir + os.sep + model_name
     if not os.path.exists(output_dir):
         os.mkdir(output_dir)
@@ -84,7 +118,7 @@ def train_lstm(
         cuda.check_cuda_available()
     xp = cuda.cupy if gpu >= 0 else np
     
-    train_data, words, vocab = load_data(filename, use_mecab)
+    train_data, words, vocab = load_data(filename, use_mecab,vocab)
     pickle.dump(vocab, open('%s/vocab2.bin'%output_dir, 'wb'))
     
     # Prepare model
@@ -104,13 +138,20 @@ def train_lstm(
     
     # Load pretrained model
     if initmodel is not None and initmodel.find("model") > -1:
-        print("Load model from : "+output_dir + os.sep + initmodel)
-        serializers.load_npz(output_dir + os.sep + initmodel, model)
-        # delete old models
-        pretrained_models = sorted(os.listdir(output_dir), reverse=True)
-        for m in pretrained_models:
-            if m.startswith('model') and initmodel != m:
-                os.remove(output_dir + os.sep + m)
+        if vocabulary == '':
+            print("Load model from : "+output_dir + os.sep + initmodel)
+            serializers.load_npz(output_dir + os.sep + initmodel, model)
+            # delete old models
+            pretrained_models = sorted(os.listdir(output_dir), reverse=True)
+            for m in pretrained_models:
+                if m.startswith('model') and initmodel != m:
+                    os.remove(output_dir + os.sep + m)
+        else:
+            lm2 = model_module.Network(vocab_size, rnn_size, dropout_ratio=dropout, train=False)
+            model2 = L.Classifier(lm2)
+            model2.compute_accuracy = False  # we only want the perplexity
+            copy_model(model2,model)
+            # TODO: delete old models?
         
     # Load pretrained optimizer
     if resume is not None and resume.find("state") > -1:
