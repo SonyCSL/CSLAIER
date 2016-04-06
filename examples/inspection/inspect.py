@@ -141,7 +141,7 @@ def inspect(image_path, mean, model_path, label, network_path, resize_mode, chan
         cuda.get_device(gpu).use()
         model.to_gpu()
         
-    output_side_length = model.insize
+    output_side_length = 256
         
     img = read_image(image_path, 256, 256, resize_mode,channels)
     cropwidth = 256 - output_side_length
