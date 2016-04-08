@@ -9,6 +9,10 @@ body {
     margin-left:30px;
 }
 
+h5 {
+    font-weight: bold;
+}
+
 body.noscroll {
     top: 70px;
     position: fixed;

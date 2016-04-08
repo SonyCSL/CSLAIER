@@ -306,6 +306,16 @@ def kick_train_start(db):
     gpu_num = bottle.request.forms.get('gpu_num')
     model_type = bottle.request.forms.get('model_type')
     use_wakatigaki = False
+    
+    row_ds = db.execute('select dataset_path, name from Dataset where id = ?', (dataset_id,))
+    (ds_path, dataset_name) = row_ds.fetchone()
+    prepared_file_path = PREPARED_DATA_DIR + os.sep + get_timestamp()
+    bottle.response.content_type = 'application/json'
+    try:
+        os.mkdir(prepared_file_path)
+    except:
+        return dumps({"status": "error", "traceback":traceback.format_exc(sys.exc_info()[2])})
+    
     if model_type == 'image':
         resize_mode = bottle.request.forms.get('resize_mode')
         channels = int(bottle.request.forms.get('channels'))
@@ -317,12 +327,18 @@ def kick_train_start(db):
         avoid_flipping = None
         use_wakati_temp = int(bottle.request.forms.get('use_wakatigaki'))
         use_wakatigaki = True if use_wakati_temp == 1 else False
-    row_ds = db.execute('select dataset_path, name from Dataset where id = ?', (dataset_id,))
-    (ds_path, dataset_name) = row_ds.fetchone()
-    prepared_file_path = PREPARED_DATA_DIR + os.sep + get_timestamp()
-    bottle.response.content_type = 'application/json'
+        if pretrained_model != "-1":
+            model_row = db.execute('select trained_model_path from Model where id = ?', (model_id,))
+            trained_model_path = model_row.fetchone()[0]
+            if trained_model_path:
+                pretrained_vocab = trained_model_path + os.sep + 'vocab2.bin'
+                if not os.path.exists(pretrained_vocab):
+                    return dumps({"status": "error", "traceback": "Could not find vocab2.bin file. It is possible that previsou train have failed."})
+            else:
+                pretrained_vocab = ''
+        else:
+            pretrained_vocab = ''
     try:
-        os.mkdir(prepared_file_path)
         db.execute('update Model set prepared_file_path = ?, epoch = ?, dataset_id = ?, resize_mode = ?, channels = ? where id = ?', (prepared_file_path, epoch, dataset_id, resize_mode, channels,  model_id))
         db.commit()
         if model_type == 'image':
@@ -330,7 +346,7 @@ def kick_train_start(db):
             start_imagenet_train(model_id, epoch, prepared_file_path, gpu_num,pretrained_model, db, avoid_flipping)
         else:
             input_data_path = prepare_texts_for_train(ds_path, prepared_file_path, use_wakatigaki)
-            start_lstm_train(model_id, epoch, prepared_file_path, gpu_num, pretrained_model, use_wakatigaki, db)
+            start_lstm_train(model_id, epoch, prepared_file_path, gpu_num, pretrained_model, pretrained_vocab, use_wakatigaki, db)
     except:
         return dumps({"status": "error", "traceback": traceback.format_exc(sys.exc_info()[2])})
     return dumps({"status": "OK", "dataset_name": dataset_name})
@@ -616,8 +632,14 @@ def api_kill_train(db):
     c = db.execute('select pid from Model where id = ?', (model_id,))
     pid = c.fetchone()[0]
     if pid is not None:
-        os.kill(pid, signal.SIGTERM)
-        db.execute('update Model set is_trained = 0, pid = null where id = ?', (model_id,))
+        try:
+            os.kill(pid, signal.SIGTERM)
+        except OSError as e:
+            print "Process already terminated.","ERROR NO:", e.errno,"-", e.strerror 
+        except:
+            print "Unexpected error:", sys.exc_info()[0]
+        finally:
+            db.execute('update Model set is_trained = 0, pid = null where id = ?', (model_id,))
     return dumps({'status': 'success', 'message': 'successfully terminated'})
 
 @app.route('/api/dataset/get_full_text/<filepath:path>')
@@ -679,8 +701,9 @@ def make_train_data(target_dir, prepared_data_dir, image_insize, resize_mode, ch
     count = 0
     for path, dirs, files in os.walk(target_dir):
         if not dirs:
-            start = path.rfind(os.sep) + 1
-            labelsTxt.write(path[start:].split(os.sep)[0] + "\n")
+            (head, tail) = os.path.split(path)
+            label_name = os.path.basename(head)
+            labelsTxt.write(label_name.encode('utf-8') + "\n")
             startCount = count
             length = len(files)
             for f in files:
@@ -877,7 +900,7 @@ def start_imagenet_train(model_id, epoch, prepared_data_dir, gpu, pretrained_mod
     db.commit()
     return
     
-def start_lstm_train(model_id, epoch, prepared_data_dir, gpu, pretrained_model, use_wakatigaki, db):
+def start_lstm_train(model_id, epoch, prepared_data_dir, gpu, pretrained_model,pretrained_vocab, use_wakatigaki, db):
     train_process = Process(
         target=train_lstm.train_lstm,
         args = (
@@ -886,6 +909,7 @@ def start_lstm_train(model_id, epoch, prepared_data_dir, gpu, pretrained_model, 
             'models',
             TRAINED_DATA_DIR,
             prepared_data_dir + os.sep + 'input.txt',
+            pretrained_vocab,
             use_wakatigaki,
             pretrained_model,
             None,

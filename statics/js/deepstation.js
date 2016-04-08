@@ -301,10 +301,12 @@ $('#epoch_select').on('keypress, change', function(e){
 });
 
 $('#start_train_btn').on('click', function(e){
-    $('#start_train_modal').modal('hide');
-    $('#processing_screen').removeClass('hidden');
     var model_id = $('#model_id').val();
     var dataset_id = parseInt($('#select_dataset').val(), 10);
+    if(dataset_id < 0) {
+        alert('Select Dataset.');
+        return;
+    }
     var epoch = $('#epoch_input').val();
     var pretrained_model = $('#select_pretrainedmodel').val() == -1 ? 'New' : $('#select_pretrainedmodel').val();
     var resize_mode = $('#select_resize_mode').val();
@@ -316,36 +318,42 @@ $('#start_train_btn').on('click', function(e){
     var flipping_mode = $('#select_flipping_mode').val();
     var model_type = $(this).data('modeltype');
     var use_wakatigaki = $('#use_wakachigaki').prop('checked') ? 1 : 0;
-    
     var gpu_num = $('#gpu_num').val() || $('input[name="gpu_num"]:checked').val();
-    if(dataset_id < 0) {
-        alert('Select Dataset.');
-        return;
-    }
-    $.post('/models/start/train',{
-            model_id: model_id,
-            dataset_id: dataset_id,
-            epoch: epoch,
-            gpu_num: gpu_num,
-            resize_mode: resize_mode,
-            channels: channels,
-            avoid_flipping: flipping_mode,
-            pretrained_model: pretrained_model,
-            model_type: model_type,
-            use_wakatigaki: use_wakatigaki
-        }, function(ret){
+    
+    $('#start_train_modal').modal('hide');
+    $('#processing_screen').removeClass('hidden');
+
+    var formData = new FormData();
+    formData.append("model_id", model_id);
+    formData.append("dataset_id", dataset_id);
+    formData.append("epoch", epoch);
+    formData.append("gpu_num", gpu_num);
+    formData.append("resize_mode",resize_mode);
+    formData.append("channels", channels);
+    formData.append("avoid_flipping",flipping_mode);
+    formData.append("pretrained_model", pretrained_model);
+    formData.append("model_type",model_type);
+    formData.append("use_wakatigaki", use_wakatigaki);
+                         
+    $.ajax({
+           url: "/models/start/train",
+           data: formData,
+           method: "POST",
+           processData: false,
+           contentType: false,
+    }).done(function(ret){
         if(ret.status === "OK") {
             $('#processing_screen').addClass('hidden');
             $('#start_train_div').addClass('hidden');
             $('#model_detail_buttons').addClass('hidden');
             $('span.label.label-nottrained')
-                .removeClass('label-nottrained')
-                .addClass('label-progress')
-                .text('In Progress');
+            .removeClass('label-nottrained')
+            .addClass('label-progress')
+            .text('In Progress');
             $('span.label.label-trained')
-                .removeClass('label-trained')
-                .addClass('label-progress')
-                .text('In Progress');
+            .removeClass('label-trained')
+            .addClass('label-progress')
+            .text('In Progress');
             $('#terminate_train_button').removeClass('hidden');
             $('#delete_model_button').addClass('hidden');
             $('#epoch_info').text(epoch);
@@ -358,11 +366,12 @@ $('#start_train_btn').on('click', function(e){
         alert('Failed to start train.');
         $('#processing_screen').addClass('hidden');
         return;
-    })
-    .fail(function(){
-        alert('Failed to start train.');
-        $('#processing_screen').addClass('hidden');
+
+    }).fail(function(ret){
+            alert('Failed to start train.');
+            $('#processing_screen').addClass('hidden');
     });
+
 });
 
 $('#delete_model_button').on('click', function(e){
