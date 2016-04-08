@@ -300,24 +300,13 @@ $('#epoch_select').on('keypress, change', function(e){
     }
 });
 
-var vocabulary_file;
-
-// Add events
-$('vocabulary_fileInput').on('change', prepareUpload);
-
-// Grab the files and set them to our variable
-function prepareUpload(event)
-{
-    vocabulary_file = event.target.files[0];
-}
-
 $('#start_train_btn').on('click', function(e){
-                         
-    var formData = new FormData();
-    $('#start_train_modal').modal('hide');
-    $('#processing_screen').removeClass('hidden');
     var model_id = $('#model_id').val();
     var dataset_id = parseInt($('#select_dataset').val(), 10);
+    if(dataset_id < 0) {
+        alert('Select Dataset.');
+        return;
+    }
     var epoch = $('#epoch_input').val();
     var pretrained_model = $('#select_pretrainedmodel').val() == -1 ? 'New' : $('#select_pretrainedmodel').val();
     var resize_mode = $('#select_resize_mode').val();
@@ -328,14 +317,13 @@ $('#start_train_btn').on('click', function(e){
     }
     var flipping_mode = $('#select_flipping_mode').val();
     var model_type = $(this).data('modeltype');
-    var vocab_file = vocabulary_file;
     var use_wakatigaki = $('#use_wakachigaki').prop('checked') ? 1 : 0;
     var gpu_num = $('#gpu_num').val() || $('input[name="gpu_num"]:checked').val();
-    if(dataset_id < 0) {
-        alert('Select Dataset.');
-        return;
-    }
     
+    $('#start_train_modal').modal('hide');
+    $('#processing_screen').removeClass('hidden');
+
+    var formData = new FormData();
     formData.append("model_id", model_id);
     formData.append("dataset_id", dataset_id);
     formData.append("epoch", epoch);
@@ -346,11 +334,10 @@ $('#start_train_btn').on('click', function(e){
     formData.append("pretrained_model", pretrained_model);
     formData.append("model_type",model_type);
     formData.append("use_wakatigaki", use_wakatigaki);
-    formData.append("vocab_file", vocabulary_file);
                          
     $.ajax({
            url: "/models/start/train",
-           data: form_data,
+           data: formData,
            method: "POST",
            processData: false,
            contentType: false,

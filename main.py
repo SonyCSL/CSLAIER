@@ -306,6 +306,16 @@ def kick_train_start(db):
     gpu_num = bottle.request.forms.get('gpu_num')
     model_type = bottle.request.forms.get('model_type')
     use_wakatigaki = False
+    
+    row_ds = db.execute('select dataset_path, name from Dataset where id = ?', (dataset_id,))
+    (ds_path, dataset_name) = row_ds.fetchone()
+    prepared_file_path = PREPARED_DATA_DIR + os.sep + get_timestamp()
+    bottle.response.content_type = 'application/json'
+    try:
+        os.mkdir(prepared_file_path)
+    except:
+        return dumps({"status": "error", "traceback":traceback.format_exc(sys.exc_info()[2])})
+    
     if model_type == 'image':
         resize_mode = bottle.request.forms.get('resize_mode')
         channels = int(bottle.request.forms.get('channels'))
@@ -315,28 +325,20 @@ def kick_train_start(db):
         resize_mode = None
         channels = None
         avoid_flipping = None
-        upload = bottle.request.files.get('vocab_file')
-        name, ext = os.path.splitext(upload.filename)
-        if name == "":
-            pretrained_vocab = ""
-        else:
-            if ext not in ('.bin'):
-                return show_error_screen("File extension not allowed.")
-            timestamp_str = get_timestamp()
-            new_filename = PREPARED_DATA_DIR + os.sep + timestamp_str + upload.filename
-            try:
-                upload.save(new_filename)
-                pretrained_vocab = new_filename
-            except:
-                return show_error_screen(traceback.format_exc(sys.exc_info()[2]))
         use_wakati_temp = int(bottle.request.forms.get('use_wakatigaki'))
         use_wakatigaki = True if use_wakati_temp == 1 else False
-    row_ds = db.execute('select dataset_path, name from Dataset where id = ?', (dataset_id,))
-    (ds_path, dataset_name) = row_ds.fetchone()
-    prepared_file_path = PREPARED_DATA_DIR + os.sep + get_timestamp()
-    bottle.response.content_type = 'application/json'
+        if pretrained_model != "-1":
+            model_row = db.execute('select trained_model_path from Model where id = ?', (model_id,))
+            trained_model_path = model_row.fetchone()[0]
+            if trained_model_path:
+                pretrained_vocab = trained_model_path + os.sep + 'vocab2.bin'
+                if not os.path.exists(pretrained_vocab):
+                    return dumps({"status": "error", "traceback": "Could not find vocab2.bin file. It is possible that previsou train have failed."})
+            else:
+                pretrained_vocab = ''
+        else:
+            pretrained_vocab = ''
     try:
-        os.mkdir(prepared_file_path)
         db.execute('update Model set prepared_file_path = ?, epoch = ?, dataset_id = ?, resize_mode = ?, channels = ? where id = ?', (prepared_file_path, epoch, dataset_id, resize_mode, channels,  model_id))
         db.commit()
         if model_type == 'image':
@@ -630,8 +632,14 @@ def api_kill_train(db):
     c = db.execute('select pid from Model where id = ?', (model_id,))
     pid = c.fetchone()[0]
     if pid is not None:
-        os.kill(pid, signal.SIGTERM)
-        db.execute('update Model set is_trained = 0, pid = null where id = ?', (model_id,))
+        try:
+            os.kill(pid, signal.SIGTERM)
+        except OSError as e:
+            print "Process already terminated.","ERROR NO:", e.errno,"-", e.strerror 
+        except:
+            print "Unexpected error:", sys.exc_info()[0]
+        finally:
+            db.execute('update Model set is_trained = 0, pid = null where id = ?', (model_id,))
     return dumps({'status': 'success', 'message': 'successfully terminated'})
 
 @app.route('/api/dataset/get_full_text/<filepath:path>')
