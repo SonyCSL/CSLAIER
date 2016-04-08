@@ -9,6 +9,7 @@ import codecs
 import imp
 import re
 import sqlite3
+import shutil
 
 import numpy as np
 import six
@@ -138,11 +139,6 @@ def train_lstm(
         if vocabulary == '':
             print("Load model from : "+output_dir + os.sep + initmodel)
             serializers.load_npz(output_dir + os.sep + initmodel, model)
-            # delete old models
-            pretrained_models = sorted(os.listdir(output_dir), reverse=True)
-            for m in pretrained_models:
-                if m.startswith('model') and initmodel != m:
-                    os.remove(output_dir + os.sep + m)
         else:
             lm2 = model_module.Network(vocab_size, rnn_size, dropout_ratio=dropout, train=False)
             model2 = L.Classifier(lm2)
@@ -150,6 +146,12 @@ def train_lstm(
             print("Load model from : "+output_dir + os.sep + initmodel)
             serializers.load_npz(output_dir + os.sep + initmodel, model2)
             copy_model(model2,model)
+        # delete old models
+        shutil.copyfile(output_dir + os.sep + initmodel, output_dir + os.sep + 'previous_' + initmodel)
+        pretrained_models = sorted(os.listdir(output_dir), reverse=True)
+        for m in pretrained_models:
+            if m.startswith('model') and initmodel != m:
+                os.remove(output_dir + os.sep + m)
 
     if gpu >= 0:
         cuda.get_device(gpu).use()
@@ -161,7 +163,10 @@ def train_lstm(
         serializers.load_npz(output_dir + os.sep +resume, optimizer)
     # TODO: delete old states ??
     
-    # TODO: delete layer visualization cache
+    # delete layer visualization cache
+    for f in os.listdir(output_dir):
+        if os.path.isdir(output_dir + os.sep + f):
+            shutil.rmtree(output_dir + os.sep + f)
     
     use_wakatigaki = 1 if use_mecab else 0
     db.execute('update Model set epoch = ?, trained_model_path = ?, is_trained = 1, line_graph_data_path = ?, use_wakatigaki = ? where id = ?', (n_epoch, output_dir, output_dir + os.sep + 'line_graph.tsv', use_wakatigaki, model_id))
@@ -222,7 +227,7 @@ def train_lstm(
             serializers.save_npz(output_dir + os.sep + 'rnnlm.state', optimizer)
 
         sys.stdout.flush()
-        
+    os.remove(output_dir + os.sep + 'previous_' + initmodel) # delete backup file
     log_file.write('===== finish train. =====')
     log_file.close()
     #graph_tsv.close()
