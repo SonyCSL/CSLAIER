@@ -637,6 +637,9 @@ def compute_mean(prepared_data_dir):
         image = numpy.asarray(Image.open(filepath))
         if image.ndim == 3:
             image = image.transpose(2, 0, 1)
+        else:
+            zeros = numpy.zeros((256, 256))
+            image = numpy.array([image, zeros, zeros])
         if sum_image is None:
             sum_image = numpy.ndarray(image.shape, dtype=numpy.float32)
             sum_image[:] = image
