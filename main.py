@@ -254,7 +254,7 @@ def kick_train_start(db):
     bottle.response.content_type = 'application/json'
     try:
         os.mkdir(prepared_file_path)
-        db.execute('update Model set prepared_file_path = ?, epoch = ?, is_trained = 1, dataset_id = ?, resize_mode = ?, channels = ? where id = ?', (prepared_file_path, epoch, dataset_id, resize_mode, channels,  model_id))
+        db.execute('update Model set prepared_file_path = ?, epoch = ?, dataset_id = ?, resize_mode = ?, channels = ? where id = ?', (prepared_file_path, epoch, dataset_id, resize_mode, channels,  model_id))
         db.commit()
         prepare_for_train(ds_path, prepared_file_path,image_size, resize_mode, channels)
         start_train(model_id, epoch, prepared_file_path, gpu_num,pretrained_model, db, avoid_flipping)
