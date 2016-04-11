@@ -227,7 +227,8 @@ def train_lstm(
             serializers.save_npz(output_dir + os.sep + 'rnnlm.state', optimizer)
 
         sys.stdout.flush()
-    os.remove(output_dir + os.sep + 'previous_' + initmodel) # delete backup file
+    if os.path.exists(output_dir + os.sep + 'previous_' + initmodel):
+        os.remove(output_dir + os.sep + 'previous_' + initmodel) # delete backup file
     log_file.write('===== finish train. =====')
     log_file.close()
     #graph_tsv.close()

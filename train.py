@@ -285,4 +285,5 @@ def do_train(db_path, train, test, mean, root_output_dir, model_dir, model_id, b
     db.execute('update Model set is_trained = 2, pid = null where id = ?', (model_id,))
     conn.commit()
     db.close()
-    os.remove(output_dir + os.sep + 'previous_' + pretrained_model) #delete backup file
+    if os.path.exists(output_dir + os.sep + 'previous_' + pretrained_model):
+        os.remove(output_dir + os.sep + 'previous_' + pretrained_model) #delete backup file
