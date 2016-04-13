@@ -36,7 +36,12 @@ def load_image_list(path):
 
 def read_image(path, model_insize, mean_image, center=False, flip=False):
     cropwidth = 256 - model_insize
-    image = np.asarray(Image.open(path)).transpose(2, 0, 1)
+    image = np.asarray(Image.open(path))
+    if len(image.shape) == 3:
+        image = image.transpose(2, 0, 1)
+    else:
+        zeros = np.zeros((256,256))
+        image = np.array([image, zeros, zeros])
     if center:
         top = left = cropwidth / 2
     else:

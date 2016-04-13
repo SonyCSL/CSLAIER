@@ -148,10 +148,14 @@ def inspect(image_path, mean, model_path, label, network_path, resize_mode, chan
     top = left = cropwidth / 2
     bottom = output_side_length + top
     right = output_side_length + left
-    img = img[:, top:bottom, left:right]
     
     if img.ndim == 3:
+        img = img[:, top:bottom, left:right]
         img = img.transpose(2, 0, 1)
+    else:
+        img = img[top:bottom, left:right]
+        zeros = np.zeros((output_side_length, output_side_length))
+        img = np.array([ img, output_side_length, output_side_length])
     img = img.astype(np.float32)
     img -= mean_image
     img /= 255
