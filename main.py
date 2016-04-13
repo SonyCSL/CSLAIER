@@ -101,7 +101,16 @@ def index(db):
         if d[3] == "image":
             datasets.append({"id": d[0], "name": d[1], "dataset_path": d[2], "dataset_type": d[3], "thumbnails": get_files_in_random_order(d[2], 4), "file_num": count_files(d[2]), "category_num": count_categories(d[2])})
         elif d[3] == "text":
-            datasets.append({"id": d[0], "name": d[1], "dataset_path": d[2], "dataset_type": d[3], "sample_text": get_texts_in_random_order(d[2], 1, 180), "file_num": count_files(d[2]), "category_num": count_categories(d[2])})
+            filesize = get_file_size_all(d[2])
+            if filesize / 1024 < 1:
+                ret_filesize = str(filesize) + 'bytes'
+            elif filesize / 1024 / 1024 < 1:
+                ret_filesize = str(filesize / 1024) + 'k bytes'
+            elif filesize / 1024 / 1024 / 1024 < 1:
+                ret_filesize = str(filesize / 1024 / 1024) + 'M bytes'
+            else:
+                ret_filesize = str(filesize / 1024 / 1024 / 1024) + 'G Bytes'
+            datasets.append({"id": d[0], "name": d[1], "dataset_path": d[2], "dataset_type": d[3], "sample_text": get_texts_in_random_order(d[2], 1, 180), "file_num": count_files(d[2]), "category_num": count_categories(d[2]), "filesize": ret_filesize})
     return bottle.template('index.html', models = models.fetchall(), datasets = datasets, system_info = get_system_info(), gpu_info = get_gpu_info(), chainer_version = get_chainer_version(), python_version = get_python_version(), deepstation_version = DEEPSTATION_VERSION)
 
 @app.route('/inspection/upload', method='POST')
@@ -1026,7 +1035,13 @@ def count_categories(path):
             if os.path.isdir(path + os.sep + c):
                 count += 1
     return count
-    
+
+def get_file_size_all(path):
+    size = 0
+    for f in find_all_files(path):
+        size += os.path.getsize(path)
+    return size
+
 def get_gpu_info():
     ret = {}
     current_platform = platform.system()
@@ -1037,7 +1052,6 @@ def get_gpu_info():
             xml = subprocess.check_output([NVIDIA_SMI_CMD, '-q', '-x'])
     except:
         return {'error': 'command_not_available'}
-		
     elem = fromstring(xml)
     ret['driver_version'] = elem.find('driver_version').text
     gpus = elem.findall('gpu')
