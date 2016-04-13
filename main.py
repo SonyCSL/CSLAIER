@@ -1042,7 +1042,7 @@ def count_categories(path):
 def get_file_size_all(path):
     size = 0
     for f in find_all_files(path):
-        size += os.path.getsize(path)
+        size += os.path.getsize(f)
     return size
 
 def get_gpu_info():
