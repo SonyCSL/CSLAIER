@@ -173,7 +173,9 @@ def train_lstm(
     conn.commit()
     
     log_file = open(output_dir + os.sep + 'log.html', 'w')
-    #graph_tsv = open(output_dir + os.sep + 'line_graph.tsv', 'w')
+    graph_tsv = open(output_dir + os.sep + 'line_graph.tsv', 'w')
+    graph_tsv.write('count\tepoch\tperplexity\n')
+    graph_tsv.flush()
     
     # Learning loop
     whole_len = train_data.shape[0]
@@ -183,6 +185,7 @@ def train_lstm(
     start_at = time.time()
     cur_at = start_at
     accum_loss = 0
+    loss_for_graph = xp.zeros(())
     batch_idxs = list(range(batchsize))
     log_file.write("going to train {} iterations<br>".format(jump * n_epoch))
     log_file.flush()
@@ -193,6 +196,7 @@ def train_lstm(
                                     [train_data[(jump * j + i + 1) % whole_len] for j in batch_idxs]))
         loss_i = model(x, t)
         accum_loss += loss_i
+        loss_for_graph += loss_i.data
         cur_log_perp += loss_i.data
     
         if (i + 1) % bprop_len == 0:  # Run truncated BPTT
@@ -210,6 +214,12 @@ def train_lstm(
             log_file.flush()
             cur_at = now
             cur_log_perp.fill(0)
+            
+        if (i + 1) % 100 == 0:
+            perp_for_graph = math.exp(float(loss_for_graph) / 100)
+            graph_tsv.write('{}\t{}\t{:.2f}\n'.format(i+1,epoch,perp_for_graph))
+            graph_tsv.flush()
+            loss_for_graph.fill(0)
     
         if (i + 1) % jump == 0:
             epoch += 1
@@ -231,7 +241,7 @@ def train_lstm(
         os.remove(output_dir + os.sep + 'previous_' + initmodel) # delete backup file
     log_file.write('===== finish train. =====')
     log_file.close()
-    #graph_tsv.close()
+    graph_tsv.close()
     db.execute('update Model set is_trained = 2, pid = null where id = ?', (model_id,))
     conn.commit()
     db.close()
