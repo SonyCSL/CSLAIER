@@ -593,7 +593,6 @@ var  update_train_log = function(){
     draw_train_graph();
 }
 
-
 $('#graph_tab').on('click', function(e){
     last_draw_time=0;
     draw_train_graph();
@@ -601,158 +600,224 @@ $('#graph_tab').on('click', function(e){
 
 var last_draw_time = 0;
 var draw_train_graph = function(){
-
     if( ($.now() - last_draw_time) < 30000) return;
-    
     last_draw_time = $.now()
-
     var model_id = $('#model_id').val();
     $.get('/api/models/get_training_data/' + model_id, function(ret){
         if(ret.status != 'ready') return;
-        $('#training_graph').empty();
-        // スケールと出力レンジの定義
-        var margin = {top: 20, right: 20, bottom: 30, left: 50};
-        var width = 550 - margin.left - margin.right;
-        var height = 450 - margin.top - margin.bottom;
-        
-        var xEpoch       = d3.scale.linear().range([0, width]);
-        var xCount       = d3.scale.linear().range([0, width]);    
-        var yLoss        = d3.scale.linear().range([height, 0]);
-        var yValLoss     = d3.scale.linear().range([height, 0]);
-        var yAccuracy    = d3.scale.linear().range([height, 0]);
-        var yValAccuracy = d3.scale.linear().range([height, 0]);
-        
+        if(ret.data.indexOf('perplexity') > -1) {
+            drawLSTMResultGraph(ret.data);
+        } else {
+            drawImagenetResultGraph(ret.data);
+        }
+    });
+};
+
+var drawLSTMResultGraph = function(data){
+    $('#training_graph').empty();
+    var margin = {top: 20, right: 20, bottom: 30, left: 50};
+    var width = 550 - margin.left - margin.right;
+    var height = 450 - margin.top - margin.bottom;
     
-        // 軸の定義
-        var xAxis         = d3.svg.axis()
-                            .scale(xEpoch)
-                            .orient("bottom")
-                            .innerTickSize(-height)
-                            .outerTickSize(0)
-                            .tickPadding(10);
-        var yAxisLoss     = d3.svg.axis().scale(yLoss).orient("left");
-        var yAxisAccuracy = d3.svg.axis().scale(yAccuracy).orient("right");
+    var xEpoch      = d3.scale.linear().range([0, width]);
+    var xCount      = d3.scale.linear().range([0, width]);
+    var yPerplexity = d3.scale.linear().range([height, 0]);
     
-        // 線の定義
-        var lineLoss = d3.svg.line()
-                .x(function(d) { return xCount(d.count); })
-                .y(function(d) { return yLoss(d.loss); });
-        var lineValLoss = d3.svg.line()
-                .x(function(d) { return xCount(d.count)})
-                .y(function(d) { return yValLoss(d.val_loss)});
-        var lineAccuracy = d3.svg.line()
-                .x(function(d) { return xCount(d.count); })
-                .y(function(d) { return yAccuracy(d.accuracy); });
-        var lineValAccuracy = d3.svg.line()
-                .x(function(d) { return xCount(d.count); })
-                .y(function(d) { return yValAccuracy(d.val_accuracy); });
-                
-        var svg = d3.select("#training_graph").append('svg')
-            .attr('width', 630).attr('height', 460)
-            .append('g').attr("transform", "translate(0,0)");;
-        var parsedData = d3.tsv.parse(ret.data, function(){
-            var count = -1;
-            return function(data){
-                count++;
-                var SAMPLING_RATE = 10;
-                if(!data['loss(val)'] && count % SAMPLING_RATE != 0) return;
-                data.count = count;
-                data.epoch = +data.epoch;
-                data.loss = data.loss ? +data.loss : null;
-                data.accuracy = data.accuracy ? +data.accuracy : null;
-                data.val_loss = data['loss(val)'] ? +data['loss(val)'] : null;
-                data.val_accuracy = data['accuracy(val)'] ? +data['accuracy(val)'] : null;
-                return data;
-            };
-        }());
-        
-        var train_accuracy_data = _.filter(parsedData, function(obj){
-            if(obj.accuracy) return true;
-        });
-        var train_loss_data = _.filter(parsedData, function(obj){
-            if(obj.loss) return true;
-        });
-        var val_accuracy_data = _.filter(parsedData, function(obj){
-            if(obj.val_accuracy) return true;
-        });
-        var val_loss_data = _.filter(parsedData, function(obj){
-            if(obj.val_loss) return true;
-        });
-        
-        xEpoch.domain(d3.extent(parsedData, function(d) { return d.epoch; }));
-        xCount.domain(d3.extent(parsedData, function(d) { return d.count}));
-        var loss_max = d3.max(train_loss_data.concat(val_loss_data), function(d){ return d.loss || d.val_loss});
-        yLoss.domain([0, loss_max]);
-        yAccuracy.domain([0, 1]);
-        yValLoss.domain([0, loss_max]);
-        yValAccuracy.domain([0, 1]);
-        
-        // loss
-        svg.append("path")
-            .datum(train_loss_data)
-            .attr("class", "line-loss")
-            .attr("transform", "translate(" + margin.left + ",0)")
-            .attr("d", lineLoss);
-        // accuracy
-        svg.append("path")
-            .datum(train_accuracy_data)
-            .attr("class", "line-accuracy")
-            .attr("transform", "translate(" + margin.left + ",0)")
-            .attr("d", lineAccuracy);
-        // loss(val)
-        svg.append("path")
-            .datum(val_loss_data)
-            .attr("class", "line-val-loss")
-            .attr("transform", "translate(" + margin.left + ",0)")
-            .attr("d", lineValLoss);
-        // accuracy(val)
-        svg.append("path")
-            .datum(val_accuracy_data)
-            .attr("class", "line-val-accuracy")
-            .attr("transform", "translate(" + margin.left + ",0)")
-            .attr("d", lineValAccuracy);
-        // x axis(epoch)
-        svg.append("g")
-            .attr("class", "x axis")
-            .attr("fill", "white")
-            .attr("transform", "translate(" + margin.left + ",410)")
-            .call(xAxis);
-        // y axis left side(loss)
-        svg.append("g")
-            .attr("class", "y axis")
-            .attr("transform", "translate(" + margin.left + ",0)")
-            .attr("fill", "white")
-            .call(yAxisLoss)
-            .append("text")
-            .attr("y", 6)
-            .attr("x", 5)
-            .attr("dy", ".71em")
-            .attr("fill", "white")
-            .style("text-anchor", "start")
-            .text("loss");
-        // y axis right side(accuracy)
-        svg.append("g")
-            .attr("class", "y axis")
-            .attr("transform", "translate(" + (width + margin.left + 10)+",0)")
-            .attr("fill", "white")
-            .call(yAxisAccuracy)
-            .append("text")
-            .attr("y", 6)
-            .attr("x", -5)
-            .attr("dy", ".71em")
-            .attr("fill", "white")
-            .style("text-anchor", "end")
-            .text("accuracy")
-        // legend
-        var legend_data = [
-            {title: "loss", color:"steelblue"},
-            {title: "accuracy", color:"orange"},
-            {title: "loss(val)", color:"#0c0"},
-            {title: "accuracy(val)", color:"red"}
-        ];
-        _.each(legend_data, function(d, i){
-            addLegend(svg, d.title, d.color, i);
-        });
+    // 軸の定義
+    var xAxis          = d3.svg.axis()
+                         .scale(xEpoch)
+                         .orient("bottom")
+                         .innerTickSize(-height)
+                         .outerTickSize(0)
+                         .tickPadding(10);
+    var yAxisPerplexity = d3.svg.axis().scale(yPerplexity).orient("left");
+
+    // 線の定義
+    var linePerplexity = d3.svg.line()
+            .x(function(d) { return xCount(d.count); })
+            .y(function(d) { return yPerplexity(d.perplexity); });
+
+    var svg = d3.select("#training_graph").append('svg')
+        .attr('width', 630).attr('height', 460)
+        .append('g').attr("transform", "translate(0,0)");
+
+    var parsedData = d3.tsv.parse(data);
+
+    xEpoch.domain(d3.extent(parsedData, function(d) { return d.epoch; }));
+    xCount.domain(d3.extent(parsedData, function(d) { return d.count}));
+    yPerplexity.domain([0, d3.max(parsedData).perplexity]);
+
+    // loss
+    svg.append("path")
+        .datum(parsedData)
+        .attr("class", "line-loss")
+        .attr("transform", "translate(" + margin.left + ",0)")
+        .attr("d", linePerplexity);
+    // x axis(epoch)
+    svg.append("g")
+        .attr("class", "x axis")
+        .attr("fill", "white")
+        .attr("transform", "translate(" + margin.left + ",410)")
+        .call(xAxis);
+    // y axis right side(perplexity)
+    svg.append("g")
+        .attr("class", "y axis")
+        .attr("transform", "translate(" + margin.left + ",0)")
+        .attr("fill", "white")
+        .call(yAxisPerplexity)
+    // legend
+    var legend_data = [
+        {title: "Perplexity", color:"steelblue"},
+    ];
+    _.each(legend_data, function(d, i){
+        addLegend(svg, d.title, d.color, i);
+    });
+};
+
+var drawImagenetResultGraph = function(data){
+    $('#training_graph').empty();
+    // スケールと出力レンジの定義
+    var margin = {top: 20, right: 20, bottom: 30, left: 50};
+    var width = 550 - margin.left - margin.right;
+    var height = 450 - margin.top - margin.bottom;
+    
+    var xEpoch       = d3.scale.linear().range([0, width]);
+    var xCount       = d3.scale.linear().range([0, width]);    
+    var yLoss        = d3.scale.linear().range([height, 0]);
+    var yValLoss     = d3.scale.linear().range([height, 0]);
+    var yAccuracy    = d3.scale.linear().range([height, 0]);
+    var yValAccuracy = d3.scale.linear().range([height, 0]);
+    
+
+    // 軸の定義
+    var xAxis         = d3.svg.axis()
+                        .scale(xEpoch)
+                        .orient("bottom")
+                        .innerTickSize(-height)
+                        .outerTickSize(0)
+                        .tickPadding(10);
+    var yAxisLoss     = d3.svg.axis().scale(yLoss).orient("left");
+    var yAxisAccuracy = d3.svg.axis().scale(yAccuracy).orient("right");
+
+    // 線の定義
+    var lineLoss = d3.svg.line()
+            .x(function(d) { return xCount(d.count); })
+            .y(function(d) { return yLoss(d.loss); });
+    var lineValLoss = d3.svg.line()
+            .x(function(d) { return xCount(d.count)})
+            .y(function(d) { return yValLoss(d.val_loss)});
+    var lineAccuracy = d3.svg.line()
+            .x(function(d) { return xCount(d.count); })
+            .y(function(d) { return yAccuracy(d.accuracy); });
+    var lineValAccuracy = d3.svg.line()
+            .x(function(d) { return xCount(d.count); })
+            .y(function(d) { return yValAccuracy(d.val_accuracy); });
+            
+    var svg = d3.select("#training_graph").append('svg')
+        .attr('width', 630).attr('height', 460)
+        .append('g').attr("transform", "translate(0,0)");;
+    var parsedData = d3.tsv.parse(data, function(){
+        var count = -1;
+        return function(data){
+            count++;
+            var SAMPLING_RATE = 10;
+            if(!data['loss(val)'] && count % SAMPLING_RATE != 0) return;
+            data.count = count;
+            data.epoch = +data.epoch;
+            data.loss = data.loss ? +data.loss : null;
+            data.accuracy = data.accuracy ? +data.accuracy : null;
+            data.val_loss = data['loss(val)'] ? +data['loss(val)'] : null;
+            data.val_accuracy = data['accuracy(val)'] ? +data['accuracy(val)'] : null;
+            return data;
+        };
+    }());
+    
+    var train_accuracy_data = _.filter(parsedData, function(obj){
+        if(obj.accuracy) return true;
+    });
+    var train_loss_data = _.filter(parsedData, function(obj){
+        if(obj.loss) return true;
+    });
+    var val_accuracy_data = _.filter(parsedData, function(obj){
+        if(obj.val_accuracy) return true;
+    });
+    var val_loss_data = _.filter(parsedData, function(obj){
+        if(obj.val_loss) return true;
+    });
+    
+    xEpoch.domain(d3.extent(parsedData, function(d) { return d.epoch; }));
+    xCount.domain(d3.extent(parsedData, function(d) { return d.count}));
+    var loss_max = d3.max(train_loss_data.concat(val_loss_data), function(d){ return d.loss || d.val_loss});
+    yLoss.domain([0, loss_max]);
+    yAccuracy.domain([0, 1]);
+    yValLoss.domain([0, loss_max]);
+    yValAccuracy.domain([0, 1]);
+    
+    // loss
+    svg.append("path")
+        .datum(train_loss_data)
+        .attr("class", "line-loss")
+        .attr("transform", "translate(" + margin.left + ",0)")
+        .attr("d", lineLoss);
+    // accuracy
+    svg.append("path")
+        .datum(train_accuracy_data)
+        .attr("class", "line-accuracy")
+        .attr("transform", "translate(" + margin.left + ",0)")
+        .attr("d", lineAccuracy);
+    // loss(val)
+    svg.append("path")
+        .datum(val_loss_data)
+        .attr("class", "line-val-loss")
+        .attr("transform", "translate(" + margin.left + ",0)")
+        .attr("d", lineValLoss);
+    // accuracy(val)
+    svg.append("path")
+        .datum(val_accuracy_data)
+        .attr("class", "line-val-accuracy")
+        .attr("transform", "translate(" + margin.left + ",0)")
+        .attr("d", lineValAccuracy);
+    // x axis(epoch)
+    svg.append("g")
+        .attr("class", "x axis")
+        .attr("fill", "white")
+        .attr("transform", "translate(" + margin.left + ",410)")
+        .call(xAxis);
+    // y axis left side(loss)
+    svg.append("g")
+        .attr("class", "y axis")
+        .attr("transform", "translate(" + margin.left + ",0)")
+        .attr("fill", "white")
+        .call(yAxisLoss)
+        .append("text")
+        .attr("y", 6)
+        .attr("x", 5)
+        .attr("dy", ".71em")
+        .attr("fill", "white")
+        .style("text-anchor", "start")
+        .text("loss");
+    // y axis right side(accuracy)
+    svg.append("g")
+        .attr("class", "y axis")
+        .attr("transform", "translate(" + (width + margin.left + 10)+",0)")
+        .attr("fill", "white")
+        .call(yAxisAccuracy)
+        .append("text")
+        .attr("y", 6)
+        .attr("x", -5)
+        .attr("dy", ".71em")
+        .attr("fill", "white")
+        .style("text-anchor", "end")
+        .text("accuracy")
+    // legend
+    var legend_data = [
+        {title: "loss", color:"steelblue"},
+        {title: "accuracy", color:"orange"},
+        {title: "loss(val)", color:"#0c0"},
+        {title: "accuracy(val)", color:"red"}
+    ];
+    _.each(legend_data, function(d, i){
+        addLegend(svg, d.title, d.color, i);
     });
 };
 

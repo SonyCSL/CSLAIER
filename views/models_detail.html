@@ -106,9 +106,7 @@
                 <div class="col-md-8 full-height">
                     <ul class="nav nav-tabs">
                         <li role="presentation" class="" id="log_tab"><a href="#">Log</a></li>
-                        % if model_info['type'] == 'image':
-                            <li role="presentation" class="" id="graph_tab"><a href="#">Result</a></li>
-                        % end
+                        <li role="presentation" class="" id="graph_tab"><a href="#">Result</a></li>
                         <li role="presentation" class="active" id="network_tab"><a href="#">Network</a></li>
                         % if model_info['is_trained'] is 2:
                             <li role="presentation" class="" id="layer_tab"><a href="#">Layers</a></li>
@@ -121,11 +119,9 @@
                             <pre id="training_log"></pre>
                         </div>
                     </div>
-                    % if model_info['type'] == 'image':
-                        <div id="model_detail_graph" class="hidden">
-                            <p id="training_graph">Graph Not Ready</p>
-                        </div>
-                    % end
+                    <div id="model_detail_graph" class="hidden">
+                        <p id="training_graph">Graph Not Ready</p>
+                    </div>
                     <div id="model_detail_network" class="full-height">
                         <div class="form-group has-textarea">
                             % if model_info['is_trained'] is 1:
