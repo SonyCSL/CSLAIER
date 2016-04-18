@@ -118,19 +118,9 @@ class Network(chainer.Chain):
         h = self.inc3c(h)
         h = self.inc4a(h)
 
-        a = F.average_pooling_2d(h, 5, stride=3)
-        a = F.relu(self.norma(self.conva(a), test=test))
-        a = F.relu(self.norma2(self.lina(a), test=test))
-        a = self.outa(a)
-
         h = self.inc4b(h)
         h = self.inc4c(h)
         h = self.inc4d(h)
-
-        b = F.average_pooling_2d(h, 5, stride=3)
-        b = F.relu(self.normb(self.convb(b), test=test))
-        b = F.relu(self.normb2(self.linb(b), test=test))
-        b = self.outb(b)
 
         h = self.inc4e(h)
         h = self.inc5a(h)
