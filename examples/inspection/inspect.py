@@ -144,23 +144,22 @@ def inspect(image_path, mean, model_path, label, network_path, resize_mode, chan
     output_side_length = 256
         
     img = read_image(image_path, 256, 256, resize_mode,channels)
-    cropwidth = 256 - output_side_length
+    cropwidth = 256 - model.insize
     top = left = cropwidth / 2
-    bottom = output_side_length + top
-    right = output_side_length + left
+    bottom = model.insize + top
+    right = model.insize + left
     
     if img.ndim == 3:
-        img = img[:, top:bottom, left:right]
         img = img.transpose(2, 0, 1)
+        img = img[:, top:bottom, left:right].astype(np.float32)
     else:
-        img = img[top:bottom, left:right]
-        zeros = np.zeros((output_side_length, output_side_length))
-        img = np.array([ img, output_side_length, output_side_length])
-    img = img.astype(np.float32)
-    img -= mean_image
+        img = img[top:bottom, left:right].astype(np.float32)
+        zeros = np.zeros((model.insize, model.insize))
+        img = np.array([ img, zeros, zeros])
+    img -= mean_image[:, top:bottom, left:right]
     img /= 255
 
-    x = np.ndarray((1, 3,  output_side_length, output_side_length), dtype=np.float32)
+    x = np.ndarray((1, 3,  model.insize, model.insize), dtype=np.float32)
     x[0] = img
     
     if gpu >= 0:
