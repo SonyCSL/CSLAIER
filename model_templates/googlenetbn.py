@@ -137,4 +137,4 @@ class Network(chainer.Chain):
         h = F.average_pooling_2d(self.inc5b(h), 7)
         h = self.out(h)
 
-        return F.softmax(h)
+        return F.softmax(0.3 * (a + b) + h)
