@@ -17,10 +17,12 @@ import shutil
 import cv2
 import numpy
 import time
+import pkg_resources
 from multiprocessing import Process
 import sqlite3
 import subprocess
 import chainer
+import nkf
 from xml.etree.ElementTree import *
 import six
 import cPickle as pickle
@@ -29,13 +31,15 @@ from json import dumps
 from PIL import Image
 
 import imagenet_inspect
+import text_predict
 import train
 import visualizer
 import scipy.misc
+import train_lstm
 
 
 # initialization
-DEEPSTATION_VERSION = "0.4.3"
+DEEPSTATION_VERSION = "0.5.0"
 DEEPSTATION_ROOT = (os.getcwd() + os.sep + __file__).replace('main.py', '')
 f = open(DEEPSTATION_ROOT + os.sep + 'settings.yaml')
 settings = yaml.load(f)
@@ -59,13 +63,23 @@ def server_static(filepath):
     
 @app.route('/uploaded_images/<filepath:path>')
 def uploaded_files(filepath):
-    return bottle.static_file(filepath, UPLOADED_IMAGES_DIR )
+    if os.path.exists('/' + filepath):
+        filepath = '/' + filepath
+        (head, tail) = os.path.split(filepath)
+        return bottle.static_file(tail, head)
+    else:
+        return bottle.static_file(filepath, UPLOADED_IMAGES_DIR )
 
 @app.route('/inspection/images/<filepath:path>')
 def images_for_inspection(filepath):
     return bottle.static_file(filepath, INSPECTION_RAW_IMAGE)
 
 @app.route('/trained_models/download/<filepath:path>')
+def download_trained_model(filepath):
+    filename = filepath.split('/')[-1]
+    return bottle.static_file(filepath, TRAINED_DATA_DIR, download=filename, mimetype="application/octet-stream")
+
+@app.route('/download/vocab/<filepath:path>')
 def download_trained_model(filepath):
     filename = filepath.split('/')[-1]
     return bottle.static_file(filepath, TRAINED_DATA_DIR, download=filename, mimetype="application/octet-stream")
@@ -79,12 +93,24 @@ def show_layer_image(id, epoch, filename, db):
 # main
 @app.route('/')
 def index(db):
-    models = db.execute('select Model.id, Model.name, Model.epoch, Model.is_trained, Model.created_at, Model.network_name, Model.algorithm, Dataset.name from Model left join Dataset on Model.dataset_id = Dataset.id order by Model.id DESC')
-    dataset_cur = db.execute('select id, name, dataset_path from Dataset')
+    models = db.execute('select Model.id, Model.name, Model.epoch, Model.is_trained, Model.created_at, Model.network_name, Model.type, Dataset.name from Model left join Dataset on Model.dataset_id = Dataset.id order by Model.id DESC')
+    dataset_cur = db.execute('select id, name, dataset_path, type from Dataset')
     dataset_rows = dataset_cur.fetchall()
     datasets = []
     for d in dataset_rows:
-        datasets.append({"id": d[0], "name": d[1], "dataset_path": d[2], "thumbnails": get_files_in_random_order(d[2], 4), "file_num": count_files(d[2]), "category_num": count_categories(d[2])})
+        if d[3] == "image":
+            datasets.append({"id": d[0], "name": d[1], "dataset_path": d[2], "dataset_type": d[3], "thumbnails": get_files_in_random_order(d[2], 4), "file_num": count_files(d[2]), "category_num": count_categories(d[2])})
+        elif d[3] == "text":
+            filesize = get_file_size_all(d[2])
+            if filesize / 1024 < 1:
+                ret_filesize = str(filesize) + 'bytes'
+            elif filesize / 1024 / 1024 < 1:
+                ret_filesize = str(filesize / 1024) + 'k bytes'
+            elif filesize / 1024 / 1024 / 1024 < 1:
+                ret_filesize = str(filesize / 1024 / 1024) + 'M bytes'
+            else:
+                ret_filesize = str(filesize / 1024 / 1024 / 1024) + 'G Bytes'
+            datasets.append({"id": d[0], "name": d[1], "dataset_path": d[2], "dataset_type": d[3], "sample_text": get_texts_in_random_order(d[2], 1, 180), "file_num": count_files(d[2]), "category_num": count_categories(d[2]), "filesize": ret_filesize})
     return bottle.template('index.html', models = models.fetchall(), datasets = datasets, system_info = get_system_info(), gpu_info = get_gpu_info(), chainer_version = get_chainer_version(), python_version = get_python_version(), deepstation_version = DEEPSTATION_VERSION)
 
 @app.route('/inspection/upload', method='POST')
@@ -108,7 +134,7 @@ def do_upload_for_inspection(db):
 
 @app.route('/dataset/show/<id>')
 def dataset_show(id, db):
-    row = db.execute('select name, dataset_path from Dataset where id = ?', (id,))
+    row = db.execute('select name, dataset_path, type from Dataset where id = ?', (id,))
     dataset_info = row.fetchone()
     name = dataset_info[0]
     dataset_root_path = dataset_info[1]
@@ -116,23 +142,33 @@ def dataset_show(id, db):
         dataset_root_path = dataset_root_path + os.sep + os.listdir(dataset_root_path)[0]
     dataset = []
     for path in find_all_directories(dataset_root_path):
-        dataset.append({"path": path.replace(UPLOADED_IMAGES_DIR, ""), "file_num": count_files(path), "category": path.split(os.sep)[-1], "thumbnails": get_files_in_random_order(path, 4)})
-    return bottle.template('dataset_show.html', dataset = dataset, name=name, dataset_id = id)
+        if dataset_info[2] == "image":
+            dataset.append({"dataset_type": dataset_info[2],"path": path.replace(UPLOADED_IMAGES_DIR, ""), "file_num": count_files(path), "category": path.split(os.sep)[-1], "thumbnails": get_files_in_random_order(path, 4)})
+        elif dataset_info[2] == "text":
+            dataset.append({"dataset_type": dataset_info[2], "path": path.replace(UPLOADED_IMAGES_DIR, ""), "file_num": count_files(path), "category": path.split(os.sep)[-1], "sample_text": get_texts_in_random_order(path, 1, 180)})
+    return bottle.template('dataset_show.html', dataset = dataset, name=name, dataset_id = id, dataset_type = dataset_info[2])
 
 @app.route('/dataset/show/<id>/<filepath:path>')
 def dataset_category_show(id, filepath, db):
-    row = db.execute('select name from Dataset where id = ?', (id,))
-    dataset_name = row.fetchone()[0]
-    images = []
-    for path in find_all_files(UPLOADED_IMAGES_DIR + os.sep + filepath):
-        images.append(path.replace(UPLOADED_IMAGES_DIR + os.sep, ''))
-    return bottle.template('dataset_category_detail.html', name = dataset_name, count = len(images), images = images, category = filepath.split(os.sep)[-1], dataset_id = id, dataset_path = filepath)
+    row = db.execute('select name, type from Dataset where id = ?', (id,))
+    (dataset_name, dataset_type) = row.fetchone()
+    ret = []
+    dataset_path = '/' + filepath if os.path.exists('/' + filepath) else UPLOADED_IMAGES_DIR + os.sep + filepath
+    for path in find_all_files(dataset_path):
+        if dataset_type == "image":
+            ret.append(path)
+        elif dataset_type == "text":
+            ret.append({"sample_text": get_text_sample(path, 180), "text_path": path})
+    return bottle.template('dataset_category_detail.html', name = dataset_name, count = len(ret), files = ret, category = filepath.split(os.sep)[-1], dataset_id = id, dataset_path = filepath, dataset_type = dataset_type)
 
 @app.route('/dataset/delete/file/<id>/<filepath:path>', method="POST")
 def dataset_delete_an_image(id, filepath):
     file_name = bottle.request.forms.get('file_path')
     try:
-        os.remove(UPLOADED_IMAGES_DIR + os.sep + file_name)
+        if os.path.exists(file_name):
+            os.remove(file_name)
+        else:
+            os.remove(UPLOADED_IMAGES_DIR + os.sep + file_name)
     except:
         return show_error_screen(traceback.format_exc(sys.exc_info()[2]))
     return bottle.redirect('/dataset/show/' + id + '/' + filepath)
@@ -141,22 +177,41 @@ def dataset_delete_an_image(id, filepath):
 def dataset_delete_a_category(id):
     category_path = bottle.request.forms.get('category_path')
     try:
-        shutil.rmtree(UPLOADED_IMAGES_DIR + os.sep + category_path)
+        if os.path.exists('/' + category_path):
+            shutil.rmtree('/' + category_path)
+        else:
+            shutil.rmtree(UPLOADED_IMAGES_DIR + os.sep + category_path)
     except:
         return show_error_screen(traceback.format_exc(sys.exc_info()[2]))
     return bottle.redirect('/dataset/show/' + id)
 
 @app.route('/dataset/upload/<id>/<filepath:path>', method="POST")
 def dataset_add_image_to_category(id, filepath):
+    dataset_type = bottle.request.forms.get('dataset_type')
     upload = bottle.request.files.get('fileInput')
     name, ext = os.path.splitext(upload.filename)
-    if ext not in ('.jpg', '.jpeg', '.gif', '.png'):
-        return show_error_screen('File extension not allowed.')
-    new_filename = UPLOADED_IMAGES_DIR + os.sep + filepath + os.sep + get_timestamp() + '_' + upload.filename
-    try:
-        upload.save(new_filename)
-    except:
-        return show_error_screen(traceback.format_exc(sys.exc_info()[2]))
+    if os.path.exists('/' + filepath):
+        new_filename = '/' + filepath + os.sep + get_timestamp() + '_' + upload.filename
+    else:
+        new_filename = UPLOADED_IMAGES_DIR + os.sep + filepath + os.sep + get_timestamp() + '_' + upload.filename
+    if dataset_type == 'image':
+        if ext not in ('.jpg', '.jpeg', '.gif', '.png'):
+            return show_error_screen('File extension not allowed.')
+        try:
+            upload.save(new_filename)
+        except:
+            return show_error_screen(traceback.format_exc(sys.exc_info()[2]))
+    elif dataset_type == 'text':
+        text = upload.file.read()
+        if nkf.guess(text) == 'binary':
+            return show_error_screen('Uploade file is a Binary file. Text data is needed.')
+        try:
+            f = open(new_filename, 'w')
+            f.write(text)
+        except:
+            return show_error_screen(traceback.format_exc(sys.exc_info()[2]))
+        finally:
+            f.close()
     return bottle.redirect('/dataset/show/' + id + '/' + filepath)
 
 @app.route('/dataset/create/category/<id>', method="POST")
@@ -165,7 +220,9 @@ def dataset_create_category(id, db):
     result = db.execute('select dataset_path from Dataset where id = ?', (id,))
     dataset_path = result.fetchone()[0]
     if len(os.listdir(dataset_path)) == 1:
-        dataset_path = dataset_path + os.sep + os.listdir(dataset_path)[0]
+        sample = UPLOADED_IMAGES_DIR + get_files_in_random_order(dataset_path + os.sep + os.listdir(dataset_path)[0], 1)[0]
+        if os.path.split(sample)[0] != dataset_path + os.sep + os.listdir(dataset_path)[0]:
+            dataset_path = dataset_path + os.sep + os.listdir(dataset_path)[0]
     try:
         os.mkdir(dataset_path + os.sep + category_name)
     except:
@@ -186,7 +243,7 @@ def dataset_delete(id, db):
 
 @app.route('/models/show/<id>')
 def show_model_detail(id, db):
-    row_model = db.execute('select id, name, epoch, algorithm, is_trained, network_path, trained_model_path, graph_data_path, dataset_id, created_at, network_name, resize_mode, channels from Model where id = ?', (id,))
+    row_model = db.execute('select id, name, epoch, algorithm, is_trained, network_path, trained_model_path, graph_data_path, dataset_id, created_at, network_name, resize_mode, channels, type from Model where id = ?', (id,))
     model_info = row_model.fetchone()
     
     if model_info[12] == 3:
@@ -207,7 +264,8 @@ def show_model_detail(id, db):
         "created_at": model_info[9],
         "network_name": model_info[10],
         "resize_mode": model_info[11],
-        "channels": color_mode
+        "channels": color_mode,
+        "type": model_info[13]
     }
     gpu_info = get_gpu_info()
     ret['gpu_num'] = 0 if 'gpus' not in gpu_info else len(gpu_info['gpus'])
@@ -232,9 +290,21 @@ def show_model_detail(id, db):
     if ret['resize_mode'] is None or ret['resize_mode'] == '':
         ret['resize_mode'] = '---'
     model_txt = open(ret['network_path']).read()
-    row_all_datasets = db.execute('select id, name from Dataset')
+    row_all_datasets = db.execute('select id, name from Dataset where type = ?', (ret['type'],))
     all_datasets_info = row_all_datasets.fetchall()
-    return bottle.template('models_detail.html', model_info = ret, datasets = all_datasets_info, model_txt=model_txt,system_info = get_system_info(),gpu_info = get_gpu_info(), chainer_version = get_chainer_version(), python_version = get_python_version(),pretrained_models=pretrained_models, deepstation_version = DEEPSTATION_VERSION)
+    mecab_available = is_module_available('MeCab')
+    return bottle.template(
+        'models_detail.html',
+        model_info = ret,
+        datasets = all_datasets_info,
+        model_txt=model_txt,
+        system_info = get_system_info(),
+        gpu_info = get_gpu_info(),
+        chainer_version = get_chainer_version(),
+        python_version = get_python_version(),
+        pretrained_models=pretrained_models,
+        mecab_available = mecab_available,
+        deepstation_version = DEEPSTATION_VERSION)
 
 @app.route('/models/start/train', method="POST")
 def kick_train_start(db):
@@ -243,21 +313,49 @@ def kick_train_start(db):
     epoch = bottle.request.forms.get('epoch')
     pretrained_model = bottle.request.forms.get('pretrained_model')
     gpu_num = bottle.request.forms.get('gpu_num')
-    resize_mode = bottle.request.forms.get('resize_mode')
-    channels = int(bottle.request.forms.get('channels'))
-    avoid_flipping = int(bottle.request.forms.get('avoid_flipping'))
-    # image_size = int(bottle.request.forms.get('image_size'))
-    image_size = 256
+    model_type = bottle.request.forms.get('model_type')
+    use_wakatigaki = False
+    
     row_ds = db.execute('select dataset_path, name from Dataset where id = ?', (dataset_id,))
     (ds_path, dataset_name) = row_ds.fetchone()
     prepared_file_path = PREPARED_DATA_DIR + os.sep + get_timestamp()
     bottle.response.content_type = 'application/json'
     try:
         os.mkdir(prepared_file_path)
+    except:
+        return dumps({"status": "error", "traceback":traceback.format_exc(sys.exc_info()[2])})
+    
+    if model_type == 'image':
+        resize_mode = bottle.request.forms.get('resize_mode')
+        channels = int(bottle.request.forms.get('channels'))
+        avoid_flipping = int(bottle.request.forms.get('avoid_flipping'))
+        image_size = 256
+    else:
+        resize_mode = None
+        channels = None
+        avoid_flipping = None
+        use_wakati_temp = int(bottle.request.forms.get('use_wakatigaki'))
+        use_wakatigaki = True if use_wakati_temp == 1 else False
+        if pretrained_model != "-1":
+            model_row = db.execute('select trained_model_path from Model where id = ?', (model_id,))
+            trained_model_path = model_row.fetchone()[0]
+            if trained_model_path:
+                pretrained_vocab = trained_model_path + os.sep + 'vocab2.bin'
+                if not os.path.exists(pretrained_vocab):
+                    return dumps({"status": "error", "traceback": "Could not find vocab2.bin file. It is possible that previsou train have failed."})
+            else:
+                pretrained_vocab = ''
+        else:
+            pretrained_vocab = ''
+    try:
         db.execute('update Model set prepared_file_path = ?, epoch = ?, dataset_id = ?, resize_mode = ?, channels = ? where id = ?', (prepared_file_path, epoch, dataset_id, resize_mode, channels,  model_id))
         db.commit()
-        prepare_for_train(ds_path, prepared_file_path,image_size, resize_mode, channels)
-        start_train(model_id, epoch, prepared_file_path, gpu_num,pretrained_model, db, avoid_flipping)
+        if model_type == 'image':
+            prepare_images_for_train(ds_path, prepared_file_path,image_size, resize_mode, channels)
+            start_imagenet_train(model_id, epoch, prepared_file_path, gpu_num,pretrained_model, db, avoid_flipping)
+        else:
+            input_data_path = prepare_texts_for_train(ds_path, prepared_file_path, use_wakatigaki)
+            start_lstm_train(model_id, epoch, prepared_file_path, gpu_num, pretrained_model, pretrained_vocab, use_wakatigaki, db)
     except:
         return dumps({"status": "error", "traceback": traceback.format_exc(sys.exc_info()[2])})
     return dumps({"status": "OK", "dataset_name": dataset_name})
@@ -269,6 +367,13 @@ def get_trained_model(id, epoch, db):
     epoch = int(epoch)
     path = path.replace(TRAINED_DATA_DIR, '')
     return bottle.redirect('/trained_models/download' + path + '/model%04d'%epoch)
+
+@app.route('/models/download_vocab/<id>')
+def get_vocab_file(id, db):
+    row_model = db.execute('select trained_model_path from Model where id = ?', (id,))
+    path = row_model.fetchone()[0]
+    path = path.replace(TRAINED_DATA_DIR, '')
+    return bottle.redirect('/download/vocab' + path + '/vocab2.bin')
 
 @app.route('/models/labels/download/<id>')
 def get_label_text(id, db):
@@ -293,6 +398,7 @@ def create_new_model(db):
     my_network = bottle.request.forms.get('my_network')
     model_template = bottle.request.forms.get('model_template')
     network_type = bottle.request.forms.get('network_type').strip()
+    model_type = bottle.request.forms.get('model_type')
     algorithm = None
     
     if not re.match(r".+\.py", model_name):
@@ -314,9 +420,9 @@ def create_new_model(db):
     finally:
         network_file.close()
         
-    t = (model_name, network_file_path, network_type, algorithm)
+    t = (model_name, network_file_path, network_type, algorithm, model_type)
     try:
-        row = db.execute("insert into Model(name, network_path, network_name, algorithm) values(?,?,?,?)", t)
+        row = db.execute("insert into Model(name, network_path, network_name, algorithm, type) values(?,?,?,?,?)", t)
     except:
         return show_error_screen(traceback.format_exc(sys.exc_info()[2]))
     return bottle.redirect('/models/show/' + str(row.lastrowid))
@@ -350,6 +456,7 @@ def cleanup(db):
 def do_upload(db):
     bottle.response.content_type = 'application/json'
     dataset_name = bottle.request.forms.get('dataset_name')
+    dataset_type = bottle.request.forms.get('dataset_type')
     upload = bottle.request.files.get('fileInput')
     name, ext = os.path.splitext(upload.filename)
     if ext not in ('.zip'):
@@ -361,7 +468,7 @@ def do_upload(db):
         zf = zipfile.ZipFile(UPLOADED_RAW_FILES_DIR + os.sep + new_filename, 'r')
         upload_image_dir_root = UPLOADED_IMAGES_DIR + os.sep + timestamp_str
         os.mkdir(upload_image_dir_root)
-        db.execute('insert into Dataset(name, dataset_path, updated_at) values(?, ?, current_timestamp)', (dataset_name, upload_image_dir_root))
+        db.execute('insert into Dataset(name, dataset_path, updated_at, type) values(?, ?, current_timestamp, ?)', (dataset_name, upload_image_dir_root, dataset_type))
         for f in zf.namelist():
             temp_file_path = upload_image_dir_root + os.sep + f
             if ('__MACOSX' in f) or ('.DS_Store' in f):
@@ -371,6 +478,13 @@ def do_upload(db):
                     continue
                 os.mkdir(temp_file_path)
             else:
+                temp, ext = os.path.splitext(f)
+                if dataset_type == 'image':
+                    if ext not in ('.jpg', '.jpeg', '.png', '.gif'):
+                        continue
+                elif dataset_type == 'text':
+                    if ext not in ('.txt',):
+                        continue
                 if os.path.exists(temp_file_path):
                     uzf = file(temp_file_path, 'w+b')
                 else:
@@ -384,6 +498,34 @@ def do_upload(db):
             zf.close()
         if 'uzf' in locals():
             uzf.close()
+    return dumps({'status': 'success'})
+
+@app.route('/api/dataset/check_files_existence', method="POST")
+def api_check_file_existence():
+    given_path = bottle.request.forms.get('dataset_path')
+    is_valid_path = False
+    real_path = ''
+    if given_path.startswith('/'): #absolute path
+        if os.path.exists(given_path):
+            is_valid_path = True
+            real_path = given_path
+    else: # related path
+        real_path = os.path.normpath(DEEPSTATION_ROOT + os.sep + givin_path)
+        if os.path.exists(real_path):
+            is_valid_path = True
+    bottle.response.content_type = 'application/json'
+    if is_valid_path:
+        return dumps({'status':'success', 'path':real_path})
+    else:
+        return dumps({'status':'error'})
+
+@app.route('/api/dataset/set_path', method="POST")
+def api_set_dataset_path(db):
+    name = bottle.request.forms.get('dataset_name')
+    dataset_path = bottle.request.forms.get('dataset_path')
+    dataset_type = bottle.request.forms.get('dataset_type')
+    db.execute('insert into Dataset(name, dataset_path, updated_at, type) values(?, ?, current_timestamp, ?)', (name, dataset_path, dataset_type))
+    bottle.response.content_type = 'application/json'
     return dumps({'status': 'success'})
 
 @app.route('/api/models/get_model_template/<model_name>')
@@ -440,11 +582,17 @@ def api_get_layer_viz(model_id, epoch, layer_name, db):
         network = validation_result['network']
         trained_model_path = validation_result['trained_model_path']
         trained_model = validation_result['trained_model']
+        model_type = validation_result['type']
     if os.path.exists(trained_model_path + os.sep + epoch + os.sep + layer_name + '.png'):
         return dumps({'status': 'success', 'filename': layer_name + '.png', 'epoch': epoch})
     if not os.path.exists(trained_model_path + os.sep + epoch):
         os.mkdir(trained_model_path + os.sep + epoch)
-    v = visualizer.LayerVisualizer(network, trained_model, trained_model_path + os.sep + epoch)
+    if model_type == 'image':
+        v = visualizer.LayerVisualizer(network, trained_model, trained_model_path + os.sep + epoch)
+    else:
+        vocab_path = trained_model_path + os.sep + 'vocab2.bin'
+        vocab = pickle.load(open(vocab_path, 'rb'))
+        v = visualizer.LayerVisualizer(network, trained_model, trained_model_path + os.sep + epoch, vocab_len=len(vocab), n_units=128, dropout=0.5)
     layer_name = layer_name.replace('_', '/')
     filename = v.visualize(layer_name)
     if filename is None:
@@ -462,13 +610,18 @@ def api_get_layer_names(model_id, epoch, db):
         network = validation_result['network']
         trained_model_path = validation_result['trained_model_path']
         trained_model = validation_result['trained_model']
-    
-    v = visualizer.LayerVisualizer(network, trained_model, trained_model_path)
+        model_type = validation_result['type']
+    if model_type == 'image':
+        v = visualizer.LayerVisualizer(network, trained_model, trained_model_path + os.sep + epoch)
+    else:
+        vocab_path = trained_model_path + os.sep + 'vocab2.bin'
+        vocab = pickle.load(open(vocab_path, 'rb'))
+        v = visualizer.LayerVisualizer(network, trained_model, trained_model_path + os.sep + epoch, vocab_len=len(vocab), n_units=128, dropout=0.5)
     return dumps(v.get_layer_list())
 
 def validation_for_layer_viz(model_id, epoch, db):
-    model_row = db.execute('select epoch, network_path, trained_model_path from Model where id = ?', (model_id,))
-    (epoch_max, network, trained_model_path) = model_row.fetchone()
+    model_row = db.execute('select epoch, network_path, trained_model_path, type from Model where id = ?', (model_id,))
+    (epoch_max, network, trained_model_path, type) = model_row.fetchone()
     if int(epoch, 10) > epoch_max:
         return {'status': 'error', 'message': 'selected epoch is bigger than trained epoch.'}
     epoch_str = "{0:0>4}".format(int(epoch, 10))
@@ -479,7 +632,7 @@ def validation_for_layer_viz(model_id, epoch, db):
             break
     if trained_model is None:
         return {'status': 'error', 'message': 'could not find the trained_model'}
-    return {'status': 'OK', 'network': network, 'trained_model_path': trained_model_path, 'trained_model': trained_model}
+    return {'status': 'OK', 'network': network, 'trained_model_path': trained_model_path, 'trained_model': trained_model, 'type': type}
 
 @app.route('/api/models/kill_train', method='POST')
 def api_kill_train(db):
@@ -488,9 +641,53 @@ def api_kill_train(db):
     c = db.execute('select pid from Model where id = ?', (model_id,))
     pid = c.fetchone()[0]
     if pid is not None:
-        os.kill(pid, signal.SIGTERM)
-        db.execute('update Model set is_trained = 0, pid = null where id = ?', (model_id,))
+        try:
+            os.kill(pid, signal.SIGTERM)
+        except OSError as e:
+            print "Process already terminated.","ERROR NO:", e.errno,"-", e.strerror 
+        except:
+            print "Unexpected error:", sys.exc_info()[0]
+        finally:
+            db.execute('update Model set is_trained = 0, pid = null where id = ?', (model_id,))
     return dumps({'status': 'success', 'message': 'successfully terminated'})
+
+@app.route('/api/dataset/get_full_text/<filepath:path>')
+def api_get_full_text(filepath):
+    bottle.response.content_type = 'application/json'
+    if os.path.exists('/' + filepath):
+        text = get_text_sample('/' + filepath)
+    else:
+        text = get_text_sample(UPLOADED_IMAGES_DIR + os.sep + filepath)
+    text = text.replace("\r", '')
+    text = text.replace("\n", '<br>')
+    return dumps({'text': text})
+
+@app.route('/api/text/predict/', method='POST')
+def api_text_predict(db):
+    bottle.response.content_type = 'application/json'
+    model_id = bottle.request.forms.get('model_id')
+    epoch = int(bottle.request.forms.get('epoch'))
+    result_length = int(bottle.request.forms.get('result_length'))
+    primetext = bottle.request.forms.get('primetext')
+    row = db.execute('select name, trained_model_path, network_path, use_wakatigaki from Model where id = ?', (model_id,))
+    (model_name, trained_model_path, network_path, use_wakatigaki) = row.fetchone()
+    is_wakatigaki = True if use_wakatigaki == 1 else False
+    seed = int(random.random() * 10000)
+    
+    predict_result = text_predict.predict(
+        trained_model_path + os.sep + 'model%04d'%epoch,
+        trained_model_path + os.sep + 'vocab2.bin',
+        network_path,
+        primetext,
+        seed, #
+        128,  # unit
+        0.0,  # dropout
+        1,    # sample
+        result_length,
+        use_mecab=is_wakatigaki,
+    )
+    predict_result = predict_result.replace('<eos>', '\n')
+    return dumps({'result': predict_result})
 
 #------- private methods ---------
 def find_all_files(directory):
@@ -513,8 +710,8 @@ def make_train_data(target_dir, prepared_data_dir, image_insize, resize_mode, ch
     count = 0
     for path, dirs, files in os.walk(target_dir):
         if not dirs:
-            start = path.rfind(os.sep) + 1
-            labelsTxt.write(path[start:].split(os.sep)[0] + "\n")
+            (head, tail) = os.path.split(path)
+            labelsTxt.write(tail.encode('utf-8') + "\n")
             startCount = count
             length = len(files)
             for f in files:
@@ -650,11 +847,44 @@ def compute_mean(prepared_data_dir):
     pickle.dump(mean, open(prepared_data_dir + os.sep + 'mean.npy', 'wb'), -1)
     return
 
-def prepare_for_train(target_dir, prepared_data_dir,image_insize, resize_mode, channels):
+def prepare_images_for_train(target_dir, prepared_data_dir,image_insize, resize_mode, channels):
     make_train_data(target_dir, prepared_data_dir, image_insize,resize_mode, channels)
     compute_mean(prepared_data_dir)
 
-def start_train(model_id, epoch, prepared_data_dir, gpu, pretrained_model, db, avoid_flipping):
+def prepare_texts_for_train(target_dir, prepared_data_dir, use_wakatigaki):
+    input_text = open(prepared_data_dir + os.sep + 'input.txt', 'w')
+    if use_wakatigaki:
+        import MeCab
+        none = None
+        m = MeCab.Tagger("-Owakati")
+        for f in find_all_files(target_dir):
+            raw_text = open(f, 'r').read()
+            encoding = nkf.guess(raw_text)
+            if encoding == 'BINARY':
+                continue
+            text = raw_text.decode(encoding, 'ignore')
+            text = text.replace('\r', '')
+            encoded_text = text.encode('UTF-8')
+            lines = encoded_text.splitlines()
+            for line in lines:
+                result = m.parse(line)
+                if isinstance(none, type(result)):
+                    continue
+                input_text.write(result)
+                input_text.flush()
+    else:
+        for f in find_all_files(target_dir):
+            temp_text = open(f, 'r').read()
+            encoding = nkf.guess(temp_text)
+            decoded_text = temp_text.decode(encoding, 'ignore')
+            decoded_text = decoded_text.replace('\r', '')
+            encoded_text = decoded_text.encode('UTF-8')
+            input_text.write(encoded_text)
+            input_text.flush()
+    input_text.close()
+    return prepared_data_dir + os.sep + 'input.txt'
+
+def start_imagenet_train(model_id, epoch, prepared_data_dir, gpu, pretrained_model, db, avoid_flipping):
     if not is_prepared_to_train(prepared_data_dir):
         raise Exception('preparation is not done')
     train_process = Process(
@@ -674,6 +904,37 @@ def start_train(model_id, epoch, prepared_data_dir, gpu, pretrained_model, db, a
             20,
             pretrained_model,
             avoid_flipping
+        )
+    )
+    train_process.start()
+    db.execute('update Model set pid = ? where id = ?', (train_process.pid, model_id))
+    db.commit()
+    return
+    
+def start_lstm_train(model_id, epoch, prepared_data_dir, gpu, pretrained_model,pretrained_vocab, use_wakatigaki, db):
+    train_process = Process(
+        target=train_lstm.train_lstm,
+        args = (
+            DEEPSTATION_ROOT + os.sep + 'deepstation.db',
+            model_id,
+            'models',
+            TRAINED_DATA_DIR,
+            prepared_data_dir + os.sep + 'input.txt',
+            pretrained_vocab,
+            use_wakatigaki,
+            pretrained_model,
+            None,
+            gpu,
+            128,
+            2e-3,
+            0.97,
+            10,
+            0.95,
+            0.0,
+            50,
+            50,
+            epoch,
+            5
         )
     )
     train_process.start()
@@ -714,7 +975,13 @@ def count_files(path):
 # path配下の画像をランダムでnum枚取り出す。
 # path配下がディレクトリしか無い場合は配下のディレクトリから
 def get_files_in_random_order(path, num):
-    children_files = os.listdir(path)
+    children_files = []
+    for cf in os.listdir(path):
+        if os.path.isdir(path + os.sep + cf):
+            if len(os.listdir(path + os.sep + cf)) != 0:
+                children_files.append(cf)
+        else:
+            children_files.append(cf)
     children_files_num = len(children_files)
     if children_files_num is 0:
         return []
@@ -737,6 +1004,25 @@ def get_files_in_random_order(path, num):
             files.append(f.replace(UPLOADED_IMAGES_DIR, ''))
     return files;
     
+def get_texts_in_random_order(path, num, character_num=-1):
+    files = get_files_in_random_order(path, num)
+    ret = []
+    for f in files:
+        if os.path.exists(f):
+            ret.append(get_text_sample(f, character_num))
+        elif os.path.exists(UPLOADED_IMAGES_DIR + f):
+            ret.append(get_text_sample(UPLOADED_IMAGES_DIR + f, character_num))
+    return ret
+
+def get_text_sample(path, character_num=-1):
+    raw_text = open(path).read()
+    encoding = nkf.guess(raw_text)
+    text = raw_text.decode(encoding)
+    if character_num > -1:
+        return text[0:character_num]
+    else:
+        return text
+
 def get_timestamp():
     return datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
     
@@ -751,7 +1037,13 @@ def count_categories(path):
             if os.path.isdir(path + os.sep + c):
                 count += 1
     return count
-    
+
+def get_file_size_all(path):
+    size = 0
+    for f in find_all_files(path):
+        size += os.path.getsize(f)
+    return size
+
 def get_gpu_info():
     ret = {}
     current_platform = platform.system()
@@ -762,7 +1054,6 @@ def get_gpu_info():
             xml = subprocess.check_output([NVIDIA_SMI_CMD, '-q', '-x'])
     except:
         return {'error': 'command_not_available'}
-		
     elem = fromstring(xml)
     ret['driver_version'] = elem.find('driver_version').text
     gpus = elem.findall('gpu')
@@ -811,5 +1102,11 @@ def get_python_version():
     
 def show_error_screen(error):
     return bottle.template('errors.html', detail=error)
+    
+def is_module_available(module_name):
+    for dist in pkg_resources.working_set:
+        if dist.project_name.lower().find(module_name.lower()) > -1:
+            return True
+    return False
     
 app.run(server=settings['server_engine'], host=settings['host'], port=settings['port'], debug=settings['debug'])

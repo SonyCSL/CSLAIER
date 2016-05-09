@@ -254,6 +254,7 @@ def do_train(db_path, train, test, mean, root_output_dir, model_dir, model_id, b
         print("load pretrained model : "+output_dir + os.sep +pretrained_model)
         serializers.load_hdf5(output_dir + os.sep +pretrained_model, model)
         # delete old models
+        shutil.copyfile(output_dir + os.sep + pretrained_model, output_dir + os.sep + 'previous_' + pretrained_model)
         pretrained_models = sorted(os.listdir(output_dir), reverse=True)
         for m in pretrained_models:
             if m.startswith('model') and pretrained_model != m:
@@ -289,3 +290,5 @@ def do_train(db_path, train, test, mean, root_output_dir, model_dir, model_id, b
     db.execute('update Model set is_trained = 2, pid = null where id = ?', (model_id,))
     conn.commit()
     db.close()
+    if os.path.exists(output_dir + os.sep + 'previous_' + pretrained_model):
+        os.remove(output_dir + os.sep + 'previous_' + pretrained_model) #delete backup file

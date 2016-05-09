@@ -1,7 +1,7 @@
 DEEPstation
 ============
 
-DEEPstation version 0.4.2
+DEEPstation version 0.5.0
 
 Browser based GUI deep learning tool.
 
@@ -42,6 +42,7 @@ DEEPstation is tested on Ubuntu 14.04. We recommend them to use DEEPstation, tho
   * python-opencv
   * python-scipy
 * SQLite3
+* nkf
 
 ### Python Libraries
 * Chainer 1.5 http://chainer.org
@@ -50,6 +51,7 @@ DEEPstation is tested on Ubuntu 14.04. We recommend them to use DEEPstation, tho
 * cv2
 * PyYAML
 * matplotlib
+* python-nkf
 
 Setup
 ------
@@ -84,6 +86,14 @@ If you have changed hostname and port on `settings.yaml`, use that one.
 `sqlite3 deepstation.db < ./scheme/migration_20160209.sql`
 * Start DEEPstation.
 
+#### Migration v0.4.x to v0.5.0
+
+* Stop DEEPstation by `ctrl + c`
+* Install `nkf` if you don't have yet.
+* Install `python-nkf`. Using `pip intall nkf` is easy.
+* Run command below on root directory of DEEPstation  
+`sqlite3 deepstation.db < ./scheme/migration_20160314.sql`
+* Start DEEPstation.
 
 Usage
 ------
@@ -159,6 +169,7 @@ DEEPstationはUbuntu14.04でテストしています。 Ubuntu上で動かすこ
   * python-opencv
   * python-scipy
 * SQLite3
+* nkf
 
 ### Python Libraries
 * Chainer 1.5 http://chainer.org
@@ -167,6 +178,16 @@ DEEPstationはUbuntu14.04でテストしています。 Ubuntu上で動かすこ
 * cv2
 * PyYAML
 * matplotlib
+* python-nkf
+
+### LSTMで分かち書きを利用したい場合
+
+* 下記を`apt-get`などでインストールする
+  * mecab
+  * libmecab-dev
+  * mecab-ipadic
+  * mecab-ipadic-utf8
+  * python-mecab
 
 Setup
 ------
@@ -199,6 +220,15 @@ Setup
 * DEEPstationを止めてください。DEEPstation実行中のターミナルで`ctrl + c`で止まります。 
 * DEEPstationのルートディレクトリで下記のコマンドを実行してください。  
 `sqlite3 deepstation.db < ./scheme/migration_20160209.sql`
+* DEEPstationを起動してください。
+
+#### v0.4.x から v 0.5.0 へのアップデート方法
+
+* DEEPstationを止めてください。DEEPstation実行中のターミナルで`ctrl + c`で止まります。 
+* `nkf`コマンドがインストールされていなければ、`nkf`コマンドをインストールしてください。
+* `python-nkf`をインストールしてください。`pip install nkf`でインストールするのが簡単です。
+* DEEPstationのルートディレクトリで下記のコマンドを実行してください。  
+`sqlite3 deepstation.db < ./scheme/migration_20160314.sql`
 * DEEPstationを起動してください。
 
 使い方

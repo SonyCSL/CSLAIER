@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+# HINT:image
 import math
 
 import chainer

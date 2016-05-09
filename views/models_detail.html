@@ -55,6 +55,16 @@
                             <li>Date: {{model_info["created_at"]}}</li>
                             <li>Epoch: <span id="epoch_info">{{model_info["epoch"]}}</span></li>
                             <li data-datasetid="{{model_info['dataset_id']}}">Dataset: <span id="dataset_name_info">{{model_info["dataset_name"]}}</span></li>
+                            <li>
+                                Train Type:
+                                % if model_info["type"] == 'image':
+                                    Image Classification
+                                % elif model_info["type"] == 'text':
+                                    Natural Language Processing
+                                % else:
+                                    ---
+                                % end
+                            </li>
                             <li>Network:
                                 % if model_info['network_name']:
                                     {{model_info['network_name']}}
@@ -62,8 +72,10 @@
                                     ---
                                 % end
                             </li>
-                            <li>Resize mode: {{model_info["resize_mode"]}}</li>
-                            <li>Color mode: {{model_info["channels"]}}</li>
+                            % if model_info['type'] == 'image':
+                                <li>Resize mode: {{model_info["resize_mode"]}}</li>
+                                <li>Color mode: {{model_info["channels"]}}</li>
+                            % end
                         </ul>
                     </div>
                     <div>
@@ -79,9 +91,14 @@
                                     <input id="epoch_select" type="number" min="1" max="{{model_info['epoch']}}" class="form-control" value="{{model_info['epoch']}}">
                                 </div>
                                 <button class="btn btn-cyber btn-block need-epoch" id="model_dl_btn">Download Model</button>
-                                <button class="btn btn-cyber btn-block need-epoch" id="label_dl_btn">Download Label</button>
-                                <button class="btn btn-cyber btn-block need-epoch" id="mean_dl_btn">Download Mean File</button>
-                                <button class="btn btn-cyber btn-block need-epoch" data-toggle="modal" data-target="#inspection_modal">Inspect</button>
+                                % if model_info['type'] == 'image':
+                                    <button class="btn btn-cyber btn-block need-epoch" id="label_dl_btn">Download Label</button>
+                                    <button class="btn btn-cyber btn-block need-epoch" id="mean_dl_btn">Download Mean File</button>
+                                    <button class="btn btn-cyber btn-block need-epoch" data-toggle="modal" data-target="#inspection_modal">Inspect</button>
+                                % elif model_info['type'] == 'text':
+                                    <button class="btn btn-cyber btn-block need-epoch" id="vocab_dl_btn">Download Vocabulary</button>
+                                    <button class="btn btn-cyber btn-block need-epoch" data-toggle="modal" data-target="#prediction_modal">Prediction</button>
+                                % end
                             </div>
                         % end
                     </div>
@@ -225,11 +242,17 @@
                 <h4 class="start_train_section_header">Training Settings</h4>
                 <div class="start_train_section">
                     <div class="form-group">
+                        <input type="hidden" id="default_dataset" value="{{model_info['dataset_id']}}">
+                        <input type="hidden" name="model_type" value="{{model_info['type']}}">
                         <label for="select_dataset">Select Dataset.</label>
                         <select class="form-control" id="select_dataset">
                             <option value="-1"></option>
                             % for ds in datasets:
-                                <option value="{{ds[0]}}">{{ds[1]}}</option>
+                                % if ds[0] == model_info['dataset_id']:
+                                    <option value="{{ds[0]}}" selected>{{ds[1]}}</option>
+                                % else:
+                                    <option value="{{ds[0]}}">{{ds[1]}}</option>
+                                % end
                             % end
                         </select>
                     </div>
@@ -263,34 +286,50 @@
                         </div>
                     % end
                 </div>
-                <h4 class="start_train_section_header">Image Preprocessing Settings</h4>
-                <div class="start_train_section">
-                    <div class="form-group">
-                        <label for="select_resize_mode" class="label-control">Select Image Re-sizing method</label>
-                        <select class="form-control" id="select_resize_mode">
-                            <option value="fill">fill</option>
-                            <option value="crop">crop</option>
-                            <option value="squash">squash</option>
-                            <option value="half_crop">half_crop</option>
-                        </select>
+                % if model_info['type'] == 'image':
+                    <h4 class="start_train_section_header">Image Preprocessing Settings</h4>
+                    <div class="start_train_section">
+                        <div class="form-group">
+                            <label for="select_resize_mode" class="label-control">Select Image Re-sizing method</label>
+                            <select class="form-control" id="select_resize_mode">
+                                <option value="fill">fill</option>
+                                <option value="crop">crop</option>
+                                <option value="squash">squash</option>
+                                <option value="half_crop">half_crop</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="select_color_mode" class="label-control">Select Color mode</label>
+                            <select class="form-control" id="select_color_mode">
+                                <option value="rgb">RGB</option>
+                                <option value="grayscale">Grayscale</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="select_flipping_mode" class="label-control">Use image flipping?</label>
+                            <select class="form-control" id="select_flipping_mode">
+                                <option value="0">Yes</option>
+                                <option value="1">No</option>
+                            </select>
+                        </div>
                     </div>
-                    <div class="form-group">
-                        <label for="select_color_mode" class="label-control">Select Color mode</label>
-                        <select class="form-control" id="select_color_mode">
-                            <option value="rgb">RGB</option>
-                            <option value="grayscale">Grayscale</option>
-                        </select>
+                % else:
+                    <h4 class="start_train_section_header">Optional Settings</h4>
+                    <div class="start_train_section">
+                        % if mecab_available:
+                            <h5>Separating Words in Japanese with Spaces (分かち書き) settings</h5>
+                            <div class="form-group">
+                                <div class="checkbox">
+                                    <label>
+                                        <input type="checkbox" id="use_wakachigaki"> Use separating words in Japanese with spaces (分かち書き)
+                                    </label>
+                                </div>
+                            </div>
+                        % end
                     </div>
-                    <div class="form-group">
-                        <label for="select_flipping_mode" class="label-control">Use image flipping?</label>
-                        <select class="form-control" id="select_flipping_mode">
-                            <option value="0">Yes</option>
-                            <option value="1">No</option>
-                        </select>
-                    </div>
-                </div>
+                % end
 
-                <button type="button" id="start_train_btn" class="btn btn-cyber">Start</button>
+                <button type="button" id="start_train_btn" class="btn btn-cyber" data-modeltype="{{model_info['type']}}">Start</button>
                 <button type="cancel" class="btn btn-cyber" data-dismiss="modal">Calcel</button>
             </div>
         </div>
@@ -319,6 +358,41 @@
     </div>
 </div>
 
+<div class="modal fade" id="prediction_modal" tabindex="-1" role="dialog" aria-labelledby="inspection_modal">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h4 class="modal-title" id="inspection_modal_title">Prediction<small><span id="epoch_on_modal_title"></span></small></h4>
+            </div>
+            <div class="modal-body">
+                <div id="prediction_div">
+                    <div class="form-group">
+                        <label for="prediction_epoch" describedby="epoch_select">Epoch (1 〜 {{model_info['epoch']}})</label>
+                        <input id="prediction_epoch" type="number" min="1" max="{{model_info['epoch']}}" class="form-control" value="{{model_info['epoch']}}">
+                    </div>
+                    <div class="form-group">
+                        <label for="prediction_result_length">Prediction Result Length</label>
+                        <input id="prediction_result_length" type="number" min="1" value="200" class="form-control">
+                    </div>
+                    <div class="form-group">
+                        <label for="prediction_primetext">Prime Text</label>
+                        <input class="form-control" type="text" name="prediction_primetext" id="prediction_primetext">
+                    </div>
+                    <button class="btn btn-cyber disabled" id="do_predict">Predict</button>
+                    <hr class="cyber">
+                    <div class="form-group">
+                        <label for="prediction_result">Prediction Result</label>
+                        <textarea class="form-control" name="prediction_result" id="prediction_result" cols="30" rows="10"></textarea>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-cyber" data-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <div class="modal fade" id="create_new_network_modal" tabindex="-1" role="dialog" aria-labelledby="create_new_network_modal">
     <div class="modal-dialog" role="document">
         <div class="modal-content">
@@ -328,6 +402,7 @@
             <div class="modal-body">
                 <form action="/models/create" method="POST" id="create_new_network_modal_form">
                     <input type="hidden" name="my_network" id="modal_create_network_my_network">
+                    <input type="hidden" name="model_type" value="{{model_info['type']}}">
                     <div class="form-group">
                         <label for="">Name</label>
                         <input type="text" class="form-control" id="modal_create_network_name" name="model_name">

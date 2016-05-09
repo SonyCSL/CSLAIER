@@ -30,6 +30,17 @@
                     </select>
                 </div>
                 <div class="form-group">
+                    <label>Training Type</label>
+                    <div>
+                        <label for="model_type_image">
+                            <input type="radio" name="model_type" id="model_type_image" value="image"> Image Classification
+                        </label>
+                        <label for="model_type_text">
+                            <input type="radio" name="model_type" id="model_type_text" value="text"> Natural Language Processing
+                        </label>
+                    </div>
+                </div>
+                <div class="form-group">
                     <label for="model_name_input" class="control-label">Model Name</label>
                     <input type="text" name="model_name" class="form-control" id="model_name_input">
                 </div>
