@@ -1,0 +1,18 @@
+{% if system_info['gpu_info'] %}
+    {% for g in system_info['gpu_info']['gpus'] %}
+        <div class="gpu" id="{{g['uuid']}}">
+            <h4>{{g['minor_number']}}:{{g['product_name']}}</h4>
+            <table class="gpu_table">
+                <tr><th>UUID</th><td>{{g['uuid']}}</td></tr>
+                <tr><th>FAN</th><td>{{g['fan']}}</td></tr>
+                <tr><th>Temp</th><td>{{g['temperature']}}</td></tr>
+                <tr><th>Power</th><td>{{g['power_draw']}} / {{g['power_limit']}}</td></tr>
+                <tr><th>Memory</th><td>{{g['memory_used']}} / {{g['memory_total']}}</td></tr>
+            </table>
+        </div>
+    {% endfor %}
+{% else %}
+    <div class="gpu error" >
+        <p>GPU Info Not Available</p>
+    </div>
+{% endif %}

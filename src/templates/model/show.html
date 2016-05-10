@@ -1,0 +1,68 @@
+{% extends 'common/base.html' %}
+{% block title %}{{model.name}}{% endblock %}
+{% block stylesheets %}
+    <link rel="stylesheet" href="{{ url_for('static', filename='CodeMirror/lib/codemirror.css')}}">
+{% endblock %}
+
+{% block main_content %}
+    <input type="hidden" id="model_id" value="{{model.id}}">
+    <input type="hidden" id="current_training_status" value="{{model.is_trained}}">
+    <div class="container">
+        <div class="row full-height">
+            <div class="col-md-9 full-height">
+                <h2>
+                    Model: {{model.name}}
+                </h2>
+                {% if model.is_trained == 0 %}
+                    {% include 'model/partial/not_trained.html' %}
+                {% elif model.is_trained == 1 %}
+                    {% include 'model/partial/in_progress.html' %}
+                {% elif model.is_trained == 2 %}
+                    {% include 'model/partial/trained.html' %}
+                {% endif %}
+            </div>
+            <div class="col-md-3">
+                {% include 'common/version_info.html' %}
+                {% include 'common/gpu_info.html' %}
+            </div>
+        </div>
+    </div>
+
+    <pre class="hidden" id="original_network">
+        {{model.code}}
+    </pre>
+
+    <input type="hidden" id="original_name" value="{{model.name}}">
+
+    <div id="processing_screen" class="hidden">
+        <div class="progress-wrap">
+            <h4>Processing...</h4>
+            <div class="progress">
+                <div class="progress-bar progress-bar-striped active" role="progressbar" aria-valuenow="100" aria-valuemin="0" aria-valuemax="100" style="width: 100%">
+                    <span class="sr-only">Processing Data...</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    {% include 'model/partial/prediction_modals.html' %}
+    {% include 'model/partial/create_new_network_modals.html' %}
+    {% include 'model/partial/start_train_modals.html' %}
+{% endblock %}
+
+{% block scripts %}
+    <script type="text/javascript" src="{{ url_for('static', filename='CodeMirror/lib/codemirror.js') }}"></script>
+    <script type="text/javascript" src="{{ url_for('static', filename='CodeMirror/mode/python/python.js') }}"></script>
+    {% include 'common/gpu_script.html' %}
+    <script type="text/javascript">
+        $(function(){
+            createEditor();
+            var hash = location.hash;
+            if(hash == '#result') {
+                showResultScreen();
+            }
+            if($('#current_training_status').val() == 1) setInterval("update_train_log()", 10000);
+            show_gpu_meter();
+        });
+    </script>
+{% endblock %}

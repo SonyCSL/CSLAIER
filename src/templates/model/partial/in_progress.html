@@ -1,0 +1,67 @@
+<div class="model-sub-header">
+    <div id="progress-label">
+        <span class="label label-progress"> In Progress</span>
+    </div>
+    <div class="model-control-div">
+        <button class="btn btn-cyber" id="terminate_train_button">Terminate</button>
+        <button class="btn btn-cyber hidden" id="delete_model_button">Delete</button>
+    </div>
+</div>
+<div style="clear:both;height:5px;"></div>
+<div class="row full-height">
+    <div class="col-md-4">
+        <div>
+            <ul>
+                <li>Created: {{model.created_at.strftime('%Y-%m-%d %H:%M:%S')}}</li>
+                <li>Updated: {{model.updated_at.strftime('%Y-%m-%d %H:%M:%S')}}</li>
+                <li>Epoch: <span id="epoch_info">{{model.epoch}}</span></li>
+                {% if model.dataset %}
+                    <li data-datasetid="{{model.dataset.id}}">Dataset: <span id="dataset_name_info">{{model.dataset.name}}</span></li>
+                {% endif %}
+                <li>
+                    Train Type:
+                    {% if model.type == 'image' %}
+                        Image Classification
+                    {% elif model.type == 'text' %}
+                        Natural Language Processing
+                    {% else %}
+                        ---
+                    {% endif %}
+                </li>
+                <li>Network:
+                    {% if model.network_name %}
+                        {{model.network_name}}
+                    {% else %}
+                        ---
+                    {% endif %}
+                </li>
+                {% if model.type == 'image' %}
+                    <li>Resize mode: {{model.resize_mode}}</li>
+                    <li>Color mode: {{model.channels}}</li>
+                {% endif %}
+            </ul>
+        </div>
+    </div>
+    <div class="col-md-8 full-height">
+        <ul class="nav nav-tabs">
+            <li role="presentation" class="" id="log_tab"><a href="#">Log</a></li>
+            <li role="presentation" class="" id="graph_tab"><a href="#">Result</a></li>
+            <li role="presentation" class="active" id="network_tab"><a href="#">Network</a></li>
+            <li role="presentation" class="disabled" id="layer_tab"><a href="#">Layers</a></li>
+        </ul>
+        <div id="model_detail_log" class="hidden full-height">
+            <div class="form-group has-textarea" >
+                <pre id="training_log"></pre>
+            </div>
+        </div>
+        <div id="model_detail_graph" class="hidden">
+            <p id="training_graph">Graph Not Ready</p>
+        </div>
+        <div id="model_detail_network" class="full-height">
+            <div class="form-group has-textarea">
+                <pre id="network_edit_area">{{model.code}}</pre>
+            </div>
+        </div>
+        <div id="model_detail_layers" class="hidden"></div>
+    </div>
+</div>

@@ -1,0 +1,50 @@
+<table border="0">
+    <tr>
+        <th>DEEPstation Version:</th>
+        <td>{{ system_info['deepstation_version'] }}</td>
+    </tr>
+    <tr>
+        <th>Graphic Board Driver Version:</th>
+        <td>
+            {% if system_info['gpu_info']['driver_version'] %}
+                {{system_info['gpu_info']['driver_version']}}
+            {% else %}
+                ---
+            {% endif %}
+        </td>
+    </tr>
+    <tr>
+        <th>Chainer Version:</th>
+        <td>{{ system_info['chainer_version'] }}</td>
+    </tr>
+    <tr>
+        <th>Python Version:</th>
+        <td>{{ system_info['python_version'] }}</td>
+    </tr>
+</table>
+{% if system_info['disk_info'] != None %}
+<hr>
+<h5>Disk Info</h5>
+<dl>
+    {% for disk in system_info['disk_info'] %}
+        <table border="0">
+            <tr>
+                <th>Mounted on</th>
+                <td>{{disk['mount']}}</td>
+            </tr>
+            <tr>
+                <th>size</th>
+                <td>{{disk['size']}}</td>
+            </tr>
+            <tr>
+                <th>used</th>
+                <td>{{disk['used']}}</td>
+            </tr>
+            <tr>
+                <th>available</th>
+                <td>{{disk['avail']}}</td>
+            </tr>
+        </table>
+    {% endfor %}
+</dl>
+{% endif %}

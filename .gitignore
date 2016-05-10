@@ -1,11 +1,13 @@
 *.pyc
-uploaded_images/*
+deepstation.db
+uploaded_files/*
 uploaded_raw_files/*
 train_images/*
-tmp_image/*
+inspection_temp/*
 trained_data/*
-inspection_raw_image/*
 prepared_data/*
-models/*.py
+temp/*
+logs/*
+src/models/*.py
 !models/__init__.py
 !.gitkeep

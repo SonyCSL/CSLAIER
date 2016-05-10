@@ -1,7 +1,7 @@
 DEEPstation
 ============
 
-DEEPstation version 0.5.0
+DEEPstation version 0.6.0
 
 Browser based GUI deep learning tool.
 
@@ -15,7 +15,7 @@ Screenshots
 #### Modes
 ![models top](./docs/img/ss/top_models.png)
 
-### Model detail page 
+### Model detail page
 #### Train result
 ![train result](./docs/img/ss/train_result.png)
 
@@ -37,7 +37,7 @@ DEEPstation is tested on Ubuntu 14.04. We recommend them to use DEEPstation, tho
 * Firefox
 
 ### System
-* NVIDIA CUDA Technology GPU and drivers 
+* NVIDIA CUDA Technology GPU and drivers
 * Python 2.7
   * python-opencv
   * python-scipy
@@ -45,44 +45,59 @@ DEEPstation is tested on Ubuntu 14.04. We recommend them to use DEEPstation, tho
 * nkf
 
 ### Python Libraries
-* Chainer 1.5 http://chainer.org
-* bottle
-* bottle_sqlite
+* Chainer 1.5 or higher http://chainer.org
+* Flask
+* Flask-SQLAlchemy
 * cv2
-* PyYAML
 * matplotlib
 * python-nkf
 
 Setup
 ------
 
-* Edit `settings.yaml` to set paths for saving files.
+* Edit `deepstation.cfg` to set paths for saving files.
   * Begin with `/` stands for abosolute path.
-  * Begin without `/` or begin with `./` stands for absolute path from DEEPstation's `main.py`. 
-* Setup database. Try command below on root directory of DEEPstation.  
-`sqlite3 deepstation.db < ./scheme/deepstation.sql`
-* Startup server. `python main.py`
-* Access `http://localhost:8080` on your browser.   
-If you have changed hostname and port on `settings.yaml`, use that one.
+  * Begin without `/` or begin with `./` stands for absolute path from DEEPstation's root directory.
+  * Parameters are below
+
+|Parameter|Description|
+|---|---|
+|HOST|name or IP address of your host|
+|PORT|Port number|
+|DEBUG|Debug flag (True or False)|
+|UPLOADED_FILE|Path for uploaded files will save.|
+|UPLOADED_RAW_FILE|Path for uploaded zip files will save.|
+|INSPECTION_TEMP|Path for uploaded images for inspection will save.|
+|PREPARED_DATA|Path for preprocessed data for train will save.|
+|TRAINED_DATA|Path for trained data will save.|
+||Path of nvidia-smi command|
+|DATABASE_PATH|Path of deepstation.db|
+|LOG_DIR|Path for log file|
+
+* Setup database. Try command below on root directory of DEEPstation.
+`./setup.sh`
+* Startup server. `./run.sh`
+* Access `http://localhost:8080` on your browser.
+If you have changed hostname and port on `deepstation.cfg`, use that one.
 
 ### How to update
 
-* Make backup `settings.yaml` and `deepstation.db`.
+* Make backup `deepstation.cfg` and `deepstation.db`.
 * Get newest code by `git pull` or something.
-* Restore `settings.yaml` and `deepstation.db` from backup.
+* Restore `deepstation.cfg` and `deepstation.db` from backup.
 * Follow the instructions below as required.
 
 #### Migration v0.2.1 to v0.3.0
 
 * Stop DEEPstation by `ctrl + c`
-* Run command below on root directory of DEEPstation  
+* Run command below on root directory of DEEPstation
 `sqlite3 deepstation.db < ./scheme/migration_20160208.sql`
 * Start DEEPstation.
 
 #### Migration v0.3.0 to v0.4.0
 
 * Stop DEEPstation by `ctrl + c`
-* Run command below on root directory of DEEPstation  
+* Run command below on root directory of DEEPstation
 `sqlite3 deepstation.db < ./scheme/migration_20160209.sql`
 * Start DEEPstation.
 
@@ -91,20 +106,31 @@ If you have changed hostname and port on `settings.yaml`, use that one.
 * Stop DEEPstation by `ctrl + c`
 * Install `nkf` if you don't have yet.
 * Install `python-nkf`. Using `pip intall nkf` is easy.
-* Run command below on root directory of DEEPstation  
+* Run command below on root directory of DEEPstation
 `sqlite3 deepstation.db < ./scheme/migration_20160314.sql`
 * Start DEEPstation.
+
+#### Migration v0.5.x to v0.6.0
+
+In v0.6.0, we use Flask instead of bottle. So, we have changed ** setting file ** and ** how to run **.
+
+* Changes of setting files
+  * Setting file has changed `settings.yaml` to `deepstation.cfg`.
+* Update deepstation.db
+  * `sqlite3 deepstation.db < ./scheme/migration_20160314.sql`
+* Run DEEPstation
+ * `./run.sh`
 
 Usage
 ------
 
 ### Start up DEEPstation
 * Move to DEEPstation's directory.
-* Run `python main.py`.
+* Run `./run.sh`.
 * Access `http://localhost:8080` by web browser.
 
 ### Creating Dataset
-* Upload dataset from '+new' button on Dataset section on top page. 
+* Upload dataset from '+new' button on Dataset section on top page.
 * Dataset is a zip file which contains classifeid images by directory like [Caltech 101](http://www.vision.caltech.edu/Image_Datasets/Caltech101/) dataset.
 
 ### Creating Model
@@ -129,18 +155,6 @@ Usage
 Tips
 -----
 
-### Cleaning up temporary files
-
-Training makes a lot of temporary images on your `prepared_data` directory.  
-If you want to remove these images, access `http://localhost:8080/cleanup` on your browser.  
-It removes temporary images **IMMEDIATELY**.
-
-### Changing server backend
-
-You can change server backend (default is wsgiref). If you want to change, edit `settings.yaml`.  
-You can chose server backend from [here](http://bottlepy.org/docs/dev/deployment.html#switching-the-server-backend)  
-Use this functionality at your own risk.
-
 License
 --------
 
@@ -164,7 +178,7 @@ DEEPstationはUbuntu14.04でテストしています。 Ubuntu上で動かすこ
 * Firefox
 
 ### System
-* NVIDIA CUDA Technology GPU and drivers 
+* NVIDIA CUDA Technology GPU and drivers
 * Python 2.7
   * python-opencv
   * python-scipy
@@ -172,11 +186,10 @@ DEEPstationはUbuntu14.04でテストしています。 Ubuntu上で動かすこ
 * nkf
 
 ### Python Libraries
-* Chainer 1.5 http://chainer.org
-* bottle
-* bottle_sqlite
+* Chainer 1.5 or higher http://chainer.org
+* Flask
+* Flask-SQLAlchemy
 * cv2
-* PyYAML
 * matplotlib
 * python-nkf
 
@@ -192,44 +205,94 @@ DEEPstationはUbuntu14.04でテストしています。 Ubuntu上で動かすこ
 Setup
 ------
 
-* 各種ファイルの保存場所を`settings.yaml`に定義します。
+* 各種ファイルの保存場所を`deepstation.cfg`に定義します。
   * `/` で始まるパスは絶対パスとして処理されます。
-  * `/` で始まらないパス、`./`で始まるパスはDEEPstationの`main.py`が配置されているディレクトリ直下の相対パスとして処理されます。
-* データベースのセットアップを行います。DEEPstationをダウンロードしたディレクトリで下記のコマンドを実行してください。  
-`sqlite3 deepstation.db < ./scheme/deepstation.sql`
-* サーバを起動します。DEEPstationをダウンロードしたディレクトリで `python main.py`を実行します
-* ブラウザで `http://localhost:8080` にアクセスします。  
-`settings.yaml`でhostnameとportを変更している場合はそちらを利用してください。
+  * `/` で始まらないパス、`./`で始まるパスはDEEPstationのルートディレクトリ直下の相対パスとして処理されます。
+  * 設定ファイルのパラメタの意味は下記の通りです
+
+|パラメタ|説明|
+|---|---|
+|HOST|ホスト名|
+|PORT|ポート番号|
+|DEBUG|デバグフラグ|
+|UPLOADED_FILE|アップロードされたデータ・セットの格納場所|
+|UPLOADED_RAW_FILE|アップロードされたzipファイルの格納場所|
+|INSPECTION_TEMP|inspection用の画像のアップロード先|
+|PREPARED_DATA|学習用の前処理済データの格納場所|
+|TRAINED_DATA|学習済データの格納場所|
+||nvidia_smiコマンドのパス|
+|DATABASE_PATH|deepstation.dbの場所|
+|LOG_DIR|ログファイルの出力場所|
+
+* `./setup.sh` を実行します
+* サーバを起動します。DEEPstationをダウンロードしたディレクトリで `./run.sh`を実行します
+* ブラウザで `http://localhost:8080` にアクセスします。
+`deepstation.cfg`でhostnameとportを変更している場合はそちらを利用してください。
 
 ### Update時の注意点
 
-* `settings.yaml`と`deepstation.db`のバックアップをとってください。
+* `deepstation.cfg`(旧`settings.yaml`)と`deepstation.db`のバックアップをとってください。
 * `git pull`などで新しいソースコードを取得します。
-* `settings.yaml`と`deepstation.db`をバックアップから復元します。
+* `deepstation.cfg`と`deepstation.db`をバックアップから復元します。
 * 必要に応じて、以下のアップデート手順を実行します。
 
 #### v0.2.1 から v0.3.0 へのアップデート方法
 
-* DEEPstationを止めてください。DEEPstation実行中のターミナルで`ctrl + c`で止まります。 
-* DEEPstationのルートディレクトリで下記のコマンドを実行してください。  
+* DEEPstationを止めてください。DEEPstation実行中のターミナルで`ctrl + c`で止まります。
+* DEEPstationのルートディレクトリで下記のコマンドを実行してください。
 `sqlite3 deepstation.db < ./scheme/migration_20160208.sql`
 * DEEPstationを起動してください。
 
 #### v0.3.0 から v 0.4.0 へのアップデート方法
 
-* DEEPstationを止めてください。DEEPstation実行中のターミナルで`ctrl + c`で止まります。 
-* DEEPstationのルートディレクトリで下記のコマンドを実行してください。  
+* DEEPstationを止めてください。DEEPstation実行中のターミナルで`ctrl + c`で止まります。
+* DEEPstationのルートディレクトリで下記のコマンドを実行してください。
 `sqlite3 deepstation.db < ./scheme/migration_20160209.sql`
 * DEEPstationを起動してください。
 
 #### v0.4.x から v 0.5.0 へのアップデート方法
 
-* DEEPstationを止めてください。DEEPstation実行中のターミナルで`ctrl + c`で止まります。 
+* DEEPstationを止めてください。DEEPstation実行中のターミナルで`ctrl + c`で止まります。
 * `nkf`コマンドがインストールされていなければ、`nkf`コマンドをインストールしてください。
 * `python-nkf`をインストールしてください。`pip install nkf`でインストールするのが簡単です。
-* DEEPstationのルートディレクトリで下記のコマンドを実行してください。  
+* DEEPstationのルートディレクトリで下記のコマンドを実行してください。
 `sqlite3 deepstation.db < ./scheme/migration_20160314.sql`
 * DEEPstationを起動してください。
+
+#### v0.5.x から v0.6.0 へのアップデート方法
+
+v0.6.0よりフレームワークがbottleからFlaskに変更になりました。
+これに伴い、** 設定ファイル **と** 起動方法 **が変更されています。
+
+* 設定ファイルの変更
+  * 設定ファイルが `settings.yaml`から`deepstation.cfg`に変更になりました。
+  * 設定ファイルの書き方は、`deepstation.cfg`のデフォルト値を参照してください
+    * 文字列の場合は`''`で囲む必要があります
+    * 数値(PORT)やBoolean値(DEBUG)は`''`で囲んではいけません。
+  * 新たに`DATABASE_PATH`パラメタが追加されました。`deepstation.db`へのpathを記述してください。
+  * 新旧設定内容の比較は以下のとおり
+
+|説明|旧|新|
+|---|---|---|
+|ホスト名|host|HOST|
+|ポート番号|port|PORT|
+|デバグフラグ|debug|DEBUG|
+|サーバエンジン|server_engine|(廃止)|
+|アップロードされたデータ・セットの格納場所|uploaded_images|UPLOADED_FILE|
+|アップロードされたzipファイルの格納場所|uploaded_raw_files|UPLOADED_RAW_FILE|
+|inspection用のアップロードされた未加工画像の格納場所|inspection_raw_image|(廃止)|
+|inspection用の画像のアップロード先|inspection_temp_image|INSPECTION_TEMP|
+|学習用の前処理済データの格納場所|prepared_data|PREPARED_DATA|
+|学習済データの格納場所|trained_data|TRAINED_DATA|
+|nvidia_smiコマンドのパス|nvidia_smi||
+|deepstation.dbの場所|(無し)|DATABASE_PATH|
+|ログファイルの出力先|(無し)|LOG_DIR|
+
+* データベースのアップデート
+  * deepstation.dbのあるディレクトリ(通常はDEEPstationのルートディレクトリ) で下記コマンドを実行
+  `sqlite3 deepstation.db < ./scheme/migration_20160513.sql`
+* DEEPstationの起動
+  * DEEPstationのルートディレクトリで`./run.sh`を実行
 
 使い方
 ------
@@ -242,7 +305,7 @@ Setup
 
 ### DEEPstationの起動
 * DEEPstationをcloneしてきた場所に移動
-* `python main.py` を実行
+* `./run.sh` を実行
 * ブラウザで`http://localhost:8080` にアクセスする
 
 ### Datasetの作成
@@ -305,13 +368,13 @@ Tips
 * 'Create'ボタンを押して、Model名やNetwork名を指定し、編集を終了します。
    * 注:編集したModelは別のModelとして新規作成されます。
 
-####　Modelの削除  
+####　Modelの削除
  * トップページのModelsセクションから削除したいModelを選択し、Modelの詳細画面に移動します。
  * 'Delete'ボタンを押すと選択されたModelが削除されます。
    * 注: 学習済のモデルも一緒に削除されます。
 
 ### 経過グラフについて
-Modelの詳細画面内の'Result'タブを押すと学習の経過グラフが表示され、学習の経過を確認することができます。  
+Modelの詳細画面内の'Result'タブを押すと学習の経過グラフが表示され、学習の経過を確認することができます。
 学習中のModel('In Progress'となっているModel)の場合は経過グラフが随時更新されていきます。
 
 #### 経過グラフの各線分
@@ -326,32 +389,19 @@ Modelの詳細画面内の'Result'タブを押すと学習の経過グラフが�
 横軸はEpoch数です。
 
 ### 学習が完了したModelの利用
-Modelの詳細画面内の'Downlord Model'ボタン、'Downlord Label'ボタン、'Downlord Mean File'ボタンからそれぞれ学習済みModel、Label(カテゴリの一覧)、Mean Fileをダウンロードすることができます。  
+Modelの詳細画面内の'Download Trained Files'ボタンを押下すると、学習済みModel、Label(カテゴリの一覧)、Mean File、ネットワークファイルをzip圧縮されたものをダウンロードすることができます。
 他のプログラムからの利用方法は[サンプル](./examples/inspection/)を参照ください。
 
-### setting.yamlの編集について
+### deepstation.cfg の編集について
 
 #### 各種ファイルの保存場所を変更する
-* setting.yamlを編集し、保存場所のパスを変更します。
+* deepstation.cfgを編集し、保存場所のパスを変更します。
 * サーバーを再起動します。
 
 #### 外部のマシーンからアクセスする
-* settings.yamlを編集し、ホストとポートを指定します。
+* deepstation.cfgを編集し、ホストとポートを指定します。
 * サーバーを再起動します。
-* DEEPstationが動いている以外のマシンでブラウザより、settings.yamlに指定したURLにアクセスし、DEEPstationの画面が開いたら成功です。
-
-### 一時ファイルの削除
-
-学習ではたくさんの一時ファイルを`prepared_data`ディレクトリに作成します。  
-もし、これらの画像を削除したい場合は `http://localhost:8080/cleanup` にブラウザでアクセスします。 
-すると、作成された一時ファイルが **ただちに** 削除されます。
-
-### サーバのバックエンドの変更
-
-実行するサーババックエンドを変更することができます(デフォルトではwsgirefが選択されています)。  
-`settings.yaml` に使用するサーババックエンドを指定することで変更することができます。  
-使用できるバックエンドは [このリスト](http://bottlepy.org/docs/dev/deployment.html#switching-the-server-backend) の中から選択することができます。  
-サーバのバックエンドを変更する場合は自己責任で行ってください。
+* DEEPstationが動いている以外のマシンでブラウザより、deepstation.cfgに指定したURLにアクセスし、DEEPstationの画面が開いたら成功です。
 
 License
 --------

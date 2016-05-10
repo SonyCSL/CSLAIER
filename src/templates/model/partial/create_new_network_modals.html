@@ -1,0 +1,32 @@
+<div class="modal fade" id="create_new_network_modal" tabindex="-1" role="dialog" aria-labelledby="create_new_network_modal">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h4 class="modal-title">Create New Network </h4>
+            </div>
+            <div class="modal-body">
+                <form action="{{url_for('create_new_model')}}" method="POST" id="create_new_network_modal_form">
+                    <input type="hidden" name="model_template" value=""></input>
+                    <input type="hidden" name="my_network" id="modal_create_network_my_network">
+                    <input type="hidden" name="model_type" value="{{model.type}}">
+                    <div class="form-group">
+                        <label for="">Name</label>
+                        <input type="text" class="form-control" id="modal_create_network_name" name="model_name">
+                    </div>
+                    <div class="form-group">
+                        <label for="">Network</label>
+                        {% if model.network_name %}
+                            <input type="text" name="network_type" id="modal_create_network_network" class="form-control" value="{{model.network_name}}">
+                        {% else %}
+                            <input type="text" name="network_type" id="modal_create_network_network" class="form-control" value="">
+                        {% endif %}
+                    </div>
+                    <div class="form-group">
+                        <button class="btn btn-cyber" id="modal_create_network_btn" type="submit">Create</button>
+                        <button class="btn btn-cyber" id="model_edit_cancel" data-dismiss="modal">Cancel</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>

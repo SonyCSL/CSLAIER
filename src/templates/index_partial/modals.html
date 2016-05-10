@@ -1,0 +1,59 @@
+<div class="modal fade" id="upload_modal" tabindex="-1" role="dialog" aria-labelledby="upload_modal">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h4 class="modal-title" id="upload_modal_title">Dataset Upload</h4>
+            </div>
+            <div class="modal-body">
+                <div id="uploadDataset">
+                    <div class="form-group">
+                        <label>Dataset Type</label><br>
+                        <label for="dataset_type_image" class="radio-inline">
+                            <input type="radio" id="dataset_type_image" name="dataset_type" value="image" checked> Images
+                        </label>
+                        <label for="dataset_type_text" class="radio-inline">
+                            <input type="radio" id="dataset_type_text" name="dataset_type" value="text"> Texts
+                        </label>
+                    </div>
+                    <div class="form-group">
+                        <label for="dataset_name_input">Dataset Name</label>
+                        <input type="text" class="form-control" id="dataset_name_input" name="dataset_name" placeholder="input dataset name">
+                    </div>
+                    <div>
+                        <h4>Select how to indicate dataset</h4>
+                        <div class="radio-inline">
+                            <label>
+                                <input type="radio" name="select_how_to_indicate_dataset" value="upload"> Upload Dataset<br>
+                            </label>
+                        </div>
+                        <div class="radio-inline">
+                            <label>
+                                <input type="radio" name="select_how_to_indicate_dataset" value="set_path"> Set Dataset Path
+                            </label>
+                        </div>
+                    </div>
+                    <div class="form-group hidden" id="upload_dataset">
+                        <input type="file" id="fileInput" name="fileInput">
+                        <p class="help-block">Select data set file which is compressed by zip.</p>
+                    </div>
+                    <div class="form-group hidden" id="set_dataset_path_div">
+                        <label for="set_dataset_path_input">Set dataset path on DEEPstation</label>
+                        <input type="text" id="set_dataset_path_input" class="form-control" name="dataset_path">
+                        <p class="help-block">Input dataset path on DEEPstation</p>
+                    </div>
+                    <button type="submit" class="btn btn-cyber disabled" id="submit_dataset">Submit</button>
+                    <button type="cancel" class="btn btn-cyber" data-dismiss="modal">Cancel</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div id="uploading_progress_div" class="hidden">
+    <div class="progress-wrap">
+        <h4>Uploading Dataset <small id="progress_rate"></small></h4>
+        <div class="progress">
+            <div id="progress-bar" class="progress-bar" role="progressbar" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100" style="width: 0%;"></div>
+        </div>
+    </div>
+</div>

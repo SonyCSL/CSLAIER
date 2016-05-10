@@ -1,0 +1,128 @@
+<div class="model-sub-header">
+    <div id="progress-label">
+        <span class="label label-trained"> Trained</span>
+    </div>
+    <div class="model-control-div">
+        <button class="btn btn-cyber hidden" id="terminate_train_button">Terminate</button>
+        <button class="btn btn-cyber" id="delete_model_button">Delete</button>
+    </div>
+</div>
+<div style="clear:both;height:5px;"></div>
+<div class="row full-height">
+    <div class="col-md-4">
+        <div>
+            <ul>
+                <li>Created: {{model.created_at.strftime('%Y-%m-%d %H:%M:%S')}}</li>
+                <li>Updated: {{model.updated_at.strftime('%Y-%m-%d %H:%M:%S')}}</li>
+                <li>Epoch: <span id="epoch_info">{{model.epoch}}</span></li>
+                {% if model.dataset %}
+                <li data-datasetid="{{model.dataset.id}}">Dataset: <span id="dataset_name_info">{{model.dataset.name}}</span></li>
+                {% endif %}
+                <li>
+                    Train Type:
+                    {% if model.type == 'image' %}
+                        Image Classification
+                    {% elif model.type == 'text' %}
+                        Natural Language Processing
+                    {% else %}
+                        ---
+                    {% endif %}
+                </li>
+                <li>Network:
+                    {% if model.network_name %}
+                        {{model.network_name}}
+                    {% else %}
+                        ---
+                    {% endif %}
+                </li>
+                {% if model.type == 'image' %}
+                    <li>Resize mode: {{model.resize_mode}}</li>
+                    <li>Color mode: {{model.channels}}</li>
+                {% endif %}
+            </ul>
+        </div>
+        <div>
+            <div id="start_train_div">
+                <button class="btn btn-cyber btn-block" data-toggle="modal" data-target="#start_train_modal">Start Train</button>
+            </div>
+            <div id="model_detail_buttons">
+                <div class="form-group">
+                    <label for="epoch_select" describedby="epoch_select">Epoch (1 〜 {{model.epoch}})</label>
+                    <input id="epoch_select" type="number" min="1" max="{{model.epoch}}" class="form-control" value="{{model.epoch}}">
+                </div>
+                <button class="btn btn-cyber btn-block need-epoch" id="trained_model_download"> Download Trained Files</button>
+                {% if model.type == 'image' %}
+                    <button class="btn btn-cyber btn-block need-epoch" data-toggle="modal" data-target="#inspection_modal">Inspect</button>
+                {% elif model.type == 'text' %}
+                    <button class="btn btn-cyber btn-block need-epoch" data-toggle="modal" data-target="#prediction_modal">Prediction</button>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    <div class="col-md-8 full-height">
+        <ul class="nav nav-tabs">
+            <li role="presentation" class="" id="log_tab"><a href="#">Log</a></li>
+            <li role="presentation" class="" id="graph_tab"><a href="#">Result</a></li>
+            <li role="presentation" class="active" id="network_tab"><a href="#">Network</a></li>
+            <li role="presentation" class="" id="layer_tab"><a href="#">Layers</a></li>
+        </ul>
+        <div id="model_detail_log" class="hidden full-height">
+            <div class="form-group has-textarea" >
+                <pre id="training_log"></pre>
+            </div>
+        </div>
+        <div id="model_detail_graph" class="hidden">
+            <p id="training_graph">Graph Not Ready</p>
+        </div>
+        <div id="model_detail_network" class="full-height">
+            <div class="form-group has-textarea">
+                <textarea class="form-control" id="network_edit_area">{{model.code}}</textarea>
+            </div>
+            <div class="form-group hidden" id="create_network_buttons">
+                <button class="btn btn-cyber" data-toggle="modal" data-target="#create_new_network_modal">Create</button>
+                <button class="btn btn-cyber" id="model_edit_cancel">Cancel</button>
+            </div>
+        </div>
+        <div id="model_detail_layers" class="hidden">
+            <div class="form-horizontal">
+                <div class="form-group">
+                    <label for="viz_layer_epoch" class="col-sm-2">Epoch:</label>
+                    <div class="col-sm-8">
+                        <select name="" id="viz_layer_epoch" class="form-control">
+                            {% for i in range(model.epoch) %}
+                                <option value="{{i+1}}">{{i+1}}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-sm-2">
+                        <butotn class="btn btn-cyber" id="viz_layer_submit">Submit</butotn>
+                    </div>
+                </div>
+                <div class="form-group hidden" id="viz_layer_select_layer_wrap">
+                    <label for="" class="col-sm-2">Layer:</label>
+                    <div class="col-sm-8">
+                        <select name="" id="viz_layer_select_layer" class="form-control">
+
+                        </select>
+                    </div>
+                    <div class="col-sm-2">
+                        <button class="btn btn-cyber" id="viz_layer_select_layer_submit">Vizualize</button>
+                    </div>
+                </div>
+            </div>
+            <div>
+                <div id="viz_layer_loading" class="hidden">
+                    <div class="progress-wrap">
+                        <h4>Generating Image</h4>
+                        <div class="progress">
+                            <div class="progress-bar progress-bar-striped active" role="progressbar" aria-valuenow="100" aria-valuemin="0" aria-valuemax="100" style="width: 100%">
+                                <span class="sr-only">Generating image</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div id="viz_layer_result"></div>
+            </div>
+        </div>
+    </div>
+</div>

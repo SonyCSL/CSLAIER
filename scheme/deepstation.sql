@@ -11,11 +11,13 @@ create table if not exists Model(
     line_graph_data_path text,
     dataset_id integer,
     prepared_file_path integer,
+    updated_at timestamp,
     created_at timestamp default current_timestamp,
     pid integer Default null,
     resize_mode text,
     channels integer Default 3,
-    type text
+    type text,
+    use_wakatigaki integer default 0
 );
 
 create table if not exists Dataset(

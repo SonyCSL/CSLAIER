@@ -1,0 +1,83 @@
+{% extends 'common/base.html' %}
+{% block title %} {{ dataset.name }} > {{ dataset.category }}{% endblock %}
+{% block main_content %}
+    <input type="hidden" id="dataset_id" value="{{ dataset.id }}">
+    <div class="container">
+        <h2>Dataset</h2>
+        <div class="dataset_detail">
+            <div class="subtitle">
+                <h3><a href="/dataset/show/{{ dataset.id }}/">{{ dataset.name }}</a> - {{ dataset.category }} ({{ dataset.count }})</h3>
+                <div class="button_div right">
+                    {% if dataset.type == 'image' %}
+                        <button class="btn btn-cyber" id="btn_delete_category" data-path="{{dataset.category_root}}" data-type="{{dataset.type}}">Delete Category</button>
+                    {% elif dataset.type == 'text' %}
+                        <button class="btn btn-cyber" id="btn_delete_category" data-path="{{dataset.category_root}}" data-type="{{dataset.type}}">Delete Folder</button>
+                    {% endif %}
+                    <button class="btn btn-cyber" data-toggle="modal" data-target="#file_upload_modal"><span class="glyphicon glyphicon-plus"></span>New</button>
+                </div>
+            </div>
+            {% if dataset.type == 'image' %}
+                {% for file in dataset.files %}
+                    <img src="{{file}}" class="img-responsive img-rounded category-image" data-path="{{file}}" data-datasetpath="{{dataset.category_root}}">
+                {% endfor %}
+            {% elif dataset.type == 'text' %}
+                {% for file in dataset.files %}
+                    <div class="text_detail" data-path="{{file['text_path']}}" data-datasetpath="{{dataset.category_root}}">
+                        {{ file['sample_text'] }}
+                    </div>
+                {% endfor %}
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="modal fade" id="file_upload_modal" tabindex="-1" role="dialog" aria-labelledby="file_upload_modal">
+        <div class="modal-dialog" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h4 class="modal-title" id="upload_modal_title">
+                        {% if dataset.type == 'image' %}
+                            Add a New Image
+                        {% elif dataset.type == 'text' %}
+                            Add a New Text File
+                        {% endif %}
+                    </h4>
+                </div>
+                <div class="modal-body">
+                    <form action="/dataset/{{ dataset.id }}/upload{{ dataset.category_root}} " method="POST" enctype="multipart/form-data">
+                        <div class="form-group">
+                            <input type="file" id="fileInput" name="fileInput">
+                            <p class="help-block">
+                                {% if dataset.type == 'image' %}
+                                    Select image(.jpg, .png, .gif) to add to category.
+                                {% elif dataset.type == 'text' %}
+                                    Select Text File to add to Folder
+                                {% endif %}
+                            </p>
+                        </div>
+                        <input type="hidden" name="dataset_type" value="{{dataset.type}}">
+                        <button type="submit" class="btn btn-cyber">Submit</button>
+                        <button type="cancel" class="btn btn-cyber" data-dismiss="modal">Cancel</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="show_text_detail_modal" tabindex="-1" role="dialog" aria-labelledby="show_text_detail_modal">
+        <div class="modal-dialog" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <button class="btn btn-cyber btn_delete_text">Delete Text</button>
+                    <button class="btn btn-cyber" data-dismiss="modal">Close</button>
+                </div>
+                <div class="modal-body">
+                    <div class="sample_text" id="text_detail"></div>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-cyber btn_delete_text">Delete Text</button>
+                    <button class="btn btn-cyber" data-dismiss="modal">Close</button>
+                </div>
+            </div>
+        </div>
+    </div>
+{% endblock %}

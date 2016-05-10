@@ -1,0 +1,104 @@
+<div class="modal fade" id="start_train_modal" tabindex="-1" role="dialog" aria-labelledby="start_train_modal">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h4 class="modal-title" id="start_train_modal_title">Start Train</h4>
+            </div>
+            <div class="modal-body">
+                <h4 class="start_train_section_header">Training Settings</h4>
+                <div class="start_train_section">
+                    <div class="form-group">
+                        <input type="hidden" id="default_dataset" value="{{model.id}}">
+                        <input type="hidden" name="model_type" value="{{model.type}}">
+                        <label for="select_dataset">Select Dataset.</label>
+                        <select class="form-control" id="select_dataset">
+                            <option value="-1"></option>
+                            {% for ds in datasets %}
+                                {% if ds.id == model.dataset.id %}
+                                    <option value="{{ds.id}}" selected>{{ds.name}}</option>
+                                {% else %}
+                                    <option value="{{ds.id}}">{{ds.name}}</option>
+                                {% endif %}
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="select_pretrainedmodel">Select Pretrained Model.</label>
+                        <select class="form-control" id="select_pretrainedmodel">
+                            <option value="-1"></option>
+                            {% for pretrained_model in pretrained_models %}
+                                <option value="{{pretrained_model}}">{{pretrained_model}}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="epoch_input" class="label-control">Input Epoch count.</label>
+                        <input id="epoch_input" type="number" value="1" min="1" class="form-control" name="epoch">
+                    </div>
+
+                    {% if system_info['gpu_info'] == None %}
+                        <input type="hidden" id="gpu_num" name="gpu_num" value="-1">
+                    {% else %}
+                        <div class="form-group">
+                            <label for="gpu_num" class="label-control">Select GPU to compute.</label>
+                            {% for gpu in system_info['gpu_info']['gpus'] %}
+                                <label class="checkbox-inline">
+                                    {% if loop.index0 == 0 %}
+                                        <input type="radio" name="gpu_num" value="{{ loop.index0 }}" checked> {{loop.index0}}
+                                    {% else %}
+                                        <input type="radio" name="gpu_num" value="{{loop.index0}}"> {{loop.index0}}
+                                    {% endif %}
+                                </label>
+                            {% endfor %}
+                        </div>
+                    {% endif %}
+                </div>
+                {% if model.type == 'image' %}
+                    <h4 class="start_train_section_header">Image Preprocessing Settings</h4>
+                    <div class="start_train_section">
+                        <div class="form-group">
+                            <label for="select_resize_mode" class="label-control">Select Image Re-sizing method</label>
+                            <select class="form-control" id="select_resize_mode">
+                                <option value="squash">squash</option>
+                                <option value="fill">fill</option>
+                                <option value="crop">crop</option>
+                                <option value="half_crop">half_crop</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="select_color_mode" class="label-control">Select Color mode</label>
+                            <select class="form-control" id="select_color_mode">
+                                <option value="rgb">RGB</option>
+                                <option value="grayscale">Grayscale</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="select_flipping_mode" class="label-control">Use image flipping?</label>
+                            <select class="form-control" id="select_flipping_mode">
+                                <option value="0">Yes</option>
+                                <option value="1">No</option>
+                            </select>
+                        </div>
+                    </div>
+                {% else %}
+                    <h4 class="start_train_section_header">Optional Settings</h4>
+                    <div class="start_train_section">
+                        {% if mecab_available %}
+                            <h5>Separating Words in Japanese with Spaces (分かち書き) settings</h5>
+                            <div class="form-group">
+                                <div class="checkbox">
+                                    <label>
+                                        <input type="checkbox" id="use_wakachigaki"> Use separating words in Japanese with spaces (分かち書き)
+                                    </label>
+                                </div>
+                            </div>
+                        {% endif %}
+                    </div>
+                {% endif %}
+
+                <button type="button" id="start_train_btn" class="btn btn-cyber" data-modeltype="{{model.type}}">Start</button>
+                <button type="cancel" class="btn btn-cyber" data-dismiss="modal">Calcel</button>
+            </div>
+        </div>
+    </div>
+</div>
