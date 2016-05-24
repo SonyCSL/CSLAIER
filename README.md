@@ -112,7 +112,7 @@ If you have changed hostname and port on `deepstation.cfg`, use that one.
 
 #### Migration v0.5.x to v0.6.0
 
-In v0.6.0, we use Flask instead of bottle. So, we have changed ** setting file ** and ** how to run **.
+In v0.6.0, we use Flask instead of bottle. So, we have changed **setting file** and **how to run**.
 
 * Changes of setting files
   * Setting file has changed `settings.yaml` to `deepstation.cfg`.
@@ -262,7 +262,7 @@ Setup
 #### v0.5.x から v0.6.0 へのアップデート方法
 
 v0.6.0よりフレームワークがbottleからFlaskに変更になりました。
-これに伴い、** 設定ファイル **と** 起動方法 **が変更されています。
+これに伴い、**設定ファイル** と **起動方法** が変更されています。
 
 * 設定ファイルの変更
   * 設定ファイルが `settings.yaml`から`deepstation.cfg`に変更になりました。
