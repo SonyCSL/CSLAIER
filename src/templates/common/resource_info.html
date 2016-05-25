@@ -1,0 +1,25 @@
+{% if system_info['disk_info'] != None %}
+    <h5>Disk Info</h5>
+    {% for disk in system_info['disk_info'] %}
+        <div  class="disk_info">
+            <table border="0">
+                <tr>
+                    <th>Mounted on</th>
+                    <td>{{disk['mount']}}</td>
+                </tr>
+                <tr>
+                    <th>size</th>
+                    <td>{{disk['size']}}</td>
+                </tr>
+                <tr>
+                    <th>used</th>
+                    <td>{{disk['used']}}</td>
+                </tr>
+                <tr>
+                    <th>available</th>
+                    <td>{{disk['avail']}}</td>
+                </tr>
+            </table>
+        </div>
+    {% endfor %}
+{% endif %}

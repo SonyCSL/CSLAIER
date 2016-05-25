@@ -180,7 +180,7 @@ h3 {
 }
 
 .gpu{
-    border:solid 1px #0c0;    
+    border:solid 1px #0c0;
     height: auto;
 }
 
@@ -452,10 +452,10 @@ textarea.form-control {
     height: 200px;
     display: inline-block;
     padding: 5px;
-    vertical-align: top;  
+    vertical-align: top;
     margin: 4px;
     overflow: hidden;
-    color: white; 
+    color: white;
 }
 
 .text_detail:hover {
@@ -470,4 +470,14 @@ textarea.form-control {
 
 #show_text_detail_modal .modal-header {
     text-align: right;
+}
+
+.disk_info {
+    border: 1px solid white;
+    border-radius: 3px;
+    margin-top: 2px;
+    margin-left: 2px;
+    padding: 3px;
+    padding-left: 5px;
+    padding-right: 5px;
 }
