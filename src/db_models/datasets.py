@@ -40,6 +40,7 @@ class Dataset(db.Model):
         datasets = cls.query.order_by(desc(Dataset.updated_at))
         ret = []
         for dataset in datasets:
+            if not os.path.exists(dataset.dataset_path): continue
             dataset.file_num = ds_util.count_files(dataset.dataset_path)
             dataset.category_num = ds_util.count_categories(dataset.dataset_path)
             if dataset.type == 'image':
