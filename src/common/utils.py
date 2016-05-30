@@ -186,6 +186,16 @@ def get_texts_in_random_order(path, num, character_num=-1):
             ret.append(get_text_sample(f, character_num))
     return ret
 
+def get_images_in_random_order(path, num):
+    files = get_files_in_random_order(path, num)
+    ret = []
+    for f in files:
+        (name, ext) = os.path.splitext(f)
+        ext = ext.lower()
+        if ext in ('.png', '.jpg', '.jpeg', 'gif'):
+            ret.append(f)
+    return ret
+
 def get_text_sample(path, character_num=-1):
     raw_text = open(path).read()
     encoding = nkf.guess(raw_text)

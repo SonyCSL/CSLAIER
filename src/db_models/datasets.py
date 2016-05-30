@@ -46,7 +46,8 @@ class Dataset(db.Model):
             dataset.category_num = ds_util.count_categories(dataset.dataset_path)
             if dataset.type == 'image':
                 dataset.thumbnails = []
-                thumbnails = ds_util.get_files_in_random_order(dataset.dataset_path, 4)
+                thumbnails = ds_util.get_images_in_random_order(dataset.dataset_path, 4)
+                if len(thumbnails) == 0: continue
                 for t in thumbnails:
                     dataset.thumbnails.append('/files/' + str(dataset.id) + t.replace(dataset.dataset_path, ''))
             elif dataset.type == 'text':
@@ -67,7 +68,8 @@ class Dataset(db.Model):
         for index, p in enumerate(ds_util.find_all_directories(dataset_root)):
             if index < offset or offset + limit -1 < index: continue
             if dataset.type == 'image':
-                thumbs = ds_util.get_files_in_random_order(p, 4)
+                thumbs = ds_util.get_images_in_random_order(p, 4)
+                if len(thumbs) == 0: continue
                 thumbs = map(lambda t:'/files/' + str(dataset.id) + t.replace(dataset.dataset_path, ''), thumbs)
                 dataset.categories.append({
                     'dataset_type': dataset.type,
