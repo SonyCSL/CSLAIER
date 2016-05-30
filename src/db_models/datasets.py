@@ -4,6 +4,7 @@ import datetime
 import zipfile
 import re
 import shutil
+from math import ceil
 from logging import getLogger
 
 import nkf
@@ -55,13 +56,16 @@ class Dataset(db.Model):
         return ret
 
     @classmethod
-    def get_dataset_with_categories_and_samples(cls, id):
+    def get_dataset_with_categories_and_samples(cls, id, limit=20, offset=0):
         dataset = cls.query.get(id)
         dataset_root = dataset.dataset_path
         if len(os.listdir(dataset_root)) == 1:
             dataset_root = os.path.join(dataset_root, os.listdir(dataset_root)[0])
+        dataset.category_num = ds_util.count_categories(dataset.dataset_path)
+        dataset.pages = int(ceil(float(dataset.category_num) / limit))
         dataset.categories = []
-        for p in ds_util.find_all_directories(dataset_root):
+        for index, p in enumerate(ds_util.find_all_directories(dataset_root)):
+            if index < offset or offset + limit -1 < index: continue
             if dataset.type == 'image':
                 thumbs = ds_util.get_files_in_random_order(p, 4)
                 thumbs = map(lambda t:'/files/' + str(dataset.id) + t.replace(dataset.dataset_path, ''), thumbs)

@@ -102,6 +102,7 @@ def find_all_files(directory):
 
 def find_all_directories(directory):
     for root, dirs, files in os.walk(directory):
+        dirs.sort()
         if len(dirs) == 0:
             yield root
 

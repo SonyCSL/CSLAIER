@@ -29,6 +29,37 @@
                 </div>
             {% endfor %}
         </div>
+        {% if dataset.pages > 0 %}
+            <nav class="pagination center">
+                <ul class="pagination">
+                    {% if current_page == 1 %}
+                        <li class="disabled">
+                            <span aria-hidden="true">&laquo;</span>
+                        </li>
+                    {% else %}
+                        <li>
+                            <a href="{{url_for('show_dataset', id=dataset.id, page=current_page - 1)}}" aria-label="Previous">
+                                <span aria-hidden="true">&laquo;</span>
+                            </a>
+                        </li>
+                    {% endif %}
+                    {% for p in range(dataset.pages) %}
+                        <li class="{% if p + 1 == current_page %}active{% endif %}"><a href="{{url_for('show_dataset', id=dataset.id, page=p+1)}}">{{p+1}}</a></li>
+                    {% endfor %}
+                    {% if current_page == dataset.pages %}
+                        <li class="disabled">
+                            <span aria-hidden="true">&raquo;</span>
+                        </li>
+                    {% else %}
+                        <li>
+                            <a href="{{url_for('show_dataset', id=dataset.id, page=current_page + 1)}}" aria-label="Next">
+                                <span aria-hidden="true">&raquo;</span>
+                            </a>
+                        </li>
+                    {% endif %}
+                </ul>
+            </nav>
+        {% endif %}
     </div>
 
     <div class="modal fade" id="modal_new_category" tabindex="-1" role="dialog" aria-labelledby="modal_new_category">

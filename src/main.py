@@ -98,8 +98,9 @@ def show_inspection_uploaded_file(filename):
 
 @app.route('/dataset/show/<int:id>/')
 def show_dataset(id):
-    dataset = Dataset.get_dataset_with_categories_and_samples(id)
-    return render_template('dataset/show_dataset.html', dataset=dataset)
+    page = request.args.get('page', type=int, default=1)
+    dataset = Dataset.get_dataset_with_categories_and_samples(id, offset=(page - 1)*20)
+    return render_template('dataset/show_dataset.html', dataset=dataset, current_page=page)
 
 @app.route('/dataset/show/<int:id>/<path:category>')
 def show_dataset_category(id, category):
