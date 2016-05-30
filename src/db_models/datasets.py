@@ -111,6 +111,7 @@ class Dataset(db.Model):
             shutil.rmtree(self.dataset_path)
         except Exception as e:
             logger.exception('Could not delete {0}. {1}'.format(self.dataset_path, e))
+            raise
         db.session.commit()
 
     @classmethod
@@ -120,7 +121,8 @@ class Dataset(db.Model):
         try:
             shutil.rmtree(abs_path)
         except Exception as e:
-            logger.exception('Could not delete {0}. {1}'.format(self.dataset_path, e))
+            logger.exception('Could not delete {0}. {1}'.format(dataset.dataset_path, e))
+            raise
 
     @classmethod
     def create_category(cls, id, name):
@@ -146,7 +148,8 @@ class Dataset(db.Model):
         self.dataset_path = extract_to
         try:
             os.mkdir(extract_to)
-        except:
+        except Exception as e:
+            logger.exception('Could not create directory to extract zip file: {0} {1}'.format(extract_to, e))
             raise
         try:
             zf = zipfile.ZipFile(os.path.join(save_raw_file_to, new_filename), 'r')
@@ -171,7 +174,8 @@ class Dataset(db.Model):
                         uzf = file(temp_path, 'wb')
                     uzf.write(zf.read(f))
                     uzf.close()
-        except:
+        except Exception as e:
+            logger.exception('Could not extract zip file: {0}'.format(e))
             raise
         finally:
             if 'zf' in locals():
