@@ -11,6 +11,7 @@ from flask import Flask, url_for, render_template, request, redirect,\
 from werkzeug import secure_filename
 from werkzeug.contrib.cache import SimpleCache
 from sqlalchemy import desc
+from sqlalchemy.orm import eagerload
 
 from db_models.shared_models import db
 from db_models.datasets import Dataset
@@ -70,7 +71,7 @@ cache = SimpleCache()
 @app.route('/')
 def index():
     datasets = Dataset.get_datasets_with_samples()
-    models = Model.query.order_by(desc(Model.updated_at))
+    models = Model.query.options(eagerload('dataset')).order_by(desc(Model.updated_at))
     return render_template(
         'index.html',
         system_info = get_system_info(),
