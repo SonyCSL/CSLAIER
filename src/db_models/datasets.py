@@ -39,8 +39,11 @@ class Dataset(db.Model):
         return
 
     @classmethod
-    def get_datasets_with_samples(cls):
-        datasets = cls.query.order_by(desc(Dataset.updated_at))
+    def get_datasets_with_samples(cls, limit=0, offset=0):
+        if limit == 0:
+            datasets = cls.query.order_by(desc(Dataset.updated_at))
+        else:
+            datasets = cls.query.order_by(desc(Dataset.updated_at)).limit(limit).offset(offset)
         ret = []
         dirty = False
         for dataset in datasets:
@@ -63,7 +66,7 @@ class Dataset(db.Model):
                 dataset.sample_text = ds_util.get_texts_in_random_order(dataset.dataset_path, 1, 180)
                 dataset.filesize = ds_util.calculate_human_readable_filesize(ds_util.get_file_size_all(dataset.dataset_path))
             ret.append(dataset)
-        return ret
+        return ret, cls.query.count()
 
     @classmethod
     def get_dataset_with_categories_and_samples(cls, id, limit=20, offset=0):

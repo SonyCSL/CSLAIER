@@ -70,13 +70,14 @@ cache = SimpleCache()
 
 @app.route('/')
 def index():
-    datasets = Dataset.get_datasets_with_samples()
+    datasets, dataset_count = Dataset.get_datasets_with_samples(3, 0)
     models = Model.query.options(eagerload('dataset')).order_by(desc(Model.updated_at))
     return render_template(
         'index.html',
-        system_info = get_system_info(),
-        datasets    = datasets,
-        models      = models
+        system_info   = get_system_info(),
+        datasets      = datasets,
+        dataset_count = dataset_count,
+        models        = models
     )
 
 @app.route('/files/<int:dataset_id>/<path:image_path>')
@@ -198,6 +199,32 @@ def inspect_image():
 # =====================================================================
 # API
 # =====================================================================
+
+@app.route('/api/dataset/get/<int:offset>/')
+def api_get_dataset(offset):
+    datasets, dataset_count = Dataset.get_datasets_with_samples(offset=offset, limit=3)
+    ret_ds = []
+    for dataset in datasets:
+        ds = {
+            'id': dataset.id,
+            'name': dataset.name,
+            'type': dataset.type,
+        }
+        if dataset.type == 'image':
+            ds['category_num'] = dataset.category_num
+            ds['file_num'] = dataset.file_num
+            thumbs = []
+            for t in dataset.thumbnails:
+                thumbs.append(t)
+            ds['thumbnails'] = thumbs
+        elif dataset.type == 'text':
+            ds['filesize'] = dataset.filesize
+            texts = []
+            for t in dataset.sample_text:
+                texts.append(t)
+            ds['sample_text'] = texts
+        ret_ds.append(ds)
+    return jsonify({'dataset_count': dataset_count, 'datasets': ret_ds})
 
 @app.route('/api/dataset/upload', methods=['POST'])
 def api_upload_dataset():
