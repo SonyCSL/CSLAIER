@@ -22,6 +22,8 @@ class Dataset(db.Model):
     name         = db.Column(db.Text, unique = True, nullable = False)
     dataset_path = db.Column(db.Text, unique = True)
     type         = db.Column(db.Text)
+    category_num = db.Column(db.Integer)
+    file_num     = db.Column(db.Integer)
     updated_at   = db.Column(db.DateTime)
     created_at   = db.Column(db.DateTime)
     models       = db.relationship('Model', backref='dataset', lazy='dynamic')
@@ -40,10 +42,17 @@ class Dataset(db.Model):
     def get_datasets_with_samples(cls):
         datasets = cls.query.order_by(desc(Dataset.updated_at))
         ret = []
+        dirty = False
         for dataset in datasets:
             if not os.path.exists(dataset.dataset_path): continue
-            dataset.file_num = ds_util.count_files(dataset.dataset_path)
-            dataset.category_num = ds_util.count_categories(dataset.dataset_path)
+            if dataset.file_num is None:
+                dataset.file_num = ds_util.count_files(dataset.dataset_path)
+                dirty = True
+            if dataset.category_num is None:
+                dataset.category_num = ds_util.count_categories(dataset.dataset_path)
+                dirty = True
+            if dirty:
+                dataset.update_and_commit()
             if dataset.type == 'image':
                 dataset.thumbnails = []
                 thumbnails = ds_util.get_images_in_random_order(dataset.dataset_path, 4)
@@ -69,7 +78,6 @@ class Dataset(db.Model):
             if index < offset or offset + limit -1 < index: continue
             if dataset.type == 'image':
                 thumbs = ds_util.get_images_in_random_order(p, 4)
-                if len(thumbs) == 0: continue
                 thumbs = map(lambda t:'/files/' + str(dataset.id) + t.replace(dataset.dataset_path, ''), thumbs)
                 dataset.categories.append({
                     'dataset_type': dataset.type,
@@ -120,22 +128,33 @@ class Dataset(db.Model):
     def remove_category(cls, id, category_path):
         dataset = cls.query.get(id)
         abs_path = os.path.normpath(dataset.dataset_path + category_path)
+        deleted_file_num = ds_util.count_files(abs_path)
         try:
             shutil.rmtree(abs_path)
         except Exception as e:
             logger.exception('Could not delete {0}. {1}'.format(dataset.dataset_path, e))
             raise
+        dataset.category_num -= 1
+        dataset.file_num -= deleted_file_num
+        dataset.update_and_commit()
 
     @classmethod
     def create_category(cls, id, name):
         ds = cls.query.get(id)
-        if len(os.listdir(ds.dataset_path)) == 1:
-            only_one_child = os.listdir(ds.dataset_path)[0]
-            candidate = os.path.join(ds.dataset_path, only_one_child)
+        target = ds.dataset_path
+        if len(os.listdir(target)) == 1:
+            only_one_child = os.listdir(target)[0]
+            candidate = os.path.join(target, only_one_child)
             path_name_sample = ds_util.get_files_in_random_order(candidate, 1)[0]
             if os.path.split(path_name_sample)[0] != candidate:
-                ds.dataset_path = candidate
-        os.mkdir(os.path.join(ds.dataset_path, name))
+                target = candidate
+        try:
+            os.mkdir(os.path.join(target, name))
+            ds.category_num += 1
+        except Exception as e:
+            logger.exception('Could not create directory: {0} {1}'.format(os.path.join(target, name), e))
+            raise
+        ds.update_and_commit()
 
     def save_uploaded_data(self, uploaded_file, save_raw_file_to, save_to):
         filename = uploaded_file.filename
@@ -153,6 +172,8 @@ class Dataset(db.Model):
         except Exception as e:
             logger.exception('Could not create directory to extract zip file: {0} {1}'.format(extract_to, e))
             raise
+        file_num = 0
+        category_num = 0
         try:
             zf = zipfile.ZipFile(os.path.join(save_raw_file_to, new_filename), 'r')
             for f in zf.namelist():
@@ -161,6 +182,7 @@ class Dataset(db.Model):
                 if not os.path.basename(f):
                     if not os.path.exists(temp_path):
                         os.mkdir(temp_path)
+                        category_num += 1
                 else:
                     temp, ext = os.path.splitext(temp_path)
                     ext = ext.lower()
@@ -176,6 +198,7 @@ class Dataset(db.Model):
                         uzf = file(temp_path, 'wb')
                     uzf.write(zf.read(f))
                     uzf.close()
+                    file_num += 1
         except Exception as e:
             logger.exception('Could not extract zip file: {0}'.format(e))
             raise
@@ -184,6 +207,9 @@ class Dataset(db.Model):
                 zf.close()
             if 'uzf' in locals():
                 uzf.close()
+        self.category_num = category_num
+        self.file_num = file_num
+        self.update_and_commit()
 
     def save_uploaded_file_to_category(self, uploaded_file, category):
         filename = uploaded_file.filename
@@ -205,14 +231,21 @@ class Dataset(db.Model):
             f = open(new_filename, 'w')
             f.write(text)
             f.close()
+        self.file_num += 1
+        self.update_and_commit()
 
     def remove_file_from_category(self, target_file):
-        print target_file
         if self.type == 'image':
             target_file = target_file.replace('/files/' + str(self.id) + '/', '')
         file_path = os.path.normpath(self.dataset_path + os.sep + target_file)
         if os.path.isfile(file_path):
-            os.remove(file_path)
+            try:
+                os.remove(file_path)
+            except Exception as e:
+                logger.exception("Could not remove file: {0} {1}".format(file_path, e))
+                raise
+            self.file_num -= 1
+            self.update_and_commit()
 
     def get_full_text(self, target_file):
         file_path = os.path.join(self.dataset_path, target_file)
@@ -220,3 +253,8 @@ class Dataset(db.Model):
         text = text.replace("\r", '')
         text = text.replace("\n", '<br>')
         return text
+
+    def update_and_commit(self):
+        self.updated_at = datetime.datetime.now()
+        db.session.add(self)
+        db.session.commit()
