@@ -60,6 +60,7 @@ def read_image(path, model_insize, mean_image, center=False, flip=False):
         return image
 
 def feed_data(train_list, val_list, mean_image, batchsize, val_batchsize, model, loaderjob, epoch, optimizer, data_q, avoid_flipping):
+    denominator = 1000 if len(train_list) > 1000 else len(train_list)
     i = 0
     count = 0
     x_batch = np.ndarray((batchsize, 3, model.insize, model.insize), dtype=np.float32)
@@ -93,7 +94,7 @@ def feed_data(train_list, val_list, mean_image, batchsize, val_batchsize, model,
                 i= 0
 
             count += 1
-            if count % 1000 == 0:
+            if count % denominator == 0:
                 data_q.put('val')
                 j = 0
                 for path, label in val_list:
