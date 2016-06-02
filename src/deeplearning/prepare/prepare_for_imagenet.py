@@ -48,7 +48,7 @@ def make_train_data(model):
                 if os.path.getsize(os.path.join(path, f)) <= 0: continue
                 new_image_path = os.path.join(model.prepared_file_path, "image{0:0>7}.jpg".format(count))
                 resize_image(os.path.join(path, f), new_image_path, model)
-                if count - start_count < length + 0.75:
+                if count - start_count < length * 0.75:
                     train_text.write("{0} {1:d}\n".format(new_image_path, class_no))
                 else:
                     test_text.write("{0} {1:d}\n".format(new_image_path, class_no))
