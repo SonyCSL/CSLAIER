@@ -68,55 +68,50 @@ class Dataset(db.Model):
             ret.append(dataset)
         return ret, cls.query.count()
 
-    @classmethod
-    def get_dataset_with_categories_and_samples(cls, id, limit=20, offset=0):
-        dataset = cls.query.get(id)
-        dataset_root = dataset.dataset_path
+    def get_dataset_with_categories_and_samples(self, limit=20, offset=0):
+        dataset_root = self.dataset_path
         if len(os.listdir(dataset_root)) == 1:
             dataset_root = os.path.join(dataset_root, os.listdir(dataset_root)[0])
-        dataset.category_num = ds_util.count_categories(dataset.dataset_path)
-        dataset.pages = int(ceil(float(dataset.category_num) / limit))
-        dataset.categories = []
+        self.pages = int(ceil(float(self.category_num) / limit))
+        self.categories = []
         for index, p in enumerate(ds_util.find_all_directories(dataset_root)):
             if index < offset or offset + limit -1 < index: continue
-            if dataset.type == 'image':
+            if self.type == 'image':
                 thumbs = ds_util.get_images_in_random_order(p, 4)
-                thumbs = map(lambda t:'/files/' + str(dataset.id) + t.replace(dataset.dataset_path, ''), thumbs)
-                dataset.categories.append({
-                    'dataset_type': dataset.type,
-                    'path': p.replace(dataset.dataset_path, ''),
+                thumbs = map(lambda t:'/files/' + str(self.id) + t.replace(self.dataset_path, ''), thumbs)
+                self.categories.append({
+                    'dataset_type': self.type,
+                    'path': p.replace(self.dataset_path, ''),
                     'file_num': ds_util.count_files(p),
                     'category': os.path.basename(p),
                     'thumbnails': thumbs
                 })
-            elif dataset.type == 'text':
-                dataset.categories.append({
-                    'dataset_type': dataset.type,
-                    'path': p.replace(dataset.dataset_path, ''),
+            elif self.type == 'text':
+                self.categories.append({
+                    'dataset_type': self.type,
+                    'path': p.replace(self.dataset_path, ''),
                     'file_num': ds_util.count_files(p),
                     'category': os.path.basename(p),
                     'sample_text': ds_util.get_texts_in_random_order(p, 1, 180)
                 })
-        return dataset
+        return self
 
-    @classmethod
-    def get_dataset_with_category_detail(cls, id, category):
-        dataset = cls.query.get(id)
-        category_root = os.path.join(dataset.dataset_path, category)
-        dataset.category = os.path.basename(category_root)
+    def get_dataset_with_category_detail(self, category):
+        category_root = os.path.join(self.dataset_path, category)
+        self.category = os.path.basename(category_root)
         files = []
         for p in ds_util.find_all_files(category_root):
-            if dataset.type == 'image':
-                files.append('/files/' + str(dataset.id) + p.replace(dataset.dataset_path, ''))
-            elif dataset.type == 'text':
+            if self.type == 'image':
+                files.append('/files/' + str(self.id) + p.replace(self.dataset_path, ''))
+            elif self.type == 'text':
                 files.append({
                     'sample_text': ds_util.get_text_sample(p, 180),
-                    'text_path': p.replace(dataset.dataset_path, '')
+                    'text_path': p.replace(self.dataset_path, '')
                 })
-        dataset.files = files
-        dataset.count = ds_util.count_files(category_root)
-        dataset.category_root = category_root.replace(dataset.dataset_path, '')
-        return dataset
+        self.files = files
+        self.count = ds_util.count_files(category_root)
+        self.category_root = category_root.replace(self.dataset_path, '')
+        return self
 
     def delete(self):
         db.session.delete(self)

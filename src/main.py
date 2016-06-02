@@ -101,14 +101,16 @@ def show_inspection_uploaded_file(filename):
 @app.route('/dataset/show/<int:id>/')
 def show_dataset(id):
     page = request.args.get('page', type=int, default=1)
-    dataset = Dataset.get_dataset_with_categories_and_samples(id, offset=(page - 1)*20)
+    ds = Dataset.query.get(id)
+    dataset = ds.get_dataset_with_categories_and_samples(offset=(page-1)*20)
     return render_template('dataset/show_dataset.html', dataset=dataset, current_page=page)
 
 @app.route('/dataset/show/<int:id>/<path:category>')
 def show_dataset_category(id, category):
     if category == '-':
         category = ''
-    dataset = Dataset.get_dataset_with_category_detail(id, category)
+    ds = Dataset.query.get(id)
+    dataset = ds.get_dataset_with_category_detail(category)
     return render_template('dataset/show_category_detail.html', dataset=dataset)
 
 @app.route('/dataset/remove/<int:id>')

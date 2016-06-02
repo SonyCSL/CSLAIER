@@ -156,7 +156,7 @@ $('#uploading_progress_div').on('click', function(e){
     e.preventDefault();
 });
 
-$('.dataset').on('click', function(e){
+$('.datasets').on('click','.dataset', function(e){
     var dataset_id = $(this).data('id');
     location.href = '/dataset/show/' + dataset_id;
 });
