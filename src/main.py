@@ -107,11 +107,12 @@ def show_dataset(id):
 
 @app.route('/dataset/show/<int:id>/<path:category>')
 def show_dataset_category(id, category):
+    page = request.args.get('page', type=int, default=1)
     if category == '-':
         category = ''
     ds = Dataset.query.get(id)
-    dataset = ds.get_dataset_with_category_detail(category)
-    return render_template('dataset/show_category_detail.html', dataset=dataset)
+    dataset = ds.get_dataset_with_category_detail(category, offset=(page-1)*100)
+    return render_template('dataset/show_category_detail.html', dataset=dataset, current_page=page)
 
 @app.route('/dataset/remove/<int:id>')
 def remove_dataset(id):

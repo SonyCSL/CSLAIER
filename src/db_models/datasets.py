@@ -96,11 +96,12 @@ class Dataset(db.Model):
                 })
         return self
 
-    def get_dataset_with_category_detail(self, category):
+    def get_dataset_with_category_detail(self, category, offset=0, limit=100):
         category_root = os.path.join(self.dataset_path, category)
         self.category = os.path.basename(category_root)
         files = []
-        for p in ds_util.find_all_files(category_root):
+        for i, p in enumerate(ds_util.find_all_files(category_root)):
+            if i < offset or offset + limit - 1 < i :continue
             if self.type == 'image':
                 files.append('/files/' + str(self.id) + p.replace(self.dataset_path, ''))
             elif self.type == 'text':
@@ -110,7 +111,9 @@ class Dataset(db.Model):
                 })
         self.files = files
         self.count = ds_util.count_files(category_root)
+        self.pages = int(ceil(float(self.count) / limit))
         self.category_root = category_root.replace(self.dataset_path, '')
+        self.original_category=category
         return self
 
     def delete(self):

@@ -28,6 +28,37 @@
                 {% endfor %}
             {% endif %}
         </div>
+        {% if dataset.pages > 1 %}
+            <nav class="pagination center">
+                <ul class="pagination">
+                    {% if current_page == 1 %}
+                        <li class="disabled">
+                            <span aria-hidden="true">&laquo;</span>
+                        </li>
+                    {% else %}
+                        <li>
+                            <a href="{{url_for('show_dataset_category', id=dataset.id, category=dataset.original_category, page=current_page - 1)}}" aria-label="Previous">
+                                <span aria-hidden="true">&laquo;</span>
+                            </a>
+                        </li>
+                    {% endif %}
+                    {% for p in range(dataset.pages) %}
+                        <li class="{% if p + 1 == current_page %}active{% endif %}"><a href="{{url_for('show_dataset_category', id=dataset.id, category=dataset.original_category, page=p+1)}}">{{p+1}}</a></li>
+                    {% endfor %}
+                    {% if current_page == dataset.pages %}
+                        <li class="disabled">
+                            <span aria-hidden="true">&raquo;</span>
+                        </li>
+                    {% else %}
+                        <li>
+                            <a href="{{url_for('show_dataset_category', id=dataset.id, category=dataset.original_category, page=current_page + 1)}}" aria-label="Next">
+                                <span aria-hidden="true">&raquo;</span>
+                            </a>
+                        </li>
+                    {% endif %}
+                </ul>
+            </nav>
+        {% endif %}
     </div>
 
     <div class="modal fade" id="file_upload_modal" tabindex="-1" role="dialog" aria-labelledby="file_upload_modal">
