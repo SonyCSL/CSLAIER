@@ -280,6 +280,8 @@ def api_dataset_register_by_path():
     name = request.form['dataset_name']
     type = request.form['dataset_type']
     dataset = Dataset(name, type, path)
+    dataset.category_num = ds_util.count_categories(path)
+    dataset.file_num = ds_util.count_files(path)
     db.session.add(dataset)
     db.session.commit()
     return jsonify({'status': 'success'})
