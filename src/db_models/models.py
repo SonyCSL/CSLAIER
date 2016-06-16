@@ -116,9 +116,9 @@ class Model(db.Model):
         model = cls.query.get(id)
         model.code = open(model.network_path).read()
         if model.channels == 1:
-            model.channels = "RGB"
-        elif model.channels == 3:
             model.channels = "Grayscale"
+        elif model.channels == 3:
+            model.channels = "RGB"
         if model.resize_mode is None or model.resize_mode == '':
             model.resize_mode = '---'
         return model

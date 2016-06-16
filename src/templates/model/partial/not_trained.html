@@ -15,7 +15,7 @@
                 <li>Created: {{model.created_at.strftime('%Y-%m-%d %H:%M:%S')}}</li>
                 <li>Updated: {{model.updated_at.strftime('%Y-%m-%d %H:%M:%S')}}</li>
                 <li>Framework: {{model.framework}}</li>
-                <li>Epoch: <span id="epoch_info">{{model.epoch}}</span></li>
+                <li>Epoch: <span id="epoch_info">---</span></li>
                 {% if model.dataset %}
                     <li data-datasetid="{{model.dataset.id}}">Dataset: <span id="dataset_name_info">{{model.dataset.name}}</span></li>
                 {% endif %}
@@ -37,8 +37,8 @@
                     {% endif %}
                 </li>
                 {% if model.type == 'image' %}
-                    <li>Resize mode: {{model.resize_mode}}</li>
-                    <li>Color mode: {{model.channels}}</li>
+                    <li>Resize mode: ---</li>
+                    <li>Color mode: ---</li>
                 {% endif %}
             </ul>
         </div>
