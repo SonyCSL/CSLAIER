@@ -14,6 +14,7 @@
             <ul>
                 <li>Created: {{model.created_at.strftime('%Y-%m-%d %H:%M:%S')}}</li>
                 <li>Updated: {{model.updated_at.strftime('%Y-%m-%d %H:%M:%S')}}</li>
+                <li>Framework: {{model.framework}}</li>
                 <li>Epoch: <span id="epoch_info">{{model.epoch}}</span></li>
                 {% if model.dataset %}
                     <li data-datasetid="{{model.dataset.id}}">Dataset: <span id="dataset_name_info">{{model.dataset.name}}</span></li>

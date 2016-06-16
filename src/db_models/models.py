@@ -23,6 +23,7 @@ class Model(db.Model):
     id                    = db.Column(db.Integer, primary_key = True)
     name                  = db.Column(db.Text, unique = True, nullable = False)
     type                  = db.Column(db.Text)
+    framework             = db.Column(db.Text)
     epoch                 = db.Column(db.Integer)
     network_name          = db.Column(db.Text)
     network_path          = db.Column(db.Text)
@@ -37,11 +38,12 @@ class Model(db.Model):
     updated_at            = db.Column(db.DateTime)
     created_at            = db.Column(db.DateTime)
 
-    def __init__(self, name, type, network_path, network_name):
+    def __init__(self, name, type, network_path, network_name, framework):
         self.name         = name
         self.type         = type
         self.network_path = network_path
         self.network_name = network_name
+        self.framework    = framework
         self.epoch        = 1
         self.is_trained   = 0
         self.pid          = None
@@ -91,7 +93,8 @@ class Model(db.Model):
         network_file_dir, # path which network code is stored
         network_name,     # network name ex) nin, googlenet, lstm
         model_template,   # name of network template
-        code              # network code
+        code,             # network code
+        framework         # chainer or tensorflow
     ):
         if not re.match(r".+\.py", name):
             name += '.py'
@@ -100,10 +103,13 @@ class Model(db.Model):
                 network_name = re.sub(r"\.py$", "", model_template)
             else:
                 network_name = None
+        framework = framework.lower()
+        if framework != 'chainer' and framework != 'tensorflow':
+            raise ValueError('Invalid framework type. "chainer" or "tensorflow" is allowed.')
         network_file_path = os.path.join(network_file_dir, name)
         network_file = open(network_file_path, "w")
         network_file.write(code)
-        return cls(name, type, network_file_path, network_name)
+        return cls(name, type, network_file_path, network_name, framework)
 
     @classmethod
     def get_model_with_code(cls, id):

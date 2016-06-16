@@ -17,7 +17,8 @@ create table if not exists Model(
     resize_mode text,
     channels integer Default 3,
     type text,
-    use_wakatigaki integer default 0
+    use_wakatigaki integer default 0,
+    framework text
 );
 
 create table if not exists Dataset(

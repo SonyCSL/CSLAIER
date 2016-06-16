@@ -236,17 +236,34 @@ $('#model_template_list').on('change', function(e){
         $('#network_edit_area').val(ret.model_template);
         var model_lines = ret.model_template.split("\n");
         var hint = '';
+        var is_chainer = false;
+        var is_tensorflow = false;
         for(var i = 0, l = model_lines.length; i < l; i++) {
             if(/#\s*HINT\s*:/.test(model_lines[i])){
                 hint = model_lines[i].split(':');
                 hint = hint[1].trim();
-                break;
+            }
+            if(/import\s+chainer/.test(model_lines[i])) {
+                is_chainer = true;
+            }
+            if(/import\s+tensorflow/.test(model_lines[i])) {
+                is_tensorflow = true;
             }
         }
         if(hint == 'image') {
             $('#model_type_image').prop('checked', true);
+            $('#model_type_text').prop('checked', false);
         } else if(hint == 'text') {
+            $('#model_type_image').prop('checked', false);
             $('#model_type_text').prop('checked', true);
+        }
+        if(is_chainer) {
+            $('#framework_chainer').prop('checked', true);
+            $('#framework_tensorflow').prop('checked', false);
+        }
+        if(is_tensorflow) {
+            $('#framework_chainer').prop('checked', false);
+            $('#framework_tensorflow').prop('checked', true);
         }
         createEditor();
     });

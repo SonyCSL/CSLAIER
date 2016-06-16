@@ -152,13 +152,15 @@ def create_new_model():
     model_template = request.form['model_template']
     network_name   = request.form['network_type'].strip()
     model_type     = request.form['model_type']
+    framework      = request.form['framework']
     model = Model.create_new(
         model_name,
         model_type,
         os.path.join(app.config['DEEPSTATION_ROOT'], 'src', 'models'),
         network_name,
         model_template,
-        my_network
+        my_network,
+        framework
     )
     db.session.add(model)
     db.session.commit()
