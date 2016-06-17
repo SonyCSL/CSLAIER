@@ -1,7 +1,7 @@
 DEEPstation
 ============
 
-DEEPstation version 0.6.0
+DEEPstation version 0.6.1
 
 Browser based GUI deep learning tool.
 
@@ -46,6 +46,7 @@ DEEPstation is tested on Ubuntu 14.04. We recommend them to use DEEPstation, tho
 
 ### Python Libraries
 * Chainer 1.5 or higher http://chainer.org
+* TensorFlow 0.9.0 or higher https://www.tensorflow.org/
 * Flask
 * Flask-SQLAlchemy
 * cv2
@@ -121,6 +122,17 @@ In v0.6.0, we use Flask instead of bottle. So, we have changed **setting file** 
 * Run DEEPstation
  * `./run.sh`
 
+#### Migration v0.6.0 to v0.6.1
+
+In v0.6.1 we support [TensorFlow](https://www.tensorflow.org). You need to install latest TensorFlow.
+
+* Stop DEEPstation by `ctfl + c`
+* Instal TensorFlow. See TensorFlow's official installation instruction.
+* Update deepstation.db
+  * `sqlite3 deepstation.db < ./scheme/migration_20160617.sql`
+* Run DEEPstation
+ * `./run.sh`
+
 Usage
 ------
 
@@ -187,6 +199,7 @@ DEEPstationはUbuntu14.04でテストしています。 Ubuntu上で動かすこ
 
 ### Python Libraries
 * Chainer 1.5 or higher http://chainer.org
+* TensorFlow 0.9.0 or higher https://www.tensorflow.org/
 * Flask
 * Flask-SQLAlchemy
 * cv2
@@ -293,6 +306,17 @@ v0.6.0よりフレームワークがbottleからFlaskに変更になりました
   `sqlite3 deepstation.db < ./scheme/migration_20160513.sql`
 * DEEPstationの起動
   * DEEPstationのルートディレクトリで`./run.sh`を実行
+
+#### v0.6.0 から v0.6.1 へのアップデート方法
+
+v0.6.1 では [TensorFlow](https://www.tensorflow.org)に対応しました。 最新のTensorFlowをインストールする必要があります。
+
+* `ctfl + c`でDEEPstationを停止してください。
+* TensorFlowをインストールしてください。インストール方法は公式ドキュメントをご参照ください。
+* データベースのアップデート
+  * `sqlite3 deepstation.db < ./scheme/migration_20160617.sql`
+* DEEPstationを再起動してください。
+ * `./run.sh`
 
 使い方
 ------
