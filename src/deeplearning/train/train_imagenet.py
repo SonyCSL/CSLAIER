@@ -25,9 +25,41 @@ from chainer import cuda
 from chainer import optimizers
 from chainer import serializers
 
+import tensorflow as tf
+
 VALIDATION_TIMING = 500 # ORIGINAL 50000
 
 logger = getLogger(__name__)
+
+def _create_trained_model_dir(path, root_output_dir, model_name):
+    if path is None:
+        path = os.path.join(root_output_dir, model_name)
+    if not os.path.exists(path):
+        os.mkdir(path)
+    return path
+
+def _post_process(db_model, pretrained_model):
+    # post-processing
+    db_model.is_trained = 2
+    db_model.pid = None
+    db_model.update_and_commit()
+    if os.path.exists(os.path.join(db_model.trained_model_path,  'previous_' + pretrained_model)):
+        #delete backup file
+        try:
+            os.remove(os.path.join(db_model.trained_model_path, 'previous_' + pretrained_model))
+        except Exception as e:
+            logger.exception('Could not delete backuped model: {0} {1}'.format(os.path.join(db_model.trained_model_path, 'previous_' + pretrained_model), e))
+            raise e
+    # delete prepared images
+    for f in os.listdir(db_model.prepared_file_path):
+        (head, ext) = os.path.splitext(f)
+        ext = ext.lower()
+        if ext in ['.jpg', '.jpeg', '.gif', '.png']:
+            try:
+                os.remove(os.path.join(db_model.prepared_file_path, f))
+            except Exception as e:
+                logger.exception('Could not remove prepared file: {0} {1}'.format(os.path.join(db_model.prepared_file_path, f), e))
+                raise e
 
 def load_image_list(path):
     tuples = []
@@ -225,15 +257,15 @@ def load_module(dir_name, symbol):
     (file, path, description) = imp.find_module(symbol,[dir_name])
     return imp.load_module(symbol, file, path, description)
 
-def do_train(
-        db_model,
-        root_output_dir,
-        batchsize=32,
-        val_batchsize=250,
-        gpu=-1,
-        loaderjob=20,
-        pretrained_model=""
-    ):
+def do_train_by_chainer(
+    db_model,
+    root_output_dir,
+    batchsize=32,
+    val_batchsize=250,
+    gpu=-1,
+    loaderjob=20,
+    pretrained_model=""
+):
     logger.info('Start imagenet train. model_id: {0} gpu: {1}, pretrained_model: {2}'.format(db_model.id, gpu, pretrained_model))
     # start initialization
     if gpu >= 0:
@@ -251,10 +283,7 @@ def do_train(
     model = model_module.Network()
 
     # create directory for saving trained models
-    if db_model.trained_model_path is None:
-        db_model.trained_model_path = os.path.join(root_output_dir, model_name)
-    if not os.path.exists(db_model.trained_model_path):
-        os.mkdir(db_model.trained_model_path)
+    db_model.trained_model_path = _create_trained_model_dir(db_model.trained_model_path, root_output_dir, model_name)
 
     # Load pretrained model
     if pretrained_model is not None and pretrained_model.find("model") > -1:
@@ -340,24 +369,77 @@ def do_train(
     train_logger.join()
 
     # post-processing
-    db_model.is_trained = 2
-    db_model.pid = None
-    db_model.update_and_commit()
-    if os.path.exists(os.path.join(db_model.trained_model_path,  'previous_' + pretrained_model)):
-        #delete backup file
-        try:
-            os.remove(os.path.join(db_model.trained_model_path, 'previous_' + pretrained_model))
-        except Exception as e:
-            logger.exception('Could not delete backuped model: {0} {1}'.format(os.path.join(db_model.trained_model_path, 'previous_' + pretrained_model), e))
-            raise e
-    # delete prepared images
-    for f in os.listdir(db_model.prepared_file_path):
-        (head, ext) = os.path.splitext(f)
-        ext = ext.lower()
-        if ext in ['.jpg', '.jpeg', '.gif', '.png']:
-            try:
-                os.remove(os.path.join(db_model.prepared_file_path, f))
-            except Exception as e:
-                logger.exception('Could not remove prepared file: {0} {1}'.format(os.path.join(db_model.prepared_file_path, f), e))
-                raise e
+    _post_process(db_model, pretrained_model)
+    logger.info('Finish imagenet train. model_id: {0}'.format(db_model.id))
+
+def do_train_by_tensorflow(
+    db_model,
+    output_dir_root,
+    batchsize,
+    val_batchsize,
+    pretrained_model
+):
+    logger.info('Start imagenet train. model_id: {}, pretrained_model: {}'.format(db_model.id, pretrained_model))
+
+    train_list = load_image_list(os.path.join(db_model.prepared_file_path, 'train.txt'))
+    val_list   = load_image_list(os.path.join(db_model.prepared_file_path, 'test.txt'))
+    mean_image = pickle.load(open(os.path.join(db_model.prepared_file_path, 'mean.npy'), 'rb'))
+
+    # load image and labels
+    avoid_flipping = True if db_model.avoid_flipping == 1 else False
+    train_images = []
+    train_labels = []
+    for t in train_list:
+        temp_image = np.asarray(Image.open(t[0]))
+        train_images.append(temp_image.flatten().astype(np.float32) /255.0)
+        train_labels.append(t[1])
+    num_classes = 1000
+
+    train_labels_one_hot = []
+    for l in train_labels:
+        tmp = np.zeros(num_classes)
+        tmp[int(l)] = 1
+        train_labels_one_hot.append(tmp)
+
+    # load model
+    (model_dir, model_name) = os.path.split(db_model.network_path)
+    model_name = re.sub(r"\.py$", "", model_name)
+    model = load_module(model_dir, model_name)
+
+    db_model.trained_model_path = _create_trained_model_dir(db_model.trained_model_path, output_dir_root, model_name)
+
+    images_placeholder = tf.placeholder(tf.float32, [None, 128 * 128 * 3])
+    labels_placeholder = tf.placeholder(tf.float32, [None, num_classes])
+    keep_prob = tf.placeholder(tf.float32)
+
+    logits = model.inference(images_placeholder)
+    loss_value = model.loss(logits, labels_placeholder)
+    train_op = model.training(loss_value, 1e-4)
+    acc = model.accuracy(logits, labels_placeholder)
+
+    saver = tf.train.Saver()
+    with tf.Session() as sess:
+        sess.run(tf.initialize_all_variables())
+
+        for step in range(db_model.epoch):
+            for i in range(len(train_images)/batchsize):
+                batch = batchsize * i
+                _, train_loss = sess.run([train_op, loss_value], feed_dict={
+                    images_placeholder: train_images[batch:batch+batchsize],
+                    labels_placeholder: train_labels_one_hot[batch:batch+batchsize],
+                    keep_prob: 0.5
+                })
+                print(train_loss)
+
+            train_accuracy = sess.run(acc, feed_dict={
+                images_placeholder: train_images,
+                labels_placeholder: train_labels_one_hot,
+                keep_prob: 1.0
+            })
+            print("step {:>6}, training accuracy{}".format(step, train_accuracy))
+
+        save_path = saver.save(sess, os.path.join(db_model.trained_model_path, 'model.ckpt'))
+
+    # post-processing
+    _post_process(db_model, pretrained_model)
     logger.info('Finish imagenet train. model_id: {0}'.format(db_model.id))

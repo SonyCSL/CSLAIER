@@ -33,18 +33,32 @@ def run_imagenet_train(
     model.channels = channels
     model.avoid_flipping = avoid_flipping
     model = deeplearning.prepare.prepare_for_imagenet.do(model, prepared_data_root)
-    train_process = Process(
-        target=deeplearning.train.train_imagenet.do_train,
-        args = (
-            model,
-            output_dir_root,
-            32, #bachsize
-            250, # val_batchsize
-            gpu_num,
-            20, #loader_job
-            pretrained_model,
+    if model.framework == 'chainer':
+        train_process = Process(
+            target=deeplearning.train.train_imagenet.do_train_by_chainer,
+            args = (
+                model,
+                output_dir_root,
+                32, #bachsize
+                250, # val_batchsize
+                gpu_num,
+                20, #loader_job
+                pretrained_model,
+            )
         )
-    )
+    elif model.framework == 'tensorflow':
+        train_process = Process(
+            target=deeplearning.train.train_imagenet.do_train_by_tensorflow,
+            args = (
+                model,
+                output_dir_root,
+                32,   # batchsize
+                250,  # val_batchsize
+                pretrained_model
+            )
+        )
+    else:
+        raise Exception('Unknown framework')
     train_process.start()
     model.pid = train_process.pid
     model.update_and_commit()

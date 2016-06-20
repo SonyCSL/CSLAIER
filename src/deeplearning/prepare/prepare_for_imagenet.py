@@ -59,7 +59,10 @@ def make_train_data(model):
     labels_text.close()
 
 def resize_image(source, dest, model):
-    output_side_length = 256
+    if model.framework == 'chainer':
+        output_side_length = 256
+    elif model.framework == 'tensorflow':
+        output_side_length = 128
 
     if model.channels == 1:
         mode = "L"

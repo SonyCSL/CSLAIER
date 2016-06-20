@@ -22,7 +22,7 @@ def inference(images):
     def max_pool(input, name, ksize=[1, 3, 3, 1], strides=[1, 2, 2, 1]):
         return tf.nn.max_pool(input, ksize=ksize, strides=strides, padding='VALID', data_format='NHWC', name=name)
 
-    x = tf.reshape(images, [-1, 256, 256, 3])
+    x = tf.reshape(images, [-1, 128, 128, 3])
 
     # conv1
     with tf.name_scope('conv1') as scope:
@@ -73,8 +73,8 @@ def inference(images):
 
     # fc6
     with tf.name_scope('fc6') as scope:
-        r_fc6 = tf.reshape(h_pool5, [-1, 256 * 6 * 6])
-        W_fc6 = weight_variable([256*6*6, 4096])
+        r_fc6 = tf.reshape(h_pool5, [-1, 256 * 2 * 2])
+        W_fc6 = weight_variable([256 * 2 * 2, 4096])
         b_fc6 = tf.Variable(tf.constant(0.0, shape=[4096], dtype=tf.float32), trainable=True, name='biases')
         h_fc6 = tf.nn.relu_layer(r_fc6, W_fc6, b_fc6, name=scope)
 

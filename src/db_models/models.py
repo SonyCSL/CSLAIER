@@ -250,14 +250,15 @@ class Model(db.Model):
                 logger.info("Process already terminated. ERROR NO: {0} - {1}".format(e.errno, e.strerror))
             self.is_trained = 0
             self.pid = None
-            for f in os.listdir(self.trained_model_path):
-                if f.startswith('previous_'):
-                    try:
-                        shutil.copyfile(os.path.join(self.trained_model_path, f), os.path.join(self.trained_model_path, f.replace('previous_', '')))
-                        os.remove(os.path.join(self.trained_model_path, f))
-                    except Exception as e:
-                        logger.exception('Failed to restore backuped trained model. {0} {1}'.format(os.path.join(self.trained_model_path, f), e))
-                        raise e
+            if self.trained_model_path != None and self.trained_model_path != '':
+                for f in os.listdir(self.trained_model_path):
+                    if f.startswith('previous_'):
+                        try:
+                            shutil.copyfile(os.path.join(self.trained_model_path, f), os.path.join(self.trained_model_path, f.replace('previous_', '')))
+                            os.remove(os.path.join(self.trained_model_path, f))
+                        except Exception as e:
+                            logger.exception('Failed to restore backuped trained model. {0} {1}'.format(os.path.join(self.trained_model_path, f), e))
+                            raise e
             self.update_and_commit()
 
     def __get_visualizer(self, epoch):
