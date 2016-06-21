@@ -387,19 +387,29 @@ def do_train_by_tensorflow(
 
     # load image and labels
     avoid_flipping = True if db_model.avoid_flipping == 1 else False
+    num_classes = 1000
     train_images = []
     train_labels = []
+    val_images = []
+    val_labels = []
     for t in train_list:
         temp_image = np.asarray(Image.open(t[0]))
-        train_images.append(temp_image.flatten().astype(np.float32) /255.0)
+        train_images.append(temp_image.flatten().astype(np.float32) / 255.0)
         train_labels.append(t[1])
-    num_classes = 1000
-
+    for v in val_list:
+        temp_image = np.asarray(Image.open(v[0]))
+        val_images.append(temp_image.flatten().astype(np.float32) / 255.0)
+        val_labels.append(v[1])
     train_labels_one_hot = []
+    val_labels_one_hot = []
     for l in train_labels:
         tmp = np.zeros(num_classes)
         tmp[int(l)] = 1
         train_labels_one_hot.append(tmp)
+    for l in val_labels:
+        tmp = np.zeros(num_classes)
+        tmp[int(l)] = 1
+        val_labels_one_hot.append(tmp)
 
     # load model
     (model_dir, model_name) = os.path.split(db_model.network_path)
@@ -411,34 +421,54 @@ def do_train_by_tensorflow(
     images_placeholder = tf.placeholder(tf.float32, [None, 128 * 128 * 3])
     labels_placeholder = tf.placeholder(tf.float32, [None, num_classes])
     keep_prob = tf.placeholder(tf.float32)
+    trainable = tf.placeholder(tf.bool)
 
-    logits = model.inference(images_placeholder)
+    logits = model.inference(images_placeholder, keep_prob, tf.bool)
     loss_value = model.loss(logits, labels_placeholder)
     train_op = model.training(loss_value, 1e-4)
     acc = model.accuracy(logits, labels_placeholder)
 
     saver = tf.train.Saver()
-    with tf.Session() as sess:
-        sess.run(tf.initialize_all_variables())
+    with open(os.path.join(db_model.trained_model_path, 'line_graph.tsv'), 'w') as line_graph, open(os.path.join(db_model.trained_model_path, 'log.html'), 'w') as log_file:
+        line_graph.write("count\tepoch\taccuracy\tloss\taccuracy(val)\tloss(val)\n")
+        line_graph.flush()
+        counter = 0
+        with tf.Session() as sess:
+            sess.run(tf.initialize_all_variables())
 
-        for step in range(db_model.epoch):
-            for i in range(len(train_images)/batchsize):
-                batch = batchsize * i
-                _, train_loss = sess.run([train_op, loss_value], feed_dict={
-                    images_placeholder: train_images[batch:batch+batchsize],
-                    labels_placeholder: train_labels_one_hot[batch:batch+batchsize],
-                    keep_prob: 0.5
+            for step in range(db_model.epoch):
+                for i in range(len(train_images)/batchsize):
+                    batch = batchsize * i
+                    sess.run(train_op, feed_dict={
+                        images_placeholder: train_images[batch:batch+batchsize],
+                        labels_placeholder: train_labels_one_hot[batch:batch+batchsize],
+                        keep_prob: 0.5,
+                        trainable: True
+                    })
+                    counter += 1
+
+                train_accuracy, train_loss = sess.run([acc, loss_value], feed_dict={
+                    images_placeholder: train_images,
+                    labels_placeholder: train_labels_one_hot,
+                    keep_prob: 1.0,
+                    trainable: True
                 })
-                print(train_loss)
+                line_graph.write('{}\t{}\t{}\t{}\t\t\n'.format(counter, step, train_accuracy, train_loss))
+                line_graph.flush()
+                log_file.write("[TRAIN] epoch {}, loss {}, acc {}<br>".format(step, train_loss, train_accuracy))
+                log_file.flush()
+                val_accuracy, val_loss = sess.run([acc, loss_value], feed_dict={
+                    images_placeholder: val_images,
+                    labels_placeholder: val_labels_one_hot,
+                    keep_prob: 1.0,
+                    trainable: False
+                })
+                line_graph.write('{}\t{}\t\t\t{}\t{}\n'.format(counter, step, val_accuracy, val_loss))
+                line_graph.flush()
+                log_file.write("[VALIDATION] ecpoch {}, loss {}, acc {}<br>".format(step, val_loss, val_accuracy))
+                log_file.flush()
 
-            train_accuracy = sess.run(acc, feed_dict={
-                images_placeholder: train_images,
-                labels_placeholder: train_labels_one_hot,
-                keep_prob: 1.0
-            })
-            print("step {:>6}, training accuracy{}".format(step, train_accuracy))
-
-        save_path = saver.save(sess, os.path.join(db_model.trained_model_path, 'model.ckpt'))
+                save_path = saver.save(sess, os.path.join(db_model.trained_model_path, 'model{:0>4}.ckpt'.format(step)))
 
     # post-processing
     _post_process(db_model, pretrained_model)

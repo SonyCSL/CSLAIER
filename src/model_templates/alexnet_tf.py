@@ -2,7 +2,7 @@
 # HINT:image
 import tensorflow as tf
 
-def inference(images):
+def inference(images, keep_prob, trainable=True):
 
     def weight_variable(shape):
         # conv : shape=[kernel_height, kernel_widht, network_input, network_output]
@@ -15,7 +15,7 @@ def inference(images):
 
     def bias_variable(shape, conv):
         initial = tf.constant(0.0, shape=shape, dtype=tf.float32)
-        biases = tf.Variable(initial, trainable=True, name='biases')
+        biases = tf.Variable(initial, trainable=trainable, name='biases')
         bias = tf.nn.bias_add(conv, biases, 'NHWC')
         return bias
 
@@ -75,19 +75,21 @@ def inference(images):
     with tf.name_scope('fc6') as scope:
         r_fc6 = tf.reshape(h_pool5, [-1, 256 * 2 * 2])
         W_fc6 = weight_variable([256 * 2 * 2, 4096])
-        b_fc6 = tf.Variable(tf.constant(0.0, shape=[4096], dtype=tf.float32), trainable=True, name='biases')
+        b_fc6 = tf.Variable(tf.constant(0.0, shape=[4096], dtype=tf.float32), trainable=trainable, name='biases')
         h_fc6 = tf.nn.relu_layer(r_fc6, W_fc6, b_fc6, name=scope)
+        h_fc6_dropout = tf.nn.dropout(h_fc6, keep_prob)
 
     # fc7
     with tf.name_scope('fc7') as scope:
         W_fc7 = weight_variable([4096, 4096])
-        b_fc7 = tf.Variable(tf.constant(0.0, shape=[4096], dtype=tf.float32), trainable=True, name='biases')
-        h_fc7 = tf.nn.relu_layer(h_fc6, W_fc7, b_fc7, name=scope)
+        b_fc7 = tf.Variable(tf.constant(0.0, shape=[4096], dtype=tf.float32), trainable=trainable, name='biases')
+        h_fc7 = tf.nn.relu_layer(h_fc6_dropout, W_fc7, b_fc7, name=scope)
+        h_fc7_dropout = tf.nn.dropout(h_fc7, keep_prob)
 
     # fc8
     with tf.name_scope('fc8') as scope:
         W_fc8 = weight_variable([4096, 1000])
-        b_fc8 = tf.Variable(tf.constant(0.0, shape=[1000], dtype=tf.float32), trainable=True, name='biases')
+        b_fc8 = tf.Variable(tf.constant(0.0, shape=[1000], dtype=tf.float32), trainable=trainable, name='biases')
         h_fc8 = tf.nn.relu_layer(h_fc7, W_fc8, b_fc8, name=scope)
 
     return h_fc8
