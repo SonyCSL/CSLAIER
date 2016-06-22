@@ -1,8 +1,8 @@
 {% if system_info['disk_info'] != None %}
     <h5>Disk Info</h5>
     {% for disk in system_info['disk_info'] %}
-        <div  class="disk_info">
-            <table border="0">
+        <div class="disk_info">
+            <table border="0" class="disk_table">
                 <tr>
                     <th>Mounted on</th>
                     <td>{{disk['mount']}}</td>

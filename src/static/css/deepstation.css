@@ -167,7 +167,7 @@ h3 {
 	-ms-flex-wrap: wrap;
 }
 
-.dataset, .model,.gpu {
+.dataset, .model, .gpu, .disk_info {
     width: 250px;
     height: 250px;
     border-radius: 5px;
@@ -179,12 +179,12 @@ h3 {
     overflow: hidden;
 }
 
-.gpu{
+.gpu, .disk_info{
     border:solid 1px #0c0;
     height: auto;
 }
 
-.gpu th{
+.gpu th, .disk_info th{
     color:#0f0;
     padding-right: 5px;
 }
@@ -470,16 +470,6 @@ textarea.form-control {
 
 #show_text_detail_modal .modal-header {
     text-align: right;
-}
-
-.disk_info {
-    border: 1px solid white;
-    border-radius: 3px;
-    margin-top: 2px;
-    margin-left: 2px;
-    padding: 3px;
-    padding-left: 5px;
-    padding-right: 5px;
 }
 
 .pagination.center {
