@@ -118,7 +118,7 @@ In v0.6.0, we use Flask instead of bottle. So, we have changed **setting file** 
 * Changes of setting files
   * Setting file has changed `settings.yaml` to `deepstation.cfg`.
 * Update deepstation.db
-  * `sqlite3 deepstation.db < ./scheme/migration_20160314.sql`
+  * `sqlite3 deepstation.db < ./scheme/migration_20160513.sql`
 * Run DEEPstation
  * `./run.sh`
 

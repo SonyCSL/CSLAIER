@@ -106,6 +106,7 @@ def get_timestamp():
 
 def find_all_files(directory):
     for root, dirs, files in os.walk(directory):
+        files.sort()
         for f in files:
             if f.startswith('__MACOSX') or f.startswith('.DS_Store'):
                 continue

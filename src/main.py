@@ -11,6 +11,7 @@ from flask import Flask, url_for, render_template, request, redirect,\
 from werkzeug import secure_filename
 from werkzeug.contrib.cache import SimpleCache
 from sqlalchemy import desc
+from sqlalchemy.orm import eagerload
 
 from db_models.shared_models import db
 from db_models.datasets import Dataset
@@ -69,13 +70,14 @@ cache = SimpleCache()
 
 @app.route('/')
 def index():
-    datasets = Dataset.get_datasets_with_samples()
-    models = Model.query.order_by(desc(Model.updated_at))
+    datasets, dataset_count = Dataset.get_datasets_with_samples(3, 0)
+    models = Model.query.options(eagerload('dataset')).order_by(desc(Model.updated_at))
     return render_template(
         'index.html',
-        system_info = get_system_info(),
-        datasets    = datasets,
-        models      = models
+        system_info   = get_system_info(),
+        datasets      = datasets,
+        dataset_count = dataset_count,
+        models        = models
     )
 
 @app.route('/files/<int:dataset_id>/<path:image_path>')
@@ -99,15 +101,18 @@ def show_inspection_uploaded_file(filename):
 @app.route('/dataset/show/<int:id>/')
 def show_dataset(id):
     page = request.args.get('page', type=int, default=1)
-    dataset = Dataset.get_dataset_with_categories_and_samples(id, offset=(page - 1)*20)
+    ds = Dataset.query.get(id)
+    dataset = ds.get_dataset_with_categories_and_samples(offset=(page-1)*20)
     return render_template('dataset/show_dataset.html', dataset=dataset, current_page=page)
 
 @app.route('/dataset/show/<int:id>/<path:category>')
 def show_dataset_category(id, category):
+    page = request.args.get('page', type=int, default=1)
     if category == '-':
         category = ''
-    dataset = Dataset.get_dataset_with_category_detail(id, category)
-    return render_template('dataset/show_category_detail.html', dataset=dataset)
+    ds = Dataset.query.get(id)
+    dataset = ds.get_dataset_with_category_detail(category, offset=(page-1)*100)
+    return render_template('dataset/show_category_detail.html', dataset=dataset, current_page=page)
 
 @app.route('/dataset/remove/<int:id>')
 def remove_dataset(id):
@@ -200,6 +205,32 @@ def inspect_image():
 # API
 # =====================================================================
 
+@app.route('/api/dataset/get/<int:offset>/')
+def api_get_dataset(offset):
+    datasets, dataset_count = Dataset.get_datasets_with_samples(offset=offset, limit=3)
+    ret_ds = []
+    for dataset in datasets:
+        ds = {
+            'id': dataset.id,
+            'name': dataset.name,
+            'type': dataset.type,
+        }
+        if dataset.type == 'image':
+            ds['category_num'] = dataset.category_num
+            ds['file_num'] = dataset.file_num
+            thumbs = []
+            for t in dataset.thumbnails:
+                thumbs.append(t)
+            ds['thumbnails'] = thumbs
+        elif dataset.type == 'text':
+            ds['filesize'] = dataset.filesize
+            texts = []
+            for t in dataset.sample_text:
+                texts.append(t)
+            ds['sample_text'] = texts
+        ret_ds.append(ds)
+    return jsonify({'dataset_count': dataset_count, 'datasets': ret_ds})
+
 @app.route('/api/dataset/upload', methods=['POST'])
 def api_upload_dataset():
     uploaded_file = request.files['fileInput']
@@ -251,6 +282,8 @@ def api_dataset_register_by_path():
     name = request.form['dataset_name']
     type = request.form['dataset_type']
     dataset = Dataset(name, type, path)
+    dataset.category_num = ds_util.count_categories(path)
+    dataset.file_num = ds_util.count_files(path)
     db.session.add(dataset)
     db.session.commit()
     return jsonify({'status': 'success'})

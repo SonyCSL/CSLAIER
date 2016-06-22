@@ -82,6 +82,7 @@ hr.cyber {
 
 .desc {
     color:#c80;
+    display: block;
 }
 ul {
     color:#c80;
@@ -150,11 +151,13 @@ h3 {
 }
 
 .datasets, .models {
-    vertical-align: top;
     color:#333;
     padding-top: 10px;
     margin-bottom: 30px;
     margin-top: 10px;
+}
+
+.datasets_row, .models_row {
 	display: flex;
 	display: -moz-flex;
 	display: -o-flex;
@@ -167,9 +170,12 @@ h3 {
 	-ms-flex-wrap: wrap;
 }
 
-.dataset, .model, .gpu, .disk_info {
-    width: 250px;
-    height: 250px;
+
+.dataset, .model , .disk_info{
+    flex: 1;
+    max-width: 280px;
+    max-height: 280px;
+    min-height: 250px;
     border-radius: 5px;
     border:solid 1px #0c0;
     background-color: #020;
@@ -180,6 +186,13 @@ h3 {
 }
 
 .gpu, .disk_info{
+    border-radius: 5px;
+    border:solid 1px #0c0;
+    background-color: #020;
+    color:#0c0;
+    padding: 0px 10px;
+    margin: 5px;
+    overflow: hidden;
     border:solid 1px #0c0;
     height: auto;
 }

@@ -27,5 +27,7 @@ create table if not exists Dataset(
     dataset_path text,
     updated_at timestamp,
     created_at timestamp default current_timestamp,
-    type text
+    type text,
+    category_num int,
+    file_num int
 );

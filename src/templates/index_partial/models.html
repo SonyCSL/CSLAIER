@@ -8,6 +8,9 @@
 </div>
 <div class="models">
     {% for model in models %}
+        {% if loop.first or loop.index0 % 3 == 0 %}
+            <div class="models_row">
+        {% endif %}
         {% if model.is_trained == 1 %}
             <div class="model model-progress" id="model_{{model.id}}" data-modelid="{{model.id}}">
         {% elif model.is_trained == 2 %}
@@ -52,5 +55,8 @@
                 </li>
             </ul>
         </div>
+        {% if loop.index0 % 3 == 2 or loop.last %}
+            </div>
+        {% endif %}
     {% endfor %}
 </div>

@@ -1,6 +1,8 @@
 /* global $ */
 var editor; // コードエディット時のeditorオブジェクト
 
+var template_cache = {};
+
 var show_gpu_meter = function(){
     _.each(gpus, function(gpu){
         var iframe = document.createElement('iframe');
@@ -154,14 +156,45 @@ $('#uploading_progress_div').on('click', function(e){
     e.preventDefault();
 });
 
-$('.dataset').on('click', function(e){
+$('.datasets').on('click','.dataset', function(e){
     var dataset_id = $(this).data('id');
     location.href = '/dataset/show/' + dataset_id;
 });
 
 $('#dataset_more').on('click',function(){
-    $("#hidden-dataset").toggle();
-})
+    if ($(this).hasClass('disabled')) return;
+    $(this).addClass('disabled');
+    $(this).text('Loading...');
+    var offset = $(this).attr('data-offset');
+    $.get('/api/dataset/get/' + offset + '/', function(ret){
+        new_offset = parseInt(offset, 10) + 3;
+        if(parseInt(ret.dataset_count, 10) <= new_offset) {
+            $('#dataset_more').addClass('hidden');
+        } else {
+            $('#dataset_more').attr('data-offset', new_offset);
+        }
+        var datasets_row = $('<div class="datasets_row">')
+        _.each(ret.datasets, function(d){
+            var out = '';
+            if(d.type == 'image') {
+                if(!template_cache.image_dataset_template) {
+                    template_cache['image_dataset_template'] = _.template($('#image_dataset_template').text());
+                }
+                out = template_cache.image_dataset_template(d);
+            } else if (d.type == 'text') {
+                if(!template_cache.text_dataset_template) {
+                    template_cache['text_dataset_template'] = _.template($('#text_dataset_template').text());
+                }
+                out = template_cache.text_dataset_template(d);
+            }
+            datasets_row.append($(out));
+        });
+        $('#dataset_more').before(datasets_row);
+        $('#dataset_more').removeClass('disabled');
+        $('#dataset_more').text('more');
+    });
+
+});
 
 $('.text_detail').on('click', function(e){
     var filepath = $(this).data('path');
