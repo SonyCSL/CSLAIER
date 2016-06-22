@@ -65,7 +65,9 @@
             <li role="presentation" class="" id="log_tab"><a href="#">Log</a></li>
             <li role="presentation" class="" id="graph_tab"><a href="#">Result</a></li>
             <li role="presentation" class="active" id="network_tab"><a href="#">Network</a></li>
+            {% if model.framework != 'tensorflow' %}
             <li role="presentation" class="" id="layer_tab"><a href="#">Layers</a></li>
+            {% endif %}
         </ul>
         <div id="model_detail_log" class="hidden full-height">
             <div class="form-group has-textarea" >

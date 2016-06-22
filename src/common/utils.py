@@ -14,7 +14,17 @@ def get_python_version():
     return str(v[0]) + '.' + str(v[1]) + '.' + str(v[2])
 
 def get_chainer_version():
-    from chainer import __version__ as version
+    try:
+        from chainer import __version__ as version
+    except ImportError:
+        return '---'
+    return version
+
+def get_tensorflow_version():
+    try:
+        from tensorflow import __version__ as version
+    except ImportError:
+        return '---'
     return version
 
 def get_disk_info():
@@ -80,6 +90,7 @@ def get_system_info():
     return {
         'python_version': get_python_version(),
         'chainer_version': get_chainer_version(),
+        'tensorflow_version': get_tensorflow_version(),
         'disk_info': get_disk_info(),
         'gpu_info': get_gpu_info()
     }

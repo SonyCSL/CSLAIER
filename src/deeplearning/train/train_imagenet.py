@@ -68,15 +68,15 @@ def load_image_list(path):
         tuples.append((pair[0], np.int32(pair[1])))
     return tuples
 
-def read_image(path, model_insize, mean_image, center=False, flip=False):
-    cropwidth = 256 - model_insize
+def read_image(path, model_insize, mean_image, center=False, flip=False, original_size=256):
+    cropwidth = original_size - model_insize
     image = np.asarray(Image.open(path))
     if len(image.shape) == 3:
         image = image.transpose(2, 0, 1)
     else:
-        zeros = np.zeros((256,256))
+        zeros = np.zeros((original_size,original_size))
         image = np.array([image, zeros, zeros])
-    if center:
+    if center or model_insize == original_size:
         top = left = cropwidth / 2
     else:
         top = random.randint(0, cropwidth - 1)
@@ -386,18 +386,20 @@ def do_train_by_tensorflow(
     mean_image = pickle.load(open(os.path.join(db_model.prepared_file_path, 'mean.npy'), 'rb'))
 
     # load image and labels
-    avoid_flipping = True if db_model.avoid_flipping == 1 else False
+    flip = True if db_model.avoid_flipping == 0 else False
     num_classes = 1000
     train_images = []
     train_labels = []
     val_images = []
     val_labels = []
     for t in train_list:
-        temp_image = np.asarray(Image.open(t[0]))
+        #temp_image = np.asarray(Image.open(t[0]))
+        temp_image = read_image(t[0], 128, mean_image, center=False, flip=flip, original_size=128)
         train_images.append(temp_image.flatten().astype(np.float32) / 255.0)
         train_labels.append(t[1])
     for v in val_list:
-        temp_image = np.asarray(Image.open(v[0]))
+        #temp_image = np.asarray(Image.open(v[0]))
+        temp_image = read_image(v[0], 128, mean_image, center=True, flip=False, original_size=128)
         val_images.append(temp_image.flatten().astype(np.float32) / 255.0)
         val_labels.append(v[1])
     train_labels_one_hot = []
@@ -417,6 +419,9 @@ def do_train_by_tensorflow(
     model = load_module(model_dir, model_name)
 
     db_model.trained_model_path = _create_trained_model_dir(db_model.trained_model_path, output_dir_root, model_name)
+
+    db_model.is_trained = 1
+    db_model.update_and_commit()
 
     images_placeholder = tf.placeholder(tf.float32, [None, 128 * 128 * 3])
     labels_placeholder = tf.placeholder(tf.float32, [None, num_classes])

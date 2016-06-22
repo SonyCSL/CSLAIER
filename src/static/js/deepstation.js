@@ -259,10 +259,12 @@ $('#model_template_list').on('change', function(e){
         }
         if(is_chainer) {
             $('#framework_chainer').prop('checked', true);
+            $('#link_to_reference').html('<a href="http://docs.chainer.org/" target="_blank">Chainer Reference</a>')
             $('#framework_tensorflow').prop('checked', false);
         }
         if(is_tensorflow) {
             $('#framework_chainer').prop('checked', false);
+            $('#link_to_reference').html('<a href="https://www.tensorflow.org/api_docs" target="_blank">TensorFlow Reference</a>')
             $('#framework_tensorflow').prop('checked', true);
         }
         createEditor();

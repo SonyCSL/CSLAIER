@@ -165,7 +165,8 @@ def compute_mean(data_path):
         if image.ndim == 3:
             image = image.transpose(2, 0, 1)
         else:
-            zeros = numpy.zeros((256, 256))
+            image_size, _ = image.shape
+            zeros = numpy.zeros((image_size, image_size))
             image = numpy.array([image, zeros, zeros])
         if sum_image is None:
             sum_image = numpy.ndarray(image.shape, dtype=numpy.float32)
