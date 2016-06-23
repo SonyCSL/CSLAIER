@@ -90,7 +90,7 @@ def inference(images, keep_prob, trainable=True):
     with tf.name_scope('fc8') as scope:
         W_fc8 = weight_variable([4096, 1000])
         b_fc8 = tf.Variable(tf.constant(0.0, shape=[1000], dtype=tf.float32), trainable=trainable, name='biases')
-        h_fc8 = tf.nn.relu_layer(h_fc7, W_fc8, b_fc8, name=scope)
+        h_fc8 = tf.matmul(h_fc7_dropout, W_fc8) + b_fc8
 
     return h_fc8
 

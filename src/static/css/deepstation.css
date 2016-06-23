@@ -186,6 +186,7 @@ h3 {
 }
 
 .gpu, .disk_info{
+    min-height: 0px;
     border-radius: 5px;
     border:solid 1px #0c0;
     background-color: #020;
