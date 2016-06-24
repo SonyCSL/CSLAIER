@@ -629,7 +629,7 @@ var  update_train_log = function(){
 }
 
 var update_remain_time = function(train_log){
-    var start_time, latest_time, current_epoch, prev_epoch, end_time;
+    var start_time, latest_time, current_epoch, end_time;
     var does_one_epoch_spent = false;
     lines = train_log.split('<br>');
     _.each(lines, function(line){
@@ -639,13 +639,10 @@ var update_remain_time = function(train_log){
             var temp_epoch = parseInt(temp[0], 10);
 
             if(!start_time) start_time = temp_time;
-            if(!prev_epoch) prev_epoch = temp_epoch;
             if(!latest_time) latest_time = temp_time;
 
-            if(prev_epoch < temp_epoch) {
+            if(current_epoch < temp_epoch) {
                 end_time = latest_time;
-            } else {
-                prev_epoch = current_epoch;
             }
             latest_time = temp_time;
             current_epoch = temp_epoch;
@@ -653,9 +650,8 @@ var update_remain_time = function(train_log){
     });
     console.log({end_time: end_time, current_epoch: current_epoch, start_time: start_time, latest_time: latest_time});
     if(!start_time || !end_time || current_epoch == 1) return;
-    var time_spent = end_time.diff(start_time);
     var target_epoch = parseInt($('#epoch_info').text(), 10);
-    $('#remain_time').text(millisec_to_readable_time((time_spent / (current_epoch - 1 )) * (target_epoch - current_epoch - 1)));
+    $('#remain_time').text(millisec_to_readable_time((end_time.diff(start_time) / (current_epoch - 1)) * (target_epoch - current_epoch)));
     $('#time_spent').text(millisec_to_readable_time(latest_time.diff(start_time)));
 };
 
@@ -680,7 +676,11 @@ var decrease_time_remain = function(){
     if(times.length != 3) return;
     var sec = parseInt(times[0], 10) * 60 * 60 + parseInt(times[1], 10) * 60 + parseInt(times[2], 10);
     sec -= 1;
-    $('#remain_time').text(millisec_to_readable_time(sec*1000));
+    if(sec < 0) {
+        $('#remain_time').text('00:00:00');
+    } else {
+        $('#remain_time').text(millisec_to_readable_time(sec*1000));
+    }
 };
 
 $('#graph_tab').on('click', function(e){
