@@ -185,7 +185,7 @@ h3 {
     overflow: hidden;
 }
 
-.gpu, .disk_info{
+.gpu, .disk_info, #train_time {
     min-height: 0px;
     border-radius: 5px;
     border:solid 1px #0c0;
@@ -198,9 +198,13 @@ h3 {
     height: auto;
 }
 
-.gpu th, .disk_info th{
+.gpu th, .disk_info th, #train_time th{
     color:#0f0;
     padding-right: 5px;
+}
+
+#train_time td {
+    border-top: 1px solid #0c0;
 }
 
 .gpu.error{

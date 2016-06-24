@@ -62,7 +62,12 @@
             if(hash == '#result') {
                 showResultScreen();
             }
-            if($('#current_training_status').val() == 1) setInterval("update_train_log()", 10000);
+            if($('#current_training_status').val() == 1) {
+                update_train_log();
+                setInterval("update_train_log()", 10000);
+                setInterval("increase_time_spent()", 1000);
+                setInterval("decrease_time_remain()", 1000);
+            }
             show_gpu_meter();
         });
     </script>

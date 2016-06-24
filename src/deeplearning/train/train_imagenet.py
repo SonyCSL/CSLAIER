@@ -181,8 +181,9 @@ def log_result(batchsize, val_batchsize, log_file,log_html, res_q):
             duration = time.time() - begin_at
             throughput = train_count * batchsize / duration
             fH.write(
-                '\rtrain {} updates ({} samples) time: {} ({} images/sec)<BR/>'
+                '\rtrain {} updates ({} samples) time: {} ({} images/sec)<br>'
                 .format(train_count, train_count * batchsize, datetime.timedelta(seconds=duration), throughput))
+            fH.write("[TIME]{},{}<br>".format(epoch,datetime.datetime.now().strftime( '%Y-%m-%d %H:%M:%S' )))
             fH.flush()
             f.write(str(count) + "\t" + str(epoch) + "\t" + str(accuracy) + "\t" + str(loss) + "\t\t\n")
             f.flush()
@@ -192,7 +193,7 @@ def log_result(batchsize, val_batchsize, log_file,log_html, res_q):
             if train_count % 1000 == 0:
                 mean_loss = train_cur_loss / 1000
                 mean_error = 1 - train_cur_accuracy / 10000
-                fH.write("<strong>"+json.dumps({'type': 'train', 'iteration': train_count, 'error': mean_error, 'loss': mean_loss})+"</strong><br/>")
+                fH.write("<strong>"+json.dumps({'type': 'train', 'iteration': train_count, 'error': mean_error, 'loss': mean_loss})+"</strong><br>")
                 fH.flush()
                 sys.stdout.flush()
                 train_cur_loss = 0
@@ -211,7 +212,7 @@ def log_result(batchsize, val_batchsize, log_file,log_html, res_q):
             if val_count == VALIDATION_TIMING:
                 mean_loss = val_loss * val_batchsize / VALIDATION_TIMING
                 mean_accuracy = val_accuracy * val_batchsize / VALIDATION_TIMING
-                fH.write("<strong>"+json.dumps({'type': 'val', 'iteration': train_count, 'error': (1 - mean_accuracy), 'loss': mean_loss})+"</strong><br/>")
+                fH.write("<strong>"+json.dumps({'type': 'val', 'iteration': train_count, 'error': (1 - mean_accuracy), 'loss': mean_loss})+"</strong><br>")
                 fH.flush()
                 f.write(str(count) + "\t" + str(epoch) + "\t\t\t" + str(mean_accuracy) + "\t" + str(mean_loss) + "\n")
                 count += 1
@@ -461,6 +462,7 @@ def do_train_by_tensorflow(
                 })
                 line_graph.write('{}\t{}\t{}\t{}\t\t\n'.format(counter, step, train_accuracy, train_loss))
                 line_graph.flush()
+                log_file.write("[TIME]{},{}<br>".format(step+1,datetime.datetime.now().strftime( '%Y-%m-%d %H:%M:%S' )))
                 log_file.write("[TRAIN] epoch {}, loss {}, acc {}<br>".format(step, train_loss, train_accuracy))
                 log_file.flush()
                 val_accuracy, val_loss = sess.run([acc, loss_value], feed_dict={

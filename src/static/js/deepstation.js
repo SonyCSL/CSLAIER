@@ -619,6 +619,7 @@ var  update_train_log = function(){
 
     $.get('/api/models/' + model_id + '/get/train_data/log/', function(ret){
         if(ret.status != 'ready') return;
+        update_remain_time(ret.data);
         $('#training_log').html(ret.data);
         if(ret.is_trained != $('#current_training_status').val()) {
             location.reload();
@@ -626,6 +627,61 @@ var  update_train_log = function(){
     });
     draw_train_graph();
 }
+
+var update_remain_time = function(train_log){
+    var start_time, latest_time, current_epoch, prev_epoch, end_time;
+    var does_one_epoch_spent = false;
+    lines = train_log.split('<br>');
+    _.each(lines, function(line){
+        if(/\[TIME\]/.test(line)) {
+            var temp = line.replace('[TIME]', '').split(',');
+            var temp_time = moment(temp[1], 'YYYY-MM-DD HH:mm:ss');
+            var temp_epoch = parseInt(temp[0], 10);
+
+            if(!start_time) start_time = temp_time;
+            if(!prev_epoch) prev_epoch = temp_epoch;
+            if(!latest_time) latest_time = temp_time;
+
+            if(prev_epoch < temp_epoch) {
+                end_time = latest_time;
+            } else {
+                prev_epoch = current_epoch;
+            }
+            latest_time = temp_time;
+            current_epoch = temp_epoch;
+        }
+    });
+    console.log({end_time: end_time, current_epoch: current_epoch, start_time: start_time, latest_time: latest_time});
+    if(!start_time || !end_time || current_epoch == 1) return;
+    var time_spent = end_time.diff(start_time);
+    var target_epoch = parseInt($('#epoch_info').text(), 10);
+    $('#remain_time').text(millisec_to_readable_time((time_spent / (current_epoch - 1 )) * (target_epoch - current_epoch - 1)));
+    $('#time_spent').text(millisec_to_readable_time(latest_time.diff(start_time)));
+};
+
+var millisec_to_readable_time = function(millisec){
+    var h = String(Math.floor(millisec / 3600000) + 100).substring(1);
+    var m = String(Math.floor((millisec - h * 3600000)/60000)+ 100).substring(1);
+    var s = String(Math.round((millisec - h * 3600000 - m * 60000)/1000)+ 100).substring(1);
+    return h+':'+m+':'+s;
+};
+
+var increase_time_spent = function(){
+    var current = $('#time_spent').text();
+    var times = current.split(':');
+    var sec = parseInt(times[0], 10) * 60 * 60 + parseInt(times[1], 10) * 60 + parseInt(times[2], 10);
+    sec += 1;
+    $('#time_spent').text(millisec_to_readable_time(sec * 1000));
+};
+
+var decrease_time_remain = function(){
+    var current = $('#remain_time').text();
+    var times = current.split(':');
+    if(times.length != 3) return;
+    var sec = parseInt(times[0], 10) * 60 * 60 + parseInt(times[1], 10) * 60 + parseInt(times[2], 10);
+    sec -= 1;
+    $('#remain_time').text(millisec_to_readable_time(sec*1000));
+};
 
 $('#graph_tab').on('click', function(e){
     last_draw_time=0;
