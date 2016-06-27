@@ -2,6 +2,7 @@
 __version__ = '0.6.1'
 
 import os
+import re
 import logging
 from logging.handlers import RotatingFileHandler
 from logging import getLogger
@@ -150,6 +151,10 @@ def remove_file_from_category(id, category_path):
 def create_new_model():
     if request.method == 'GET':
         model_templates = os.listdir(os.path.join(app.config['DEEPSTATION_ROOT'],'src', 'model_templates'))
+        if ds_util.get_tensorflow_version() == '---':
+            for t in model_templates:
+                if re.search(r'_tf\.py', t):
+                    model_templates.remove(t)
         return render_template('model/new.html', templates=model_templates)
     # POST
     model_name     = request.form['model_name'].strip()

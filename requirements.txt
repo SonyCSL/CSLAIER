@@ -1,8 +1,8 @@
 Flask==0.10.1
 Flask-SQLAlchemy==2.1
-chainer==1.8.1
-nkf==0.2.0
-pillow==3.2.0
-numpy==1.11.0
-scipy==0.15.1
-cv2==1.0
+chainer>=1.8.1
+nkf>=0.2.0
+pillow>=3.2.0
+numpy>=1.11.0
+scipy>=0.15.1
+cv2>=1.0

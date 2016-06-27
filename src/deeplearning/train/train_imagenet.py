@@ -25,7 +25,10 @@ from chainer import cuda
 from chainer import optimizers
 from chainer import serializers
 
-import tensorflow as tf
+try:
+    import tensorflow as tf
+except:
+    pass
 
 VALIDATION_TIMING = 500 # ORIGINAL 50000
 
@@ -426,17 +429,24 @@ def do_train_by_tensorflow(
     db_model.is_trained = 1
     db_model.update_and_commit()
 
-    images_placeholder = tf.placeholder(tf.float32, [None, 128 * 128 * 3])
-    labels_placeholder = tf.placeholder(tf.float32, [None, num_classes])
-    keep_prob = tf.placeholder(tf.float32)
-    trainable = tf.placeholder(tf.bool)
+    if gpu_num > -1:
+        device = '/gpu:' + str(gpu_num)
+    else:
+        device = '/cpu:0'
 
-    logits = model.inference(images_placeholder, keep_prob, tf.bool)
-    loss_value = model.loss(logits, labels_placeholder)
-    train_op = model.training(loss_value, 1e-4)
-    acc = model.accuracy(logits, labels_placeholder)
+    with tf.device(device):
+        images_placeholder = tf.placeholder(tf.float32, [None, 128 * 128 * 3])
+        labels_placeholder = tf.placeholder(tf.float32, [None, num_classes])
+        keep_prob = tf.placeholder(tf.float32)
+        trainable = tf.placeholder(tf.bool)
+
+        logits = model.inference(images_placeholder, keep_prob, tf.bool)
+        loss_value = model.loss(logits, labels_placeholder)
+        train_op = model.training(loss_value, 1e-4)
+        acc = model.accuracy(logits, labels_placeholder)
 
     saver = tf.train.Saver()
+
     with open(os.path.join(db_model.trained_model_path, 'line_graph.tsv'), 'w') as line_graph, open(os.path.join(db_model.trained_model_path, 'log.html'), 'w') as log_file:
         line_graph.write("count\tepoch\taccuracy\tloss\taccuracy(val)\tloss(val)\n")
         line_graph.flush()
