@@ -54,7 +54,8 @@ def run_imagenet_train(
                 output_dir_root,
                 128,   # batchsize
                 250,  # val_batchsize
-                pretrained_model
+                pretrained_model,
+                gpu_num
             )
         )
     else:

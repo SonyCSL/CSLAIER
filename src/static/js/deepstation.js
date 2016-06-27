@@ -649,10 +649,12 @@ var update_remain_time = function(train_log){
         }
     });
     console.log({end_time: end_time, current_epoch: current_epoch, start_time: start_time, latest_time: latest_time});
+    if(start_time && latest_time) {
+        $('#time_spent').text(millisec_to_readable_time(latest_time.diff(start_time)));
+    }
     if(!start_time || !end_time || current_epoch == 1) return;
     var target_epoch = parseInt($('#epoch_info').text(), 10);
     $('#remain_time').text(millisec_to_readable_time((end_time.diff(start_time) / (current_epoch - 1)) * (target_epoch - current_epoch)));
-    $('#time_spent').text(millisec_to_readable_time(latest_time.diff(start_time)));
 };
 
 var millisec_to_readable_time = function(millisec){

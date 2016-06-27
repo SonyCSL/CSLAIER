@@ -379,7 +379,8 @@ def do_train_by_tensorflow(
     output_dir_root,
     batchsize,
     val_batchsize,
-    pretrained_model
+    pretrained_model,
+    gpu_num
 ):
     logger.info('Start imagenet train. model_id: {}, pretrained_model: {}'.format(db_model.id, pretrained_model))
 
