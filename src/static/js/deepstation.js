@@ -656,16 +656,18 @@ var update_remain_time = function(train_log){
 };
 
 var millisec_to_readable_time = function(millisec){
-    var h = String(Math.floor(millisec / 3600000) + 100).substring(1);
-    var m = String(Math.floor((millisec - h * 3600000)/60000)+ 100).substring(1);
-    var s = String(Math.round((millisec - h * 3600000 - m * 60000)/1000)+ 100).substring(1);
-    return h+':'+m+':'+s;
+    var d = String(Math.floor(millisec / 86400000) + 100).substring(1);
+    var h = String(Math.floor((millisec - d * 86400000)/ 3600000) + 100).substring(1);
+    var m = String(Math.floor((millisec - d * 86400000 - h * 3600000)/60000)+ 100).substring(1);
+    var s = String(Math.round((millisec - d * 86400000 - h * 3600000 - m * 60000)/1000)+ 100).substring(1);
+    return d+' days '+h+':'+m+':'+s;
 };
 
 var increase_time_spent = function(){
     var current = $('#time_spent').text();
     var times = current.split(':');
-    var sec = parseInt(times[0], 10) * 60 * 60 + parseInt(times[1], 10) * 60 + parseInt(times[2], 10);
+    var days = times[0].split(' days ');
+    var sec = parseInt(days[0]) * 60 * 60 * 24 + parseInt(times[0], 10) * 60 * 60 + parseInt(times[1], 10) * 60 + parseInt(times[2], 10);
     sec += 1;
     $('#time_spent').text(millisec_to_readable_time(sec * 1000));
 };
@@ -674,10 +676,11 @@ var decrease_time_remain = function(){
     var current = $('#remain_time').text();
     var times = current.split(':');
     if(times.length != 3) return;
-    var sec = parseInt(times[0], 10) * 60 * 60 + parseInt(times[1], 10) * 60 + parseInt(times[2], 10);
+    var days = times[0].split(' days ');
+    var sec = parseInt(days[0]) * 60 * 60 * 24 + parseInt(times[0], 10) * 60 * 60 + parseInt(times[1], 10) * 60 + parseInt(times[2], 10);
     sec -= 1;
     if(sec < 0) {
-        $('#remain_time').text('00:00:00');
+        $('#remain_time').text('0 days 00:00:00');
     } else {
         $('#remain_time').text(millisec_to_readable_time(sec*1000));
     }
