@@ -12,28 +12,28 @@ from sqlalchemy import desc
 from werkzeug import secure_filename
 
 from db_models.shared_models import db
-from db_models.models import Model
 import common.utils as ds_util
 
 logger = getLogger(__name__)
 
+
 class Dataset(db.Model):
-    id           = db.Column(db.Integer, primary_key = True)
-    name         = db.Column(db.Text, unique = True, nullable = False)
-    dataset_path = db.Column(db.Text, unique = True)
-    type         = db.Column(db.Text)
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.Text, unique=True, nullable=False)
+    dataset_path = db.Column(db.Text, unique=True)
+    type = db.Column(db.Text)
     category_num = db.Column(db.Integer)
-    file_num     = db.Column(db.Integer)
-    updated_at   = db.Column(db.DateTime)
-    created_at   = db.Column(db.DateTime)
-    models       = db.relationship('Model', backref='dataset', lazy='dynamic')
+    file_num = db.Column(db.Integer)
+    updated_at = db.Column(db.DateTime)
+    created_at = db.Column(db.DateTime)
+    models = db.relationship('Model', backref='dataset', lazy='dynamic')
 
     def __init__(self, name, type, dataset_path=None):
-        self.name         = name
+        self.name = name
         self.dataset_path = dataset_path
-        self.type         = type
-        self.updated_at   = datetime.datetime.now()
-        self.created_at   = datetime.datetime.now()
+        self.type = type
+        self.updated_at = datetime.datetime.now()
+        self.created_at = datetime.datetime.now()
 
     def __repr__(self):
         return
@@ -47,7 +47,8 @@ class Dataset(db.Model):
         ret = []
         dirty = False
         for dataset in datasets:
-            if not os.path.exists(dataset.dataset_path): continue
+            if not os.path.exists(dataset.dataset_path):
+                continue
             if dataset.file_num is None:
                 dataset.file_num = ds_util.count_files(dataset.dataset_path)
                 dirty = True
@@ -59,12 +60,16 @@ class Dataset(db.Model):
             if dataset.type == 'image':
                 dataset.thumbnails = []
                 thumbnails = ds_util.get_images_in_random_order(dataset.dataset_path, 4)
-                if len(thumbnails) == 0: continue
+                if len(thumbnails) == 0:
+                    continue
                 for t in thumbnails:
-                    dataset.thumbnails.append('/files/' + str(dataset.id) + t.replace(dataset.dataset_path, ''))
+                    dataset.thumbnails.append('/files/' + str(dataset.id)
+                                              + t.replace(dataset.dataset_path, ''))
             elif dataset.type == 'text':
-                dataset.sample_text = ds_util.get_texts_in_random_order(dataset.dataset_path, 1, 180)
-                dataset.filesize = ds_util.calculate_human_readable_filesize(ds_util.get_file_size_all(dataset.dataset_path))
+                dataset.sample_text = ds_util.get_texts_in_random_order(dataset.dataset_path,
+                                                                        1, 180)
+                dataset.filesize = ds_util.calculate_human_readable_filesize(
+                    ds_util.get_file_size_all(dataset.dataset_path))
             ret.append(dataset)
         return ret, cls.query.count()
 
@@ -75,10 +80,12 @@ class Dataset(db.Model):
         self.pages = int(ceil(float(self.category_num) / limit))
         self.categories = []
         for index, p in enumerate(ds_util.find_all_directories(dataset_root)):
-            if index < offset or offset + limit -1 < index: continue
+            if index < offset or offset + limit - 1 < index:
+                continue
             if self.type == 'image':
                 thumbs = ds_util.get_images_in_random_order(p, 4)
-                thumbs = map(lambda t:'/files/' + str(self.id) + t.replace(self.dataset_path, ''), thumbs)
+                thumbs = map(lambda t: '/files/' + str(self.id) + t.replace(self.dataset_path, ''),
+                             thumbs)
                 self.categories.append({
                     'dataset_type': self.type,
                     'path': p.replace(self.dataset_path, ''),
@@ -101,7 +108,8 @@ class Dataset(db.Model):
         self.category = os.path.basename(category_root)
         files = []
         for i, p in enumerate(ds_util.find_all_files(category_root)):
-            if i < offset or offset + limit - 1 < i :continue
+            if i < offset or offset + limit - 1 < i:
+                continue
             if self.type == 'image':
                 files.append('/files/' + str(self.id) + p.replace(self.dataset_path, ''))
             elif self.type == 'text':
@@ -113,7 +121,7 @@ class Dataset(db.Model):
         self.count = ds_util.count_files(category_root)
         self.pages = int(ceil(float(self.count) / limit))
         self.category_root = category_root.replace(self.dataset_path, '')
-        self.original_category=category
+        self.original_category = category
         return self
 
     def delete(self):
@@ -153,7 +161,8 @@ class Dataset(db.Model):
             os.mkdir(os.path.join(target, name))
             ds.category_num += 1
         except Exception as e:
-            logger.exception('Could not create directory: {0} {1}'.format(os.path.join(target, name), e))
+            logger.exception('Could not create directory: {0} {1}'
+                             .format(os.path.join(target, name), e))
             raise
         ds.update_and_commit()
 
@@ -171,14 +180,16 @@ class Dataset(db.Model):
         try:
             os.mkdir(extract_to)
         except Exception as e:
-            logger.exception('Could not create directory to extract zip file: {0} {1}'.format(extract_to, e))
+            logger.exception('Could not create directory to extract zip file: {0} {1}'
+                             .format(extract_to, e))
             raise
         file_num = 0
         category_num = 0
         try:
             zf = zipfile.ZipFile(os.path.join(save_raw_file_to, new_filename), 'r')
             for f in zf.namelist():
-                if ('__MACOSX' in f) or ('.DS_Store' in f): continue
+                if ('__MACOSX' in f) or ('.DS_Store' in f):
+                    continue
                 temp_path = os.path.join(extract_to, f)
                 if not os.path.basename(f):
                     if not os.path.exists(temp_path):
@@ -222,7 +233,8 @@ class Dataset(db.Model):
         elif self.type == 'text':
             if ext not in ('.txt',):
                 raise ValueError('Invalid file type.')
-        new_filename = os.path.join( self.dataset_path , category , ds_util.get_timestamp() + '_' + secure_filename(filename))
+        new_filename = os.path.join(self.dataset_path, category,
+                                    ds_util.get_timestamp() + '_' + secure_filename(filename))
         if self.type == 'image':
             uploaded_file.save(new_filename)
         elif self.type == 'text':

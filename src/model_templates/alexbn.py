@@ -4,9 +4,12 @@ import chainer
 import chainer.functions as F
 import chainer.links as L
 
+"""
 ##############################
 ## DO NOT CHANGE CLASS NAME ##
 ##############################
+"""
+
 
 class Network(chainer.Chain):
 

@@ -2,6 +2,7 @@
 # HINT:image
 import tensorflow as tf
 
+
 def inference(images, keep_prob, trainable=True):
 
     def weight_variable(shape):
@@ -75,34 +76,40 @@ def inference(images, keep_prob, trainable=True):
     with tf.name_scope('fc6') as scope:
         r_fc6 = tf.reshape(h_pool5, [-1, 256 * 2 * 2])
         W_fc6 = weight_variable([256 * 2 * 2, 4096])
-        b_fc6 = tf.Variable(tf.constant(0.0, shape=[4096], dtype=tf.float32), trainable=trainable, name='biases')
+        b_fc6 = tf.Variable(tf.constant(0.0, shape=[4096], dtype=tf.float32),
+                            trainable=trainable, name='biases')
         h_fc6 = tf.nn.relu_layer(r_fc6, W_fc6, b_fc6, name=scope)
         h_fc6_dropout = tf.nn.dropout(h_fc6, keep_prob)
 
     # fc7
     with tf.name_scope('fc7') as scope:
         W_fc7 = weight_variable([4096, 4096])
-        b_fc7 = tf.Variable(tf.constant(0.0, shape=[4096], dtype=tf.float32), trainable=trainable, name='biases')
+        b_fc7 = tf.Variable(tf.constant(0.0, shape=[4096], dtype=tf.float32),
+                            trainable=trainable, name='biases')
         h_fc7 = tf.nn.relu_layer(h_fc6_dropout, W_fc7, b_fc7, name=scope)
         h_fc7_dropout = tf.nn.dropout(h_fc7, keep_prob)
 
     # fc8
     with tf.name_scope('fc8') as scope:
         W_fc8 = weight_variable([4096, 1000])
-        b_fc8 = tf.Variable(tf.constant(0.0, shape=[1000], dtype=tf.float32), trainable=trainable, name='biases')
+        b_fc8 = tf.Variable(tf.constant(0.0, shape=[1000], dtype=tf.float32),
+                            trainable=trainable, name='biases')
         h_fc8 = tf.matmul(h_fc7_dropout, W_fc8) + b_fc8
 
     return h_fc8
+
 
 def loss(logits, labels):
     cross_entropy = tf.nn.softmax_cross_entropy_with_logits(logits, labels, name='xentropy')
     loss = tf.reduce_mean(cross_entropy, name='xentropy_mean')
     return loss
 
+
 def accuracy(logits, labels):
     correct_prediction = tf.equal(tf.argmax(logits, 1), tf.argmax(labels, 1))
     accuracy = tf.reduce_mean(tf.cast(correct_prediction, tf.float32))
     return accuracy
+
 
 def training(loss, learning_rate):
     train_step = tf.train.AdamOptimizer(learning_rate).minimize(loss)

@@ -14,7 +14,6 @@ from logging import getLogger
 import numpy as np
 import six
 import cPickle as pickle
-import copy
 import chainer
 from chainer import cuda
 import chainer.links as L
@@ -24,14 +23,17 @@ from chainer import link
 
 logger = getLogger(__name__)
 
+
 # gotten from http://qiita.com/tabe2314/items/6c0c1b769e12ab1e2614
 def copy_model(src, dst):
     assert isinstance(src, link.Chain)
     assert isinstance(dst, link.Chain)
     for child in src.children():
-        if child.name not in dst.__dict__: continue
+        if child.name not in dst.__dict__:
+            continue
         dst_child = dst[child.name]
-        if type(child) != type(dst_child): continue
+        if type(child) != type(dst_child):
+            continue
         if isinstance(child, link.Chain):
             copy_model(child, dst_child)
         if isinstance(child, link.Link):
@@ -50,11 +52,13 @@ def copy_model(src, dst):
                 b[1].data = a[1].data
             logger.info('Copy {0}'.format(child.name))
 
+
 def load_module(dir_name, symbol):
-    (file, path, description) = imp.find_module(symbol,[dir_name])
+    (file, path, description) = imp.find_module(symbol, [dir_name])
     return imp.load_module(symbol, file, path, description)
 
-def load_data(filename, use_mecab,vocab):
+
+def load_data(filename, use_mecab, vocab):
     if use_mecab:
         words = codecs.open(filename, 'rb', 'utf-8').read().replace('\n', '<eos>').strip().split()
     else:
@@ -69,33 +73,34 @@ def load_data(filename, use_mecab,vocab):
     logger.info('vocab size: {0}'.format(len(vocab)))
     return dataset, words, vocab
 
+
 def do_train(
     db_model,
     root_output_dir,
     filename,
     vocabulary,
-    use_mecab = False,
-    initmodel = None,
-    resume = None,
-    gpu = -1,
-    rnn_size = 128,
-    learning_rate = 2e-3,
-    learning_rate_decay = 0.97,
-    learning_rate_decay_after = 10,
-    decay_rate = 0.95,
-    dropout = 0.0,
-    seq_length = 50,
-    batchsize = 50, # minibatch size
-    grad_clip = 5   # gradient norm threshold to clip
+    use_mecab=False,
+    initmodel=None,
+    resume=None,
+    gpu=-1,
+    rnn_size=128,
+    learning_rate=2e-3,
+    learning_rate_decay=0.97,
+    learning_rate_decay_after=10,
+    decay_rate=0.95,
+    dropout=0.0,
+    seq_length=50,
+    batchsize=50,  # minibatch size
+    grad_clip=5    # gradient norm threshold to clip
 ):
-    logger.info('Start LSTM training. model_id: {0}, use_mecab: {1}, initmodel: {2}, gpu: {3}'.format(db_model.id, use_mecab, initmodel, gpu))
-    n_epoch   = db_model.epoch
-    n_units   = rnn_size  # number of units per layer
+    logger.info('Start LSTM training. model_id: {0}, use_mecab: {1}, initmodel: {2}, gpu: {3}'
+                .format(db_model.id, use_mecab, initmodel, gpu))
+    n_epoch = db_model.epoch
     bprop_len = seq_length   # length of truncated BPTT
     grad_clip = grad_clip
 
     (model_dir, model_name) = os.path.split(db_model.network_path)
-    model_name = re.sub(r"\.py$","", model_name)
+    model_name = re.sub(r"\.py$", "", model_name)
     model_module = load_module(model_dir, model_name)
 
     if db_model.trained_model_path is None:
@@ -114,8 +119,8 @@ def do_train(
         cuda.check_cuda_available()
     xp = cuda.cupy if gpu >= 0 else np
 
-    train_data, words, vocab = load_data(filename, use_mecab,vocab)
-    pickle.dump(vocab, open('%s/vocab2.bin'%db_model.trained_model_path, 'wb'))
+    train_data, words, vocab = load_data(filename, use_mecab, vocab)
+    pickle.dump(vocab, open('%s/vocab2.bin' % db_model.trained_model_path, 'wb'))
 
     # Prepare model
     lm = model_module.Network(len(vocab), rnn_size, dropout_ratio=dropout, train=False)
@@ -140,12 +145,16 @@ def do_train(
             model2.compute_accuracy = False  # we only want the perplexity
             logger.info("Load model from : "+db_model.trained_model_path + os.sep + initmodel)
             serializers.load_npz(os.path.join(db_model.trained_model_path, initmodel), model2)
-            copy_model(model2,model)
+            copy_model(model2, model)
         # delete old models
         try:
-            shutil.copyfile(os.path.join(db_model.trained_model_path, initmodel), os.path.join(db_model.trained_model_path, 'previous_' + initmodel))
+            shutil.copyfile(os.path.join(db_model.trained_model_path, initmodel),
+                            os.path.join(db_model.trained_model_path, 'previous_' + initmodel))
         except Exception as e:
-            logger.exception('Could not copy {0} to {1}. {2}'.format(os.path.join(db_model.trained_model_path, initmodel), os.path.join(db_model.trained_model_path, 'previous_' + initmodel), e))
+            logger.exception('Could not copy {0} to {1}. {2}'
+                             .format(os.path.join(db_model.trained_model_path, initmodel),
+                                     os.path.join(db_model.trained_model_path,
+                                                  'previous_' + initmodel), e))
             raise e
         pretrained_models = sorted(os.listdir(db_model.trained_model_path), reverse=True)
         for m in pretrained_models:
@@ -153,7 +162,8 @@ def do_train(
                 try:
                     os.remove(os.path.join(db_model.trained_model_path, m))
                 except Exception as e:
-                    logger.exception('Could not remove old trained model: {0} {1}'.format(os.path.join(db_model.trained_model_path, m), e))
+                    logger.exception('Could not remove old trained model: {0} {1}'
+                                     .format(os.path.join(db_model.trained_model_path, m), e))
                     raise e
 
     if gpu >= 0:
@@ -172,7 +182,8 @@ def do_train(
             try:
                 shutil.rmtree(os.path.join(db_model.trained_model_path, f))
             except Exception as e:
-                logger.exception('Could not remove visualization cache: {0} {1}'.format(os.path.join(db_model.trained_model_path, f), e))
+                logger.exception('Could not remove visualization cache: {0} {1}'
+                                 .format(os.path.join(db_model.trained_model_path, f), e))
                 raise e
 
     db_model.is_trained = 1
@@ -196,10 +207,10 @@ def do_train(
     log_file.write("going to train {} iterations<br>".format(jump * n_epoch))
     log_file.flush()
     for i in six.moves.range(jump * n_epoch):
-        x = chainer.Variable(xp.asarray(
-                                    [train_data[(jump * j + i) % whole_len] for j in batch_idxs]))
-        t = chainer.Variable(xp.asarray(
-                                    [train_data[(jump * j + i + 1) % whole_len] for j in batch_idxs]))
+        x = chainer.Variable(
+            xp.asarray([train_data[(jump * j + i) % whole_len] for j in batch_idxs]))
+        t = chainer.Variable(
+            xp.asarray([train_data[(jump * j + i + 1) % whole_len] for j in batch_idxs]))
         loss_i = model(x, t)
         accum_loss += loss_i
         loss_for_graph += loss_i.data
@@ -216,14 +227,15 @@ def do_train(
             now = time.time()
             throuput = 10000. / (now - cur_at)
             perp = math.exp(float(cur_log_perp) / 10000)
-            log_file.write('iter {} training perplexity: {:.2f} ({:.2f} iters/sec)<br>'.format(i + 1, perp, throuput))
+            log_file.write('iter {} training perplexity: {:.2f} ({:.2f} iters/sec)<br>'
+                           .format(i + 1, perp, throuput))
             log_file.flush()
             cur_at = now
             cur_log_perp.fill(0)
 
         if (i + 1) % 100 == 0:
             perp_for_graph = math.exp(float(loss_for_graph) / 100)
-            graph_tsv.write('{}\t{}\t{:.2f}\n'.format(i+1,epoch,perp_for_graph))
+            graph_tsv.write('{}\t{}\t{:.2f}\n'.format(i+1, epoch, perp_for_graph))
             graph_tsv.flush()
             loss_for_graph.fill(0)
 
@@ -237,18 +249,22 @@ def do_train(
                 log_file.write('learning rate = {:.10f}<br>'.format(optimizer.lr))
                 log_file.flush()
             # Save the model and the optimizer
-            serializers.save_npz(os.path.join(db_model.trained_model_path,'model%04d'%epoch), model)
+            serializers.save_npz(os.path.join(db_model.trained_model_path,
+                                              'model%04d' % epoch), model)
             log_file.write('--- epoch: {} ------------------------<br>'.format(epoch))
             log_file.flush()
-            serializers.save_npz(os.path.join(db_model.trained_model_path, 'rnnlm.state'), optimizer)
+            serializers.save_npz(os.path.join(db_model.trained_model_path,
+                                              'rnnlm.state'), optimizer)
 
         sys.stdout.flush()
     if os.path.exists(os.path.join(db_model.trained_model_path, 'previous_' + initmodel)):
         # delete backup file
         try:
-            os.remove(os.path.join(db_model.trained_model_path,'previous_' + initmodel))
+            os.remove(os.path.join(db_model.trained_model_path, 'previous_' + initmodel))
         except Exception as e:
-            logger.exception('Could not remove backuped file: {0} {1}'.format(os.path.join(db_model.trained_model_path,'previous_' + initmodel), e))
+            logger.exception('Could not remove backuped file: {0} {1}'
+                             .format(os.path.join(db_model.trained_model_path,
+                                                  'previous_' + initmodel), e))
             raise e
     log_file.write('===== finish train. =====')
     log_file.close()
@@ -257,4 +273,3 @@ def do_train(
     db_model.pid = None
     db_model.update_and_commit()
     logger.info('Finish LSTM train. model_id: {0}'.format(db_model.id))
-    return

@@ -1,11 +1,13 @@
 # -*- encoding:utf-8 -*-
 import os
 from logging import getLogger
+
 import nkf
 
 import common.utils as ds_utils
 
 logger = getLogger(__name__)
+
 
 def do(
     model,
@@ -26,8 +28,10 @@ def do(
         if trained_model_path:
             pretrained_vocab = os.path.join(trained_model_path, 'vocab2.bin')
             if not os.path.exists(pretrained_vocab):
-                logger.error("Could not find vocab2.bin file. It is possible that previsou train have failed: {0}".format(pretrained_vocab))
-                raise Exception("Could not find vocab2.bin file. It is possible that previsou train have failed: ", pretrained_vocab)
+                logger.error("Could not find vocab2.bin file. It is possible that previsou train have failed: {0}"
+                             .format(pretrained_vocab))
+                raise Exception("Could not find vocab2.bin file. It is possible that previsou train have failed: ",
+                                pretrained_vocab)
         else:
             pretrained_vocab = ''
     else:
@@ -36,6 +40,7 @@ def do(
     model.update_and_commit()
     logger.info('Finish making LSTM training data.')
     return input_data_path, pretrained_vocab, model
+
 
 def make_train_text(model, use_wakatigaki):
     input_text = open(os.path.join(model.prepared_file_path, 'input.txt'), 'w')

@@ -19,37 +19,38 @@ import deeplearning.predict.text_predict as lstm_prediction
 
 logger = getLogger(__name__)
 
+
 class Model(db.Model):
-    id                    = db.Column(db.Integer, primary_key = True)
-    name                  = db.Column(db.Text, unique = True, nullable = False)
-    type                  = db.Column(db.Text)
-    framework             = db.Column(db.Text)
-    epoch                 = db.Column(db.Integer)
-    network_name          = db.Column(db.Text)
-    network_path          = db.Column(db.Text)
-    trained_model_path    = db.Column(db.Text)
-    prepared_file_path    = db.Column(db.Text)
-    is_trained            = db.Column(db.Integer)
-    pid                   = db.Column(db.Integer)
-    resize_mode           = db.Column(db.Text)
-    channels              = db.Column(db.Integer)
-    use_wakatigaki        = db.Column(db.Integer)
-    dataset_id            = db.Column(db.Integer, db.ForeignKey('dataset.id'))
-    updated_at            = db.Column(db.DateTime)
-    created_at            = db.Column(db.DateTime)
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.Text, unique=True, nullable=False)
+    type = db.Column(db.Text)
+    framework = db.Column(db.Text)
+    epoch = db.Column(db.Integer)
+    network_name = db.Column(db.Text)
+    network_path = db.Column(db.Text)
+    trained_model_path = db.Column(db.Text)
+    prepared_file_path = db.Column(db.Text)
+    is_trained = db.Column(db.Integer)
+    pid = db.Column(db.Integer)
+    resize_mode = db.Column(db.Text)
+    channels = db.Column(db.Integer)
+    use_wakatigaki = db.Column(db.Integer)
+    dataset_id = db.Column(db.Integer, db.ForeignKey('dataset.id'))
+    updated_at = db.Column(db.DateTime)
+    created_at = db.Column(db.DateTime)
 
     def __init__(self, name, type, network_path, network_name, framework):
-        self.name         = name
-        self.type         = type
+        self.name = name
+        self.type = type
         self.network_path = network_path
         self.network_name = network_name
-        self.framework    = framework
-        self.epoch        = 1
-        self.is_trained   = 0
-        self.pid          = None
-        self.channels     = 3
-        self.updated_at   = datetime.datetime.now()
-        self.created_at   = datetime.datetime.now()
+        self.framework = framework
+        self.epoch = 1
+        self.is_trained = 0
+        self.pid = None
+        self.channels = 3
+        self.updated_at = datetime.datetime.now()
+        self.created_at = datetime.datetime.now()
 
     def __repr__(self):
         return
@@ -88,14 +89,13 @@ class Model(db.Model):
 
     @classmethod
     def create_new(cls,
-        name,             # name of network
-        type,             # type of network
-        network_file_dir, # path which network code is stored
-        network_name,     # network name ex) nin, googlenet, lstm
-        model_template,   # name of network template
-        code,             # network code
-        framework         # chainer or tensorflow
-    ):
+                   name,              # name of network
+                   type,              # type of network
+                   network_file_dir,  # path which network code is stored
+                   network_name,      # network name ex) nin, googlenet, lstm
+                   model_template,    # name of network template
+                   code,              # network code
+                   framework):        # chainer or tensorflow
         if not re.match(r".+\.py", name):
             name += '.py'
         if network_name is None or network_name is '':
@@ -165,7 +165,7 @@ class Model(db.Model):
         if self.trained_model_path:
             candidate = sorted(os.listdir(self.trained_model_path), reverse=True)
             if pretrained_models:
-                pretrained_models = filter(lambda file:file.find('model')>-1, candidate)
+                pretrained_models = filter(lambda file: file.find('model') > -1, candidate)
                 pretrained_models.append("New")
         return pretrained_models
 
@@ -195,7 +195,8 @@ class Model(db.Model):
         ext = ext.lower()
         if ext not in ('.jpg', '.jpeg', '.gif', '.png'):
             raise Exception('File extension not allowed.')
-        new_filename = os.path.join(save_to, ds_utils.get_timestamp() + '_' + secure_filename(uploaded.filename))
+        new_filename = os.path.join(save_to, ds_utils.get_timestamp() + '_'
+                                    + secure_filename(uploaded.filename))
         uploaded.save(new_filename)
         results = inspection.inspect(
             new_filename,
@@ -221,7 +222,7 @@ class Model(db.Model):
             0.0,  # dropout
             1,    # sample
             result_length,
-            use_mecab = self.get_use_wakatigaki_in_bool()
+            use_mecab=self.get_use_wakatigaki_in_bool()
         )
         return result.replace('<eos>', '\n')
 
@@ -229,7 +230,8 @@ class Model(db.Model):
         return self.__get_file_path(self.trained_model_path, "model{0:0>4}".format(epoch))
 
     def get_trained_files(self, epoch, root_out_dir):
-        zipfile_path = os.path.join(root_out_dir, ds_utils.get_timestamp() + '_' + re.sub(r"\.py$", "", self.name) + '.zip')
+        zipfile_path = os.path.join(root_out_dir, ds_utils.get_timestamp() + '_'
+                                    + re.sub(r"\.py$", "", self.name) + '.zip')
         with zipfile.ZipFile(zipfile_path, 'w', zipfile.ZIP_DEFLATED) as f:
             f.write(self.network_path, os.path.basename(self.network_path))
             trained_model_path = self.get_trained_model(epoch)
@@ -237,7 +239,7 @@ class Model(db.Model):
             if self.type == 'image':
                 f.write(self.labels_text, os.path.basename(self.labels_text))
                 f.write(self.mean_file, os.path.basename(self.mean_file))
-            elif self.type=='text':
+            elif self.type == 'text':
                 f.write(self.vocab_file, os.path.basename(self.vocab_file))
         return zipfile_path
 
@@ -247,17 +249,21 @@ class Model(db.Model):
                 os.kill(self.pid, signal.SIGTERM)
                 logger.info('Process successfully terminated.')
             except OSError as e:
-                logger.info("Process already terminated. ERROR NO: {0} - {1}".format(e.errno, e.strerror))
+                logger.info("Process already terminated. ERROR NO: {0} - {1}"
+                            .format(e.errno, e.strerror))
             self.is_trained = 0
             self.pid = None
-            if self.trained_model_path != None and self.trained_model_path != '':
+            if self.trained_model_path is not None and self.trained_model_path != '':
                 for f in os.listdir(self.trained_model_path):
                     if f.startswith('previous_'):
                         try:
-                            shutil.copyfile(os.path.join(self.trained_model_path, f), os.path.join(self.trained_model_path, f.replace('previous_', '')))
+                            shutil.copyfile(os.path.join(self.trained_model_path, f),
+                                            os.path.join(self.trained_model_path,
+                                                         f.replace('previous_', '')))
                             os.remove(os.path.join(self.trained_model_path, f))
                         except Exception as e:
-                            logger.exception('Failed to restore backuped trained model. {0} {1}'.format(os.path.join(self.trained_model_path, f), e))
+                            logger.exception('Failed to restore backuped trained model. {0} {1}'
+                                             .format(os.path.join(self.trained_model_path, f), e))
                             raise e
             self.update_and_commit()
 
@@ -279,7 +285,7 @@ class Model(db.Model):
                 self.network_path,
                 trained_model_path,
                 os.path.join(self.trained_model_path, str(epoch)),
-                vocab_len = len(vocab),
+                vocab_len=len(vocab),
                 n_units=128,
                 dropout=0.5
             )

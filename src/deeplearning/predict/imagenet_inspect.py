@@ -7,20 +7,19 @@ import imp
 
 from PIL import Image
 import scipy.misc
-import cv2
 
-import six
 import cPickle as pickle
 
-import chainer
 from chainer import cuda
 from chainer import serializers
+
 
 def load_module(dir_name, symbol):
     (file, path, description) = imp.find_module(symbol, [dir_name])
     return imp.load_module(symbol, file, path, description)
 
-def read_image(path, height, width, resize_mode = "squash", channels=3, flip=False):
+
+def read_image(path, height, width, resize_mode="squash", channels=3, flip=False):
     """
     Load an image from disk
 
@@ -41,14 +40,14 @@ def read_image(path, height, width, resize_mode = "squash", channels=3, flip=Fal
         mode = "L"
     else:
         mode = "RGB"
-        
+
     image = Image.open(path)
     image = image.convert(mode)
     image = np.array(image)
 
-    ### Resize
+    # Resize
     interp = 'bilinear'
-    
+
     width_ratio = float(image.shape[1]) / width
     height_ratio = float(image.shape[0]) / height
     if resize_mode == 'squash' or width_ratio == height_ratio:
@@ -66,10 +65,10 @@ def read_image(path, height, width, resize_mode = "squash", channels=3, flip=Fal
         # chop off ends of dimension that is still too long
         if width_ratio > height_ratio:
             start = int(round((resize_width-width)/2.0))
-            return image[:,start:start+width]
+            return image[:, start:start+width]
         else:
             start = int(round((resize_height-height)/2.0))
-            return image[start:start+height,:]
+            return image[start:start+height, :]
     else:
         if resize_mode == 'fill':
             # resize to biggest of ratios (relatively smaller image), keeping aspect ratio
@@ -97,10 +96,10 @@ def read_image(path, height, width, resize_mode = "squash", channels=3, flip=Fal
             # chop off ends of dimension that is still too long
             if width_ratio > height_ratio:
                 start = int(round((resize_width-width)/2.0))
-                image = image[:,start:start+width]
+                image = image[:, start:start+width]
             else:
                 start = int(round((resize_height-height)/2.0))
-                image = image[start:start+height,:]
+                image = image[start:start+height, :]
         else:
             raise Exception('unrecognized resize_mode "%s"' % resize_mode)
 
@@ -126,7 +125,7 @@ def read_image(path, height, width, resize_mode = "squash", channels=3, flip=Fal
         return image
 
 
-def inspect(image_path, mean, model_path, label, network_path, resize_mode,channels, gpu=0):
+def inspect(image_path, mean, model_path, label, network_path, resize_mode, channels, gpu=0):
     network = network_path.split(os.sep)[-1]
     model_name = re.sub(r"\.py$", "", network)
     model_module = load_module(os.path.dirname(network_path), model_name)
@@ -137,10 +136,8 @@ def inspect(image_path, mean, model_path, label, network_path, resize_mode,chann
         cuda.check_cuda_available()
         cuda.get_device(gpu).use()
         model.to_gpu()
-    
-    output_side_length = 256
-        
-    img = read_image(image_path, 256, 256, resize_mode,channels)
+
+    img = read_image(image_path, 256, 256, resize_mode, channels)
 
     cropwidth = 256 - model.insize
     top = left = cropwidth / 2
@@ -151,14 +148,14 @@ def inspect(image_path, mean, model_path, label, network_path, resize_mode,chann
         img = img[:, top:bottom, left:right].astype(np.float32)
     else:
         img = img[top:bottom, left:right].astype(np.float32)
-        zeros = np.zeros((model.insize,model.insize))
+        zeros = np.zeros((model.insize, model.insize))
         img = np.array([img, zeros, zeros])
     img -= mean_image[:, top:bottom, left:right]
     img /= 255
-    
+
     x = np.ndarray((1, 3,  model.insize, model.insize), dtype=np.float32)
     x[0] = img
-    
+
     if gpu >= 0:
         x = cuda.to_gpu(x)
     score = model.predict(x)
@@ -166,10 +163,8 @@ def inspect(image_path, mean, model_path, label, network_path, resize_mode,chann
     categories = np.loadtxt(label, str, delimiter="\t")
     top_k = 20
     prediction = zip(score[0].tolist(), categories)
-    prediction.sort(cmp=lambda x, y:cmp(x[0], y[0]), reverse=True)
+    prediction.sort(cmp=lambda x, y: cmp(x[0], y[0]), reverse=True)
     ret = []
     for rank, (score, name) in enumerate(prediction[:top_k], start=1):
         ret.append({"rank": rank, "name": name, "score": "{0:4.1f}%".format(score*100)})
     return ret
-    
-

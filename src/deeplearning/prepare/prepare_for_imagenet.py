@@ -13,6 +13,7 @@ import common.utils as ds_utils
 
 logger = getLogger(__name__)
 
+
 def do(model, prepared_data_root):
     if model.prepared_file_path:
         # re-use existing directory
@@ -28,9 +29,10 @@ def do(model, prepared_data_root):
     logger.info('Finish making training data.')
     return model
 
+
 def make_train_data(model):
-    train_text  = open(os.path.join(model.prepared_file_path, 'train.txt'), 'w')
-    test_text   = open(os.path.join(model.prepared_file_path, 'test.txt'), 'w')
+    train_text = open(os.path.join(model.prepared_file_path, 'train.txt'), 'w')
+    test_text = open(os.path.join(model.prepared_file_path, 'test.txt'), 'w')
     labels_text = open(os.path.join(model.prepared_file_path, 'labels.txt'), 'w')
     class_no = 0
     count = 0
@@ -44,8 +46,10 @@ def make_train_data(model):
                 logger.info('Processing File: {0}'.format(os.path.join(path, f)))
                 (head, ext) = os.path.splitext(f)
                 ext = ext.lower()
-                if ext not in [".jpg", ".jpeg", ".gif", ".png"]: continue
-                if os.path.getsize(os.path.join(path, f)) <= 0: continue
+                if ext not in [".jpg", ".jpeg", ".gif", ".png"]:
+                    continue
+                if os.path.getsize(os.path.join(path, f)) <= 0:
+                    continue
                 new_image_path = os.path.join(model.prepared_file_path, "image{0:0>7}.jpg".format(count))
                 resize_image(os.path.join(path, f), new_image_path, model)
                 if count - start_count < length * 0.75:
@@ -57,6 +61,7 @@ def make_train_data(model):
     train_text.close()
     test_text.close()
     labels_text.close()
+
 
 def resize_image(source, dest, model):
     if model.framework == 'chainer':
@@ -79,7 +84,7 @@ def resize_image(source, dest, model):
     if model.resize_mode not in ['crop', 'squash', 'fill', 'half_crop']:
         raise ValueError('resize_mode "%s" not supported' % model.resize_mode)
 
-	### Resize
+    # Resize
     interp = 'bilinear'
 
     width_ratio = float(width) / output_side_length
@@ -93,16 +98,16 @@ def resize_image(source, dest, model):
             resize_width = int(round(width / height_ratio))
         else:
             resize_width = output_side_length
-            resize_height = int(round(height/ width_ratio))
+            resize_height = int(round(height / width_ratio))
         image = scipy.misc.imresize(image, (resize_height, resize_width), interp=interp)
 
         # chop off ends of dimension that is still too long
         if width_ratio > height_ratio:
             start = int(round((resize_width-output_side_length)/2.0))
-            image = image[:,start:start+output_side_length]
+            image = image[:, start:start+output_side_length]
         else:
             start = int(round((resize_height-output_side_length)/2.0))
-            image = image[start:start+output_side_length,:]
+            image = image[start:start+output_side_length, :]
     else:
         if model.resize_mode == 'fill':
             # resize to biggest of ratios (relatively smaller image), keeping aspect ratio
@@ -113,7 +118,7 @@ def resize_image(source, dest, model):
                     resize_height += 1
             else:
                 resize_height = output_side_length
-                resize_width = int(round(width/ height_ratio))
+                resize_width = int(round(width / height_ratio))
                 if (output_side_length - resize_width) % 2 == 1:
                     resize_width += 1
             image = scipy.misc.imresize(image, (resize_height, resize_width), interp=interp)
@@ -130,10 +135,10 @@ def resize_image(source, dest, model):
             # chop off ends of dimension that is still too long
             if width_ratio > height_ratio:
                 start = int(round((resize_width-output_side_length)/2.0))
-                image = image[:,start:start+output_side_length]
+                image = image[:, start:start+output_side_length]
             else:
                 start = int(round((resize_height-output_side_length)/2.0))
-                image = image[start:start+output_side_length,:]
+                image = image[start:start+output_side_length, :]
         else:
             raise Exception('unrecognized resize_mode "%s"' % model.resize_mode)
 
@@ -154,6 +159,7 @@ def resize_image(source, dest, model):
             image = numpy.concatenate((noise, image, noise), axis=1)
     cv2.imwrite(dest, image)
     return
+
 
 def compute_mean(data_path):
     sum_image = None

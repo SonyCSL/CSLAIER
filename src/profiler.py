@@ -1,11 +1,13 @@
-from werkzeug.contrib.profiler import ProfilerMiddleware, MergeStream
+from werkzeug.contrib.profiler import ProfilerMiddleware
 from main import app
 import os
 
 app.config.from_envvar('DEEPSTATION_CONFIG')
-deepstation_config_params = ('DATABASE_PATH', 'UPLOADED_RAW_FILE', 'UPLOADED_FILE', 'PREPARED_DATA', 'TRAINED_DATA', 'INSPECTION_TEMP', 'LOG_DIR')
+deepstation_config_params = ('DATABASE_PATH', 'UPLOADED_RAW_FILE', 'UPLOADED_FILE', 'PREPARED_DATA',
+                             'TRAINED_DATA', 'INSPECTION_TEMP', 'LOG_DIR')
 # WebApp settings
 app.config['DEEPSTATION_ROOT'] = os.getcwd()
+
 
 def normalize_config_path():
     for param in deepstation_config_params:

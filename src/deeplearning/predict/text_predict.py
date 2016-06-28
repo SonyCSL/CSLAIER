@@ -1,22 +1,23 @@
 # -*- coding: utf-8 -*-
-import cPickle as pickle
-
 import os
 import re
 import imp
+import cPickle as pickle
 
 import numpy as np
 from chainer import cuda, Variable
 import chainer.functions as F
 import chainer.links as L
-from chainer import optimizers
 from chainer import serializers
+
 
 def load_module(dir_name, symbol):
     (file, path, description) = imp.find_module(symbol, [dir_name])
     return imp.load_module(symbol, file, path, description)
 
-def predict(model_path, vocab_path, network_path, primetext,seed, unit,dropout,sample,length, use_mecab=False):
+
+def predict(model_path, vocab_path, network_path, primetext,
+            seed, unit, dropout, sample, length, use_mecab=False):
 
     np.random.seed(seed)
 
@@ -75,4 +76,3 @@ def predict(model_path, vocab_path, network_path, primetext,seed, unit,dropout,s
             ret.append(ivocab[index])
         prev_char = Variable(np.ones((1,)).astype(np.int32) * vocab[ivocab[index]])
     return "".join(ret)
-

@@ -9,9 +9,9 @@ import deeplearning.prepare.prepare_for_imagenet
 import deeplearning.prepare.prepare_for_lstm
 import deeplearning.train.train_imagenet
 import deeplearning.train.train_lstm
-import common.utils as ds_utils
 
 logger = logging.getLogger(__name__)
+
 
 def run_imagenet_train(
     prepared_data_root,
@@ -36,20 +36,20 @@ def run_imagenet_train(
     if model.framework == 'chainer':
         train_process = Process(
             target=deeplearning.train.train_imagenet.do_train_by_chainer,
-            args = (
+            args=(
                 model,
                 output_dir_root,
-                32, #bachsize
-                250, # val_batchsize
+                32,   # bachsize
+                250,  # val_batchsize
                 gpu_num,
-                20, #loader_job
+                20,   # loader_job
                 pretrained_model,
             )
         )
     elif model.framework == 'tensorflow':
         train_process = Process(
             target=deeplearning.train.train_imagenet.do_train_by_tensorflow,
-            args = (
+            args=(
                 model,
                 output_dir_root,
                 128,   # batchsize
@@ -66,6 +66,7 @@ def run_imagenet_train(
     logging.info('start imagenet training. PID: ', model.pid)
     return
 
+
 def run_lstm_train(
     prepared_data_root,
     output_dir_root,
@@ -81,10 +82,11 @@ def run_lstm_train(
     model.dataset = dataset
     model.epoch = epoch
     model.enable_wakatigaki(use_wakatigaki)
-    (input_data_path, pretrained_vocab, model) = deeplearning.prepare.prepare_for_lstm.do(model, prepared_data_root, pretrained_model, use_wakatigaki)
+    (input_data_path, pretrained_vocab, model) = deeplearning.prepare.prepare_for_lstm.do(
+        model, prepared_data_root, pretrained_model, use_wakatigaki)
     train_process = Process(
-        target = deeplearning.train.train_lstm.do_train,
-        args = (
+        target=deeplearning.train.train_lstm.do_train,
+        args=(
             model,
             output_dir_root,
             input_data_path,
@@ -108,4 +110,3 @@ def run_lstm_train(
     model.pid = train_process.pid
     model.update_and_commit()
     logging.info('start LSTM training. PID: ', model.pid)
-    return

@@ -4,9 +4,12 @@ import chainer
 import chainer.functions as F
 import chainer.links as L
 
+"""
 ##############################
 ## DO NOT CHANGE CLASS NAME ##
 ##############################
+"""
+
 
 class Network(chainer.Chain):
 
@@ -117,5 +120,5 @@ class Network(chainer.Chain):
 
         h = F.average_pooling_2d(h, 7, stride=1)
         h = self.loss3_fc(F.dropout(h, 0.4, train=False))
-        
+
         return F.softmax(h)

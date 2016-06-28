@@ -9,9 +9,11 @@ from xml.etree import ElementTree
 
 import nkf
 
+
 def get_python_version():
     v = sys.version_info
     return str(v[0]) + '.' + str(v[1]) + '.' + str(v[2])
+
 
 def get_chainer_version():
     try:
@@ -20,12 +22,14 @@ def get_chainer_version():
         return '---'
     return version
 
+
 def get_tensorflow_version():
     try:
         from tensorflow import __version__ as version
     except ImportError:
         return '---'
     return version
+
 
 def get_disk_info():
     try:
@@ -53,6 +57,7 @@ def get_disk_info():
                 'avail': calculate_human_readable_filesize(st.f_frsize * st.f_favail)
             })
     return disk_info
+
 
 def get_gpu_info(nvidia_smi_cmd='nvidia-smi'):
     try:
@@ -82,9 +87,10 @@ def get_gpu_info(nvidia_smi_cmd='nvidia-smi'):
         utilization = g.find('utilization')
         info['gpu_util'] = utilization.find('gpu_util').text
         ret_gpus.append(info)
-    ret_gpus.sort(cmp=lambda x,y: cmp(int(x['minor_number']), int(y['minor_number'])))
+    ret_gpus.sort(cmp=lambda x, y: cmp(int(x['minor_number']), int(y['minor_number'])))
     ret['gpus'] = ret_gpus
     return ret
+
 
 def get_system_info():
     return {
@@ -95,14 +101,17 @@ def get_system_info():
         'gpu_info': get_gpu_info()
     }
 
+
 def is_module_available(module_name):
     for dist in pkg_resources.working_set:
         if dist.project_name.lower().find(module_name.lower()) > -1:
             return True
     return False
 
+
 def get_timestamp():
     return datetime.datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
+
 
 def find_all_files(directory):
     for root, dirs, files in os.walk(directory):
@@ -112,11 +121,13 @@ def find_all_files(directory):
                 continue
             yield os.path.join(root, f)
 
+
 def find_all_directories(directory):
     for root, dirs, files in os.walk(directory):
         dirs.sort()
         if len(dirs) == 0:
             yield root
+
 
 def count_categories(path):
     ch = os.listdir(path)
@@ -130,11 +141,13 @@ def count_categories(path):
                 count += 1
     return count
 
+
 def get_file_size_all(path):
     size = 0
     for f in find_all_files(path):
         size += os.path.getsize(f)
     return size
+
 
 def calculate_human_readable_filesize(byte):
     if byte / 1024 < 1:
@@ -142,9 +155,10 @@ def calculate_human_readable_filesize(byte):
     elif byte / (1024 ** 2) < 1:
         return str(byte / 1024) + 'k bytes'
     elif byte / (1024 ** 3) < 1:
-        return str(byte / ( 1024 ** 2)) + 'M bytes'
+        return str(byte / (1024 ** 2)) + 'M bytes'
     else:
         return str(byte / (1024 ** 3)) + 'G Bytes'
+
 
 def count_files(path):
     ch = os.listdir(path)
@@ -155,6 +169,7 @@ def count_files(path):
         else:
             counter += 1
     return counter
+
 
 def get_files_in_random_order(path, num):
     """
@@ -188,7 +203,8 @@ def get_files_in_random_order(path, num):
             files.extend(get_files_in_random_order(f, 1))
         else:
             files.append(f)
-    return files;
+    return files
+
 
 def get_texts_in_random_order(path, num, character_num=-1):
     files = get_files_in_random_order(path, num)
@@ -197,6 +213,7 @@ def get_texts_in_random_order(path, num, character_num=-1):
         if os.path.exists(f):
             ret.append(get_text_sample(f, character_num))
     return ret
+
 
 def get_images_in_random_order(path, num):
     files = get_files_in_random_order(path, num)
@@ -207,6 +224,7 @@ def get_images_in_random_order(path, num):
         if ext in ('.png', '.jpg', '.jpeg', 'gif'):
             ret.append(f)
     return ret
+
 
 def get_text_sample(path, character_num=-1):
     raw_text = open(path).read()

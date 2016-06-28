@@ -6,9 +6,12 @@ import chainer
 import chainer.functions as F
 import chainer.links as L
 
+"""
 ##############################
 ## DO NOT CHANGE CLASS NAME ##
 ##############################
+"""
+
 
 class Network(chainer.Chain):
 
@@ -40,7 +43,7 @@ class Network(chainer.Chain):
         self.loss = F.softmax_cross_entropy(h, t)
         self.accuracy = F.accuracy(h, t)
         return self.loss
-        
+
     def predict(self, x_data):
         x = chainer.Variable(x_data, volatile=True)
         h = F.max_pooling_2d(F.relu(self.mlpconv1(x)), 3, stride=2)
@@ -49,4 +52,4 @@ class Network(chainer.Chain):
         h = self.mlpconv4(F.dropout(h, train=self.train))
         h = F.reshape(F.average_pooling_2d(h, 6), (x.data.shape[0], 1000))
         return F.softmax(h)
-        
+
