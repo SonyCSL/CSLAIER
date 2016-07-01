@@ -481,14 +481,14 @@ def do_train_by_tensorflow(
         images_placeholder = tf.placeholder(tf.float32, [None, 128*128*3])
         labels_placeholder = tf.placeholder(tf.float32, [None, num_classes])
         keep_prob = tf.placeholder(tf.float32)
-        trainable = tf.placeholder(tf.bool)
 
-        logits = model.inference(images_placeholder, keep_prob, tf.bool)
+        logits = model.inference(images_placeholder, keep_prob)
         loss_value = model.loss(logits, labels_placeholder)
         train_op = model.training(loss_value, 1e-4)
         acc = model.accuracy(logits, labels_placeholder)
 
-    saver = tf.train.Saver()
+    first_and_last_saver = tf.train.Saver(max_to_keep=2)
+    saver = tf.train.Saver(max_to_keep=50)
 
     with open(os.path.join(db_model.trained_model_path, 'line_graph.tsv'), 'w') as line_graph, \
             open(os.path.join(db_model.trained_model_path, 'log.html'), 'w') as log_file:
@@ -504,16 +504,14 @@ def do_train_by_tensorflow(
                     sess.run(train_op, feed_dict={
                         images_placeholder: train_images[batch:batch+batchsize],
                         labels_placeholder: train_labels_one_hot[batch:batch+batchsize],
-                        keep_prob: 0.5,
-                        trainable: True
+                        keep_prob: 0.5
                     })
                     counter += 1
 
                 train_accuracy, train_loss = sess.run([acc, loss_value], feed_dict={
                     images_placeholder: train_images,
                     labels_placeholder: train_labels_one_hot,
-                    keep_prob: 1.0,
-                    trainable: True
+                    keep_prob: 1.0
                 })
                 line_graph.write('{}\t{}\t{}\t{}\t\t\n'
                                  .format(counter, step, train_accuracy, train_loss))
@@ -527,8 +525,7 @@ def do_train_by_tensorflow(
                 val_accuracy, val_loss = sess.run([acc, loss_value], feed_dict={
                     images_placeholder: val_images,
                     labels_placeholder: val_labels_one_hot,
-                    keep_prob: 1.0,
-                    trainable: False
+                    keep_prob: 1.0
                 })
                 line_graph.write('{}\t{}\t\t\t{}\t{}\n'.format(counter, step,
                                                                val_accuracy, val_loss))
@@ -537,9 +534,19 @@ def do_train_by_tensorflow(
                                .format(step, val_loss, val_accuracy))
                 log_file.flush()
 
-                saver.save(sess,
-                           os.path.join(db_model.trained_model_path,
-                                        'model{:0>4}.ckpt'.format(step)))
+                # TensorFlow's trained models are too large, so thin out.
+                if step == 0:
+                    first_and_last_saver.save(sess,
+                                              os.path.join(db_model.trained_model_path, 'model'),
+                                              global_step=step+1)
+                elif step + 1 == db_model.epoch:
+                    first_and_last_saver.save(sess,
+                                              os.path.join(db_model.trained_model_path, 'model'),
+                                              global_step=step+1)
+                elif (step <= 100 and step % 10 == 0) or (step > 100 and step % 50 == 0):
+                    saver.save(sess,
+                               os.path.join(db_model.trained_model_path, 'model'),
+                               global_step=step)
 
     # post-processing
     _post_process(db_model, pretrained_model)

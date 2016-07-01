@@ -48,8 +48,12 @@
             </div>
             <div id="model_detail_buttons">
                 <div class="form-group">
-                    <label for="epoch_select" describedby="epoch_select">Epoch (1 〜 {{model.epoch}})</label>
-                    <input id="epoch_select" type="number" min="1" max="{{model.epoch}}" class="form-control" value="{{model.epoch}}">
+                    <label for="epoch_select" describedby="epoch_select">Epoch</label>
+                    <select name="epoch_select" id="epoch_select" class="form-control">
+                        {% for epoch in usable_epochs %}
+                            <option value="{{epoch}}" {% if loop.first %}selected{% endif %}>{{epoch}}</option>
+                        {% endfor %}
+                    </select>
                 </div>
                 <button class="btn btn-cyber btn-block need-epoch" id="trained_model_download"> Download Trained Files</button>
                 {% if model.type == 'image' %}

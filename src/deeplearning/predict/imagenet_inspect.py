@@ -1,6 +1,5 @@
 import os
 import numpy as np
-import json
 import random
 import re
 import imp
@@ -12,11 +11,17 @@ import cPickle as pickle
 
 from chainer import cuda
 from chainer import serializers
+try:
+    import tensorflow as tf
+except ImportError:
+    pass
 
 
-def load_module(dir_name, symbol):
-    (file, path, description) = imp.find_module(symbol, [dir_name])
-    return imp.load_module(symbol, file, path, description)
+def load_module(target):
+    network = target.split(os.sep)[-1]
+    model_name = re.sub(r"\.py$", "", network)
+    (file, path, description) = imp.find_module(model_name, [os.path.dirname(target)])
+    return imp.load_module(model_name, file, path, description)
 
 
 def read_image(path, height, width, resize_mode="squash", channels=3, flip=False):
@@ -125,11 +130,9 @@ def read_image(path, height, width, resize_mode="squash", channels=3, flip=False
         return image
 
 
-def inspect(image_path, mean, model_path, label, network_path, resize_mode, channels, gpu=0):
-    network = network_path.split(os.sep)[-1]
-    model_name = re.sub(r"\.py$", "", network)
-    model_module = load_module(os.path.dirname(network_path), model_name)
-    mean_image = pickle.load(open(mean, 'rb'))
+def inspect_by_chainer(image_path, mean, model_path, label,
+                       network_path, resize_mode, channels, gpu=0):
+    model_module = load_module(network_path)
     model = model_module.Network()
     serializers.load_hdf5(model_path, model)
     if gpu >= 0:
@@ -150,6 +153,7 @@ def inspect(image_path, mean, model_path, label, network_path, resize_mode, chan
         img = img[top:bottom, left:right].astype(np.float32)
         zeros = np.zeros((model.insize, model.insize))
         img = np.array([img, zeros, zeros])
+    mean_image = pickle.load(open(mean, 'rb'))
     img -= mean_image[:, top:bottom, left:right]
     img /= 255
 
@@ -167,4 +171,44 @@ def inspect(image_path, mean, model_path, label, network_path, resize_mode, chan
     ret = []
     for rank, (score, name) in enumerate(prediction[:top_k], start=1):
         ret.append({"rank": rank, "name": name, "score": "{0:4.1f}%".format(score*100)})
+    return ret
+
+
+def inspect_by_tensorflow(image_path, mean, model_path, label,
+                          network_path, resize_mode, channels, gpu=0):
+    model_module = load_module(network_path)
+    img = read_image(image_path, 128, 128, resize_mode, channels)
+    if img.ndim == 3:
+        img = img.transpose(2, 0, 1).astype(np.float32)
+    else:
+        zeros = np.zeros(128, 128)
+        img = np.array([img, zeros, zeros]).astype(np.float32)
+    mean_image = pickle.load(open(mean, 'rb'))
+    img -= mean_image[:, 0:128, 0:128]
+    feed_data = []
+    feed_data.append(img.flatten().astype(np.float32) / 255.0)
+
+    images_placeholder = tf.placeholder(tf.float32, [None, 128*128*3])
+    keep_prob = tf.placeholder(tf.float32)
+
+    logits = model_module.inference(images_placeholder, keep_prob)
+    prediction_op = tf.nn.top_k(tf.nn.softmax(logits), k=20)
+
+    with tf.Session() as sess:
+        sess.run(tf.initialize_all_variables())
+        saver = tf.train.Saver()
+        saver.restore(sess, model_path)
+        (values, indeceis) = sess.run(prediction_op, feed_dict={
+            images_placeholder: feed_data,
+            keep_prob: 1.0,
+        })
+
+    categories = np.loadtxt(label, str, delimiter="\t")
+    ret = []
+    for i, idx in enumerate(indeceis[0]):
+        ret.append({
+            'rank': i+1,
+            'name': categories[idx],
+            'score': "{:4.1f}%".format(values[0][i]*100)
+        })
     return ret

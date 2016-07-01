@@ -8,9 +8,9 @@ import chainer.links as L
 from chainer import serializers
 
 import matplotlib
+matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 import matplotlib.ticker as ticker
-matplotlib.use('Agg')
 
 float32 = 0
 

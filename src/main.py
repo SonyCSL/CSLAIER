@@ -209,13 +209,15 @@ def show_model(id):
                            model=model, datasets=datasets,
                            pretrained_models=model.get_pretrained_models(),
                            mecab_available=ds_util.is_module_available('Mecab'),
-                           system_info=get_system_info())
+                           system_info=get_system_info(),
+                           usable_epochs=model.get_usable_epochs())
 
 
 @app.route('/models/inspect/', methods=['POST'])
 def inspect_image():
     id = request.form['model_id']
     epoch = request.form['epoch']
+    print epoch
     uploaded = request.files['fileInput']
     model = Model.query.get(id)
     results, image_path = model.inspect(

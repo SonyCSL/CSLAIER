@@ -10,6 +10,7 @@ import chainer.links as L
 ##############################
 """
 
+
 class Network(chainer.Chain):
 
     """Single-GPU AlexNet without partition toward the channel axis."""

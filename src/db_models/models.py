@@ -198,16 +198,28 @@ class Model(db.Model):
         new_filename = os.path.join(save_to, ds_utils.get_timestamp() + '_'
                                     + secure_filename(uploaded.filename))
         uploaded.save(new_filename)
-        results = inspection.inspect(
-            new_filename,
-            self.mean_file,
-            self.get_trained_model(epoch),
-            self.labels_text,
-            self.network_path,
-            self.resize_mode,
-            self.channels,
-            gpu=-1
-        )
+        if self.framework == 'chainer':
+            results = inspection.inspect_by_chainer(
+                new_filename,
+                self.mean_file,
+                self.get_trained_model(epoch),
+                self.labels_text,
+                self.network_path,
+                self.resize_mode,
+                self.channels,
+                gpu=-1
+            )
+        elif self.framework == 'tensorflow':
+            results = inspection.inspect_by_tensorflow(
+                new_filename,
+                self.mean_file,
+                self.get_trained_model(epoch),
+                self.labels_text,
+                self.network_path,
+                self.resize_mode,
+                self.channels,
+                gpu=-1
+            )
         return results, new_filename
 
     def lstm_predict(self, epoch, primetext, result_length):
@@ -227,7 +239,10 @@ class Model(db.Model):
         return result.replace('<eos>', '\n')
 
     def get_trained_model(self, epoch):
-        return self.__get_file_path(self.trained_model_path, "model{0:0>4}".format(epoch))
+        if self.framework == 'chainer':
+            return self.__get_file_path(self.trained_model_path, "model{0:0>4}".format(epoch))
+        elif self.framework == 'tensorflow':
+            return self.__get_file_path(self.trained_model_path, "model-{}".format(epoch))
 
     def get_trained_files(self, epoch, root_out_dir):
         zipfile_path = os.path.join(root_out_dir, ds_utils.get_timestamp() + '_'
@@ -266,6 +281,20 @@ class Model(db.Model):
                                              .format(os.path.join(self.trained_model_path, f), e))
                             raise e
             self.update_and_commit()
+
+    def get_usable_epochs(self):
+        ret = []
+        if self.is_trained == 0 or self.is_trained == 1:
+            return ret
+        for f in os.listdir(self.trained_model_path):
+            filename, ext = os.path.splitext(f)
+            if ext or not re.match(r"^model", f):
+                continue
+            epoch = re.sub(r"^model\-?", '', filename)
+            ret.append(int(epoch, 10))
+        ret.sort()
+        ret.reverse()
+        return ret
 
     def __get_visualizer(self, epoch):
         if epoch > self.epoch:

@@ -333,19 +333,10 @@ $('.model').on('click', function(e){
 });
 
 $('#epoch_select').on('keypress, change', function(e){
-    var max = parseInt($(this).attr('max'), 10);
     var current_val = parseInt($(this).val(), 10);
+    console.log(current_val);
     $('#epoch_on_modal').val(current_val);
     $('#epoch_on_modal_title').text("Epoch:" + current_val);
-    if(0 < current_val && current_val <= max) {
-        $(this).parent().removeClass('has-error');
-        $(this).parent().addClass('has-feedback has-success');
-        $('button.need-epoch').removeClass("disabled");
-    } else {
-        $(this).parent().removeClass('has-success');
-        $(this).parent().addClass('has-feedback has-error');
-        $('button.need-epoch').addClass("disabled");
-    }
 });
 
 $('#start_train_btn').on('click', function(e){

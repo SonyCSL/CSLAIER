@@ -4,7 +4,7 @@
         <div class="modal-dialog" role="document">
             <div class="modal-content">
                 <div class="modal-header">
-                    <h4 class="modal-title" id="inspection_modal_title">Inspection <small><span id="epoch_on_modal_title"></span></small></h4>
+                    <h4 class="modal-title" id="inspection_modal_title">Inspection <small><span id="epoch_on_modal_title">{{usable_epochs[0]}}</span></small></h4>
                 </div>
                 <div class="modal-body">
                     <form action="/models/inspect/" method="POST" enctype="multipart/form-data">
@@ -12,7 +12,7 @@
                             <input type="file" id="inspection_fileInput" name="fileInput">
                             <p class="help-block">Select image(.jpg, .gif, .png) which you want to inspect.</p>
                         </div>
-                        <input type="hidden" name="epoch" id="epoch_on_modal" value="{{model.epoch}}">
+                        <input type="hidden" name="epoch" id="epoch_on_modal" value="{{usable_epochs[0]}}">
                         <input type="hidden" name="model_id" value="{{model.id}}">
                         <button type="submit" class="btn btn-cyber">Submit</button>
                         <button type="cancel" class="btn btn-cyber" data-dismiss="modal">Cancel</button>
@@ -28,13 +28,17 @@
         <div class="modal-dialog" role="document">
             <div class="modal-content">
                 <div class="modal-header">
-                    <h4 class="modal-title" id="inspection_modal_title">Prediction<small><span id="epoch_on_modal_title"></span></small></h4>
+                    <h4 class="modal-title" id="inspection_modal_title">Prediction<small><span id="epoch_on_modal_title">{{usable_epochs[0]}}</span></small></h4>
                 </div>
                 <div class="modal-body">
                     <div id="prediction_div">
                         <div class="form-group">
-                            <label for="prediction_epoch" describedby="epoch_select">Epoch (1 〜 {{model.epoch}})</label>
-                            <input id="prediction_epoch" type="number" min="1" max="{{model.epoch}}" class="form-control" value="{{model.epoch}}">
+                            <label for="prediction_epoch" describedby="epoch_select">Epoch</label>
+                            <select name="prediction_epoch" id="prediction_epoch" class="form-control">
+                                {% for epoch in usable_epochs %}
+                                    <option value="{{epoch}}" {% if loop.first %}selected{% endif %}>{{epoch}}</option>
+                                {% endfor %}
+                            </select>
                         </div>
                         <div class="form-group">
                             <label for="prediction_result_length">Prediction Result Length</label>

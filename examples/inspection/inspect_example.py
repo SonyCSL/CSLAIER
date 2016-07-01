@@ -1,27 +1,30 @@
 import os
+import sys
 import argparse
 import numpy as np
-import json
 import random
 import re
 import imp
-
 from PIL import Image
 import scipy.misc
-import cv2
-
-import six
 import cPickle as pickle
-
-import chainer
 from chainer import cuda
 from chainer import serializers
+try:
+    import tensorflow as tf
+except ImportError:
+    pass
 
-def load_module(dir_name, symbol):
-    (file, path, description) = imp.find_module(symbol, [dir_name])
-    return imp.load_module(symbol, file, path, description)
 
-def read_image(path, height, width, resize_mode = "squash", channels=3, flip=False):
+def load_module(target):
+    network = target.split(os.sep)[-1]
+    model_name = re.sub(r"\.py$", "", network)
+    (file, path, description) = imp.find_module(model_name, [os.path.dirname(target)])
+    return imp.load_module(model_name, file, path, description)
+
+
+def read_image(path, height, width,
+               resize_mode="squash", channels=3, flip=False):
     """
     Load an image from disk
 
@@ -38,19 +41,19 @@ def read_image(path, height, width, resize_mode = "squash", channels=3, flip=Fal
     resize_mode -- can be crop, squash, fill or half_crop
     flip -- flag for flipping
     """
-    
+
     if channels == 1:
         mode = "L"
     else:
         mode = "RGB"
-        
+
     image = Image.open(path)
     image = image.convert(mode)
     image = np.array(image)
 
-    ### Resize
+    # Resize
     interp = 'bilinear'
-    
+
     width_ratio = float(image.shape[1]) / width
     height_ratio = float(image.shape[0]) / height
     if resize_mode == 'squash' or width_ratio == height_ratio:
@@ -68,10 +71,10 @@ def read_image(path, height, width, resize_mode = "squash", channels=3, flip=Fal
         # chop off ends of dimension that is still too long
         if width_ratio > height_ratio:
             start = int(round((resize_width-width)/2.0))
-            return image[:,start:start+width]
+            return image[:, start:start+width]
         else:
             start = int(round((resize_height-height)/2.0))
-            return image[start:start+height,:]
+            return image[start:start+height, :]
     else:
         if resize_mode == 'fill':
             # resize to biggest of ratios (relatively smaller image), keeping aspect ratio
@@ -99,10 +102,10 @@ def read_image(path, height, width, resize_mode = "squash", channels=3, flip=Fal
             # chop off ends of dimension that is still too long
             if width_ratio > height_ratio:
                 start = int(round((resize_width-width)/2.0))
-                image = image[:,start:start+width]
+                image = image[:, start:start+width]
             else:
                 start = int(round((resize_height-height)/2.0))
-                image = image[start:start+height,:]
+                image = image[start:start+height, :]
         else:
             raise Exception('unrecognized resize_mode "%s"' % resize_mode)
 
@@ -129,10 +132,9 @@ def read_image(path, height, width, resize_mode = "squash", channels=3, flip=Fal
         return image
 
 
-def inspect(image_path, mean, model_path, label, network_path, resize_mode, channels, gpu=-1):
-    network = network_path.split(os.sep)[-1]
-    model_name = re.sub(r"\.py$", "", network)
-    model_module = load_module(os.path.dirname(network_path), model_name)
+def inspect_by_chainer(image_path, mean, model_path, label,
+                       network_path, resize_mode, channels, gpu=-1):
+    model_module = load_module(network_path)
     mean_image = pickle.load(open(mean, 'rb'))
     model = model_module.Network()
     serializers.load_hdf5(model_path, model)
@@ -140,28 +142,26 @@ def inspect(image_path, mean, model_path, label, network_path, resize_mode, chan
         cuda.check_cuda_available()
         cuda.get_device(gpu).use()
         model.to_gpu()
-        
-    output_side_length = 256
-        
-    img = read_image(image_path, 256, 256, resize_mode,channels)
+
+    img = read_image(image_path, 256, 256, resize_mode, channels)
     cropwidth = 256 - model.insize
     top = left = cropwidth / 2
     bottom = model.insize + top
     right = model.insize + left
-    
+
     if img.ndim == 3:
         img = img.transpose(2, 0, 1)
         img = img[:, top:bottom, left:right].astype(np.float32)
     else:
         img = img[top:bottom, left:right].astype(np.float32)
         zeros = np.zeros((model.insize, model.insize))
-        img = np.array([ img, zeros, zeros])
+        img = np.array([img, zeros, zeros])
     img -= mean_image[:, top:bottom, left:right]
     img /= 255
 
     x = np.ndarray((1, 3,  model.insize, model.insize), dtype=np.float32)
     x[0] = img
-    
+
     if gpu >= 0:
         x = cuda.to_gpu(x)
     score = model.predict(x)
@@ -169,29 +169,81 @@ def inspect(image_path, mean, model_path, label, network_path, resize_mode, chan
     categories = np.loadtxt(label, str, delimiter="\t")
     top_k = 20
     prediction = zip(score[0].tolist(), categories)
-    prediction.sort(cmp=lambda x, y:cmp(x[0], y[0]), reverse=True)
+    prediction.sort(cmp=lambda x, y: cmp(x[0], y[0]), reverse=True)
     ret = []
     for rank, (score, name) in enumerate(prediction[:top_k], start=1):
         ret.append({"rank": rank, "name": name, "score": "{0:4.1f}%".format(score*100)})
     return ret
-    
+
+
+def inspect_by_tensorflow(image_path, mean, model_path, label,
+                          network_path, resize_mode, channels, gpu=0):
+    model_module = load_module(network_path)
+    img = read_image(image_path, 128, 128, resize_mode, channels)
+    if img.ndim == 3:
+        img = img.transpose(2, 0, 1).astype(np.float32)
+    else:
+        zeros = np.zeros(128, 128)
+        img = np.array([img, zeros, zeros]).astype(np.float32)
+    mean_image = pickle.load(open(mean, 'rb'))
+    img -= mean_image[:, 0:128, 0:128]
+    feed_data = []
+    feed_data.append(img.flatten().astype(np.float32) / 255.0)
+
+    images_placeholder = tf.placeholder(tf.float32, [None, 128*128*3])
+    keep_prob = tf.placeholder(tf.float32)
+
+    logits = model_module.inference(images_placeholder, keep_prob)
+    prediction_op = tf.nn.top_k(tf.nn.softmax(logits), k=20)
+
+    with tf.Session() as sess:
+        sess.run(tf.initialize_all_variables())
+        saver = tf.train.Saver()
+        saver.restore(sess, model_path)
+        (values, indeceis) = sess.run(prediction_op, feed_dict={
+            images_placeholder: feed_data,
+            keep_prob: 1.0,
+        })
+
+    categories = np.loadtxt(label, str, delimiter="\t")
+    ret = []
+    for i, idx in enumerate(indeceis[0]):
+        ret.append({
+            'rank': i+1,
+            'name': categories[idx],
+            'score': "{:4.1f}%".format(values[0][i]*100)
+        })
+    return ret
+
+
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Do inspection by command line')
     parser.add_argument('image_to_inspect', help='Path to the image file which you want to inspect')
     parser.add_argument('network', help='Path to the network model file')
     parser.add_argument('model', help='Path to the trained model (downloaded from DEEPstation ')
     parser.add_argument('--label', '-l', default='labels.txt',
-                         help='Path to the labels.txt file (downloaded from DEEPstation)')
+                        help='Path to the labels.txt file (downloaded from DEEPstation)')
     parser.add_argument('--mean', '-m', default='mean.npy',
-                         help='Path to the mean file (downloaded from DEEPstation)')
+                        help='Path to the mean file (downloaded from DEEPstation)')
     parser.add_argument('--gpu', '-g', default=-1, type=int,
                         help='GPU ID (negative value indicates CPU)')
-    parser.add_argument('--resize_mode','-r', default='squash',
+    parser.add_argument('--resize_mode', '-r', default='squash',
                         help='can be crop, squash, fill or half_crop')
-    parser.add_argument('--channels','-c', default='3',
+    parser.add_argument('--channels', '-c', default='3',
                         help='3 for RGB or 1 for grayscale')
+    parser.add_argument('--framework', '-f', default='chainer',
+                        help='chainer or tensorflow')
     args = parser.parse_args()
-    results = inspect(args.image_to_inspect, args.mean, args.model, args.label, args.network, args.resize_mode, int(args.channels), args.gpu)
+
+    if args.framework == 'chainer':
+        results = inspect_by_chainer(args.image_to_inspect, args.mean, args.model, args.label,
+                                     args.network, args.resize_mode, int(args.channels), args.gpu)
+    elif args.framework == 'tensorflow':
+        results = inspect_by_tensorflow(args.image_to_inspect, args.mean, args.model, args.label,
+                                        args.network, args.resize_mode, int(args.channels), args.gpu)
+    else:
+        print 'Unknown Framework'
+        sys.exit()
     print "{rank:<5}:{name:<40} {score}".format(rank='Rank', name='Name', score='Score')
     print "----------------------------------------------------"
     for result in results:
