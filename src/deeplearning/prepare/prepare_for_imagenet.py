@@ -43,7 +43,7 @@ def make_train_data(model):
             start_count = count
             length = len(files)
             for f in files:
-                logger.info('Processing File: {0}'.format(os.path.join(path, f)))
+                logger.info('Processing File: {0}'.format(os.path.join(path, f).encode('utf-8')))
                 (head, ext) = os.path.splitext(f)
                 ext = ext.lower()
                 if ext not in [".jpg", ".jpeg", ".gif", ".png"]:

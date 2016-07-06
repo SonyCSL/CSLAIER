@@ -162,7 +162,7 @@ class Dataset(db.Model):
             ds.category_num += 1
         except Exception as e:
             logger.exception('Could not create directory: {0} {1}'
-                             .format(os.path.join(target, name), e))
+                             .format(os.path.join(target, name).encode('utf-8'), e))
             raise
         ds.update_and_commit()
 
