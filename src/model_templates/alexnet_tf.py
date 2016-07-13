@@ -97,12 +97,13 @@ def inference(images, keep_prob):
 
 
 def loss(logits, labels):
-    cross_entropy = tf.nn.softmax_cross_entropy_with_logits(logits, labels, name='xentropy')
+    cross_entropy = tf.nn.sparse_softmax_cross_entropy_with_logits(logits, labels, name='xentropy')
     loss = tf.reduce_mean(cross_entropy, name='xentropy_mean')
     return loss
 
 
-def accuracy(logits, labels):
+def accuracy(logits, sparse_indecies):
+    labels = tf.one_hot(sparse_indecies, 1000, 1, 0)
     correct_prediction = tf.equal(tf.argmax(logits, 1), tf.argmax(labels, 1))
     accuracy = tf.reduce_mean(tf.cast(correct_prediction, tf.float32))
     return accuracy

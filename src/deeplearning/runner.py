@@ -32,7 +32,7 @@ def run_imagenet_train(
     model.resize_mode = resize_mode
     model.channels = channels
     model.avoid_flipping = avoid_flipping
-    model = deeplearning.prepare.prepare_for_imagenet.do(model, prepared_data_root)
+    model, train_image_num = deeplearning.prepare.prepare_for_imagenet.do(model, prepared_data_root)
     if model.framework == 'chainer':
         train_process = Process(
             target=deeplearning.train.train_imagenet.do_train_by_chainer,
@@ -55,7 +55,8 @@ def run_imagenet_train(
                 128,   # batchsize
                 250,  # val_batchsize
                 pretrained_model,
-                gpu_num
+                gpu_num,
+                train_image_num
             )
         )
     else:

@@ -11,6 +11,7 @@ import imp
 import re
 import os
 import shutil
+import math
 from logging import getLogger
 
 import numpy as np
@@ -197,7 +198,7 @@ def log_result(batchsize, val_batchsize, log_file, log_html, res_q):
             duration = time.time() - begin_at
             throughput = train_count * batchsize / duration
             fH.write(
-                '\rtrain {} updates ({} samples) time: {} ({} images/sec)<br>'
+                'train {} updates ({} samples) time: {} ({} images/sec)<br>'
                 .format(train_count, train_count * batchsize,
                         datetime.timedelta(seconds=duration), throughput))
             fH.write("[TIME]{},{}<br>"
@@ -220,7 +221,6 @@ def log_result(batchsize, val_batchsize, log_file, log_html, res_q):
                              'loss': mean_loss})
                          + "</strong><br>")
                 fH.flush()
-                sys.stdout.flush()
                 train_cur_loss = 0
                 train_cur_accuracy = 0
         else:
@@ -228,7 +228,7 @@ def log_result(batchsize, val_batchsize, log_file, log_html, res_q):
             duration = time.time() - val_begin_at
             throughput = val_count / duration
             fH.write(
-                '\rval {} batches ({} samples) time: {} ({} images/sec)'
+                'val {} batches ({} samples) time: {} ({} images/sec)'
                 .format(val_count / val_batchsize, val_count,
                         datetime.timedelta(seconds=duration), throughput)
             )
@@ -250,7 +250,6 @@ def log_result(batchsize, val_batchsize, log_file, log_html, res_q):
                         + str(mean_accuracy) + "\t" + str(mean_loss) + "\n")
                 count += 1
                 f.flush()
-                sys.stdout.flush()
     f.close()
     fH.close()
 
@@ -420,46 +419,35 @@ def do_train_by_chainer(
     logger.info('Finish imagenet train. model_id: {0}'.format(db_model.id))
 
 
+def _read_and_decode(filename_queue):
+    reader = tf.TFRecordReader()
+    _, serialized_example = reader.read(filename_queue)
+    features = tf.parse_single_example(
+        serialized_example,
+        features={
+            'image_raw': tf.FixedLenFeature([], tf.string),
+            'label': tf.FixedLenFeature([], tf.int64)
+        }
+    )
+    image = tf.decode_raw(features['image_raw'], tf.uint8)
+    image = tf.reshape(image, [3, 128, 128])
+    image.set_shape([3, 128, 128])
+    image = tf.cast(image, tf.float32) * (1./255)
+    label = tf.cast(features['label'], tf.int32)
+    return image, label
+
+
 def do_train_by_tensorflow(
     db_model,
     output_dir_root,
     batchsize,
     val_batchsize,
     pretrained_model,
-    gpu_num
+    gpu_num,
+    train_image_num
 ):
     logger.info('Start imagenet train. model_id: {}, pretrained_model: {}'
                 .format(db_model.id, pretrained_model))
-
-    train_list = load_image_list(os.path.join(db_model.prepared_file_path, 'train.txt'))
-    val_list = load_image_list(os.path.join(db_model.prepared_file_path, 'test.txt'))
-    mean_image = pickle.load(open(os.path.join(db_model.prepared_file_path, 'mean.npy'), 'rb'))
-
-    # load image and labels
-    flip = True if db_model.avoid_flipping == 0 else False
-    num_classes = 1000
-    train_images = []
-    train_labels = []
-    val_images = []
-    val_labels = []
-    for t in train_list:
-        temp_image = read_image(t[0], 128, mean_image, center=False, flip=flip, original_size=128)
-        train_images.append(temp_image.flatten().astype(np.float32) / 255.0)
-        train_labels.append(t[1])
-    for v in val_list:
-        temp_image = read_image(v[0], 128, mean_image, center=True, flip=False, original_size=128)
-        val_images.append(temp_image.flatten().astype(np.float32) / 255.0)
-        val_labels.append(v[1])
-    train_labels_one_hot = []
-    val_labels_one_hot = []
-    for l in train_labels:
-        tmp = np.zeros(num_classes)
-        tmp[int(l)] = 1
-        train_labels_one_hot.append(tmp)
-    for l in val_labels:
-        tmp = np.zeros(num_classes)
-        tmp[int(l)] = 1
-        val_labels_one_hot.append(tmp)
 
     # load model
     (model_dir, model_name) = os.path.split(db_model.network_path)
@@ -477,15 +465,21 @@ def do_train_by_tensorflow(
     else:
         device = '/cpu:0'
 
-    with tf.device(device):
-        images_placeholder = tf.placeholder(tf.float32, [None, 128*128*3])
-        labels_placeholder = tf.placeholder(tf.float32, [None, num_classes])
-        keep_prob = tf.placeholder(tf.float32)
+    filename_queue = tf.train.string_input_producer([os.path.join(db_model.prepared_file_path, 'train.tfrecord')],
+                                                    num_epochs=db_model.epoch)
+    image, label = _read_and_decode(filename_queue)
+    images, sparse_labels = tf.train.shuffle_batch([image, label],
+                                                   batch_size=batchsize,
+                                                   num_threads=2,
+                                                   capacity=1000 + 3*batchsize,
+                                                   min_after_dequeue=1000)
 
-        logits = model.inference(images_placeholder, keep_prob)
-        loss_value = model.loss(logits, labels_placeholder)
+    keep_prob = tf.placeholder(tf.float32)
+    with tf.device(device):
+        logits = model.inference(images, keep_prob)
+        loss_value = model.loss(logits, sparse_labels)
         train_op = model.training(loss_value, 1e-4)
-        acc = model.accuracy(logits, labels_placeholder)
+    acc = model.accuracy(logits, sparse_labels)
 
     first_and_last_saver = tf.train.Saver(max_to_keep=2)
     saver = tf.train.Saver(max_to_keep=50)
@@ -494,59 +488,83 @@ def do_train_by_tensorflow(
             open(os.path.join(db_model.trained_model_path, 'log.html'), 'w') as log_file:
         line_graph.write("count\tepoch\taccuracy\tloss\taccuracy(val)\tloss(val)\n")
         line_graph.flush()
-        counter = 0
         with tf.Session() as sess:
+            # TODO: implement validation
+
             sess.run(tf.initialize_all_variables())
 
-            for step in range(db_model.epoch):
-                for i in range(len(train_images)/batchsize):
-                    batch = batchsize * i
-                    sess.run(train_op, feed_dict={
-                        images_placeholder: train_images[batch:batch+batchsize],
-                        labels_placeholder: train_labels_one_hot[batch:batch+batchsize],
-                        keep_prob: 0.5
-                    })
-                    counter += 1
+            coord = tf.train.Coordinator()
+            threads = tf.train.start_queue_runners(sess=sess, coord=coord)
 
-                train_accuracy, train_loss = sess.run([acc, loss_value], feed_dict={
-                    images_placeholder: train_images,
-                    labels_placeholder: train_labels_one_hot,
-                    keep_prob: 1.0
-                })
-                line_graph.write('{}\t{}\t{}\t{}\t\t\n'
-                                 .format(counter, step, train_accuracy, train_loss))
-                line_graph.flush()
-                log_file.write("[TIME]{},{}<br>"
-                               .format(step + 1,
-                                       datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')))
-                log_file.write("[TRAIN] epoch {}, loss {}, acc {}<br>"
-                               .format(step, train_loss, train_accuracy))
-                log_file.flush()
-                val_accuracy, val_loss = sess.run([acc, loss_value], feed_dict={
-                    images_placeholder: val_images,
-                    labels_placeholder: val_labels_one_hot,
-                    keep_prob: 1.0
-                })
-                line_graph.write('{}\t{}\t\t\t{}\t{}\n'.format(counter, step,
-                                                               val_accuracy, val_loss))
-                line_graph.flush()
-                log_file.write("[VALIDATION] ecpoch {}, loss {}, acc {}<br>"
-                               .format(step, val_loss, val_accuracy))
-                log_file.flush()
+            try:
+                step = 0
+                prev_epoch = None
+                begin_at = time.time()
+                train_cur_loss = 0
+                train_cur_accuracy = 0
+                while not coord.should_stop():
+                    _, train_loss, train_acc = sess.run([train_op, loss_value, acc],
+                                                        feed_dict={keep_prob: 0.5})
+                    train_cur_loss += train_loss
+                    train_cur_accuracy += train_acc
 
-                # TensorFlow's trained models are too large, so thin out.
-                if step == 0:
-                    first_and_last_saver.save(sess,
-                                              os.path.join(db_model.trained_model_path, 'model'),
-                                              global_step=step+1)
-                elif step + 1 == db_model.epoch:
-                    first_and_last_saver.save(sess,
-                                              os.path.join(db_model.trained_model_path, 'model'),
-                                              global_step=step+1)
-                elif (step <= 100 and step % 10 == 0) or (step > 100 and step % 50 == 0):
-                    saver.save(sess,
-                               os.path.join(db_model.trained_model_path, 'model'),
-                               global_step=step)
+                    current_epoch = int(math.floor(step * batchsize / train_image_num))
+                    if step % 100 == 0:
+                        duration = time.time() - begin_at
+                        throughput = step * batchsize / duration
+                        log_file.write('train {} updates ({} samples) time: {} ({} images/sec)<br>'
+                                       .format(step, step * batchsize,
+                                               datetime.timedelta(seconds=duration), throughput))
+                        log_file.write("[TIME]{},{}<br>"
+                                       .format(current_epoch,
+                                               datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')))
+                        log_file.flush()
+                        line_graph.write('{}\t{}\t{}\t{}\t\t\n'
+                                         .format(step, current_epoch, train_acc, train_loss))
+                        line_graph.flush()
+
+                        if step % 1000 == 0:
+                            mean_loss = train_cur_loss / 1000
+                            mean_error = 1 - train_cur_accuracy / 1000
+                            log_file.write('<strong>{}</strong><br>'.format(json.dumps({
+                                'type': 'train',
+                                'iteration': step,
+                                'error': mean_error,
+                                'loss': mean_loss
+                            })))
+                            log_file.flush()
+                            train_cur_loss = 0
+                            train_cur_accuracy = 0
+
+                    # save trained result
+                    if prev_epoch != current_epoch:
+                        # epoch updated
+                        if current_epoch == 1:
+                            first_and_last_saver.save(sess,
+                                                      os.path.join(db_model.trained_model_path, 'model'),
+                                                      global_step=current_epoch)
+                        if current_epoch <= 100:
+                            if current_epoch % 10 == 0:
+                                saver.save(sess,
+                                           os.path.join(db_model.trained_model_path, 'model'),
+                                           global_step=current_epoch)
+                        else:
+                            if current_epoch % 50 == 0:
+                                saver.save(sess,
+                                           os.path.join(db_model.trained_model_path, 'model'),
+                                           global_step=current_epoch)
+
+                    step += 1
+                    prev_epoch = current_epoch
+            except tf.errors.OutOfRangeError as e:
+                logger.exception(e)
+            finally:
+                first_and_last_saver.save(sess,
+                                          os.path.join(db_model.trained_model_path, 'model'),
+                                          global_step=db_model.epoch)
+                coord.request_stop()
+
+            coord.join(threads)
 
     # post-processing
     _post_process(db_model, pretrained_model)
