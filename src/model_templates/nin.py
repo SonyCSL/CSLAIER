@@ -7,6 +7,9 @@ import chainer.functions as F
 import chainer.links as L
 
 """
+Network in Network
+https://arxiv.org/abs/1312.4400
+
 ##############################
 ## DO NOT CHANGE CLASS NAME ##
 ##############################

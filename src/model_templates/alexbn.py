@@ -5,6 +5,10 @@ import chainer.functions as F
 import chainer.links as L
 
 """
+Alexnet:
+ImageNet Classification with Deep Convolutional Neural Networks
+http://www.cs.toronto.edu/~fritz/absps/imagenet.pdf
+
 ##############################
 ## DO NOT CHANGE CLASS NAME ##
 ##############################

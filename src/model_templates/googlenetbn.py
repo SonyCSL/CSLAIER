@@ -5,6 +5,9 @@ import chainer.functions as F
 import chainer.links as L
 
 """
+GoogLeNet:
+Going Deeper with Convolutions
+http://www.cs.unc.edu/~wliu/papers/GoogLeNet.pdf
 ##############################
 ## DO NOT CHANGE CLASS NAME ##
 ##############################

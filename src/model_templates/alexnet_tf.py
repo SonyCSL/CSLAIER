@@ -2,6 +2,12 @@
 # HINT:image
 import tensorflow as tf
 
+'''
+Alexnet:
+ImageNet Classification with Deep Convolutional Neural Networks
+http://www.cs.toronto.edu/~fritz/absps/imagenet.pdf
+'''
+
 
 def inference(images, keep_prob):
 

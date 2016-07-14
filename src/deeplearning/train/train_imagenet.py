@@ -4,7 +4,6 @@ import datetime
 import json
 import random
 import multiprocessing
-import sys
 import threading
 import time
 import imp
