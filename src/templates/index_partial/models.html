@@ -32,6 +32,7 @@
             <ul>
                 <li>Date: {{model.created_at.strftime('%Y-%m-%d %H:%M:%S')}}</li>
                 <li>Epoch: {{model.epoch}}</li>
+                <li>Processing Unit: {{model.gpu_str}}</li>
                 <li>
                     {% if model.type == 'image' %}
                         Image Classification

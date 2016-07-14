@@ -35,6 +35,7 @@ class Model(db.Model):
     resize_mode = db.Column(db.Text)
     channels = db.Column(db.Integer)
     use_wakatigaki = db.Column(db.Integer)
+    gpu = db.Column(db.Integer)
     dataset_id = db.Column(db.Integer, db.ForeignKey('dataset.id'))
     updated_at = db.Column(db.DateTime)
     created_at = db.Column(db.DateTime)
@@ -74,6 +75,15 @@ class Model(db.Model):
     @property
     def vocab_file(self):
         return self.__get_file_path(self.trained_model_path, 'vocab2.bin')
+
+    @property
+    def gpu_str(self):
+        if self.gpu == -1:
+            return 'CPU'
+        elif self.gpu is None:
+            return '---'
+        else:
+            return 'GPU: ' + str(self.gpu)
 
     def __get_file_path(self, path, filename):
         if path is None:
@@ -268,6 +278,7 @@ class Model(db.Model):
                             .format(e.errno, e.strerror))
             self.is_trained = 0
             self.pid = None
+            self.gpu = None
             if self.trained_model_path is not None and self.trained_model_path != '':
                 for f in os.listdir(self.trained_model_path):
                     if f.startswith('previous_'):

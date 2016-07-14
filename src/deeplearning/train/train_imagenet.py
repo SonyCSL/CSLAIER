@@ -47,6 +47,7 @@ def _post_process(db_model, pretrained_model):
     # post-processing
     db_model.is_trained = 2
     db_model.pid = None
+    db_model.gpu = None
     db_model.update_and_commit()
     if os.path.exists(os.path.join(db_model.trained_model_path,  'previous_' + pretrained_model)):
         # delete backup file
@@ -298,16 +299,15 @@ def do_train_by_chainer(
     root_output_dir,
     batchsize=32,
     val_batchsize=250,
-    gpu=-1,
     loaderjob=20,
     pretrained_model=""
 ):
     logger.info('Start imagenet train. model_id: {0} gpu: {1}, pretrained_model: {2}'
-                .format(db_model.id, gpu, pretrained_model))
+                .format(db_model.id, db_model.gpu, pretrained_model))
     # start initialization
-    if gpu >= 0:
+    if db_model.gpu >= 0:
         cuda.check_cuda_available()
-    xp = cuda.cupy if gpu >= 0 else np
+    xp = cuda.cupy if db_model.gpu >= 0 else np
 
     train_list = load_image_list(os.path.join(db_model.prepared_file_path, 'train.txt'))
     val_list = load_image_list(os.path.join(db_model.prepared_file_path, 'test.txt'))
@@ -358,8 +358,8 @@ def do_train_by_chainer(
                 logger.exception('Could not remove visualization cache. {0}'.format(e))
                 raise e
 
-    if gpu >= 0:
-        cuda.get_device(gpu).use()
+    if db_model.gpu >= 0:
+        cuda.get_device(db_model.gpu).use()
         model.to_gpu()
 
     optimizer = optimizers.MomentumSGD(lr=0.01, momentum=0.9)
@@ -442,7 +442,6 @@ def do_train_by_tensorflow(
     batchsize,
     val_batchsize,
     pretrained_model,
-    gpu_num,
     train_image_num
 ):
     logger.info('Start imagenet train. model_id: {}, pretrained_model: {}'
@@ -459,8 +458,8 @@ def do_train_by_tensorflow(
     db_model.is_trained = 1
     db_model.update_and_commit()
 
-    if gpu_num > -1:
-        device = '/gpu:' + str(gpu_num)
+    if db_model.gpu > -1:
+        device = '/gpu:' + str(db_model.gpu)
     else:
         device = '/cpu:0'
 

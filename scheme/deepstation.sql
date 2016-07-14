@@ -18,7 +18,8 @@ create table if not exists Model(
     channels integer Default 3,
     type text,
     use_wakatigaki integer default 0,
-    framework text
+    framework text,
+    gpu integer
 );
 
 create table if not exists Dataset(

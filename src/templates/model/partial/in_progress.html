@@ -19,6 +19,7 @@
                 {% if model.dataset %}
                     <li data-datasetid="{{model.dataset.id}}">Dataset: <span id="dataset_name_info">{{model.dataset.name}}</span></li>
                 {% endif %}
+                <li>Processing Unit: {{model.gpu_str}}</li>
                 <li>
                     Train Type:
                     {% if model.type == 'image' %}

@@ -32,6 +32,7 @@ def run_imagenet_train(
     model.resize_mode = resize_mode
     model.channels = channels
     model.avoid_flipping = avoid_flipping
+    model.gpu = gpu_num
     model, train_image_num = deeplearning.prepare.prepare_for_imagenet.do(model, prepared_data_root)
     if model.framework == 'chainer':
         train_process = Process(
@@ -41,7 +42,6 @@ def run_imagenet_train(
                 output_dir_root,
                 32,   # bachsize
                 250,  # val_batchsize
-                gpu_num,
                 20,   # loader_job
                 pretrained_model,
             )
@@ -52,10 +52,9 @@ def run_imagenet_train(
             args=(
                 model,
                 output_dir_root,
-                128,   # batchsize
+                32,   # batchsize
                 250,  # val_batchsize
                 pretrained_model,
-                gpu_num,
                 train_image_num
             )
         )
@@ -82,6 +81,7 @@ def run_lstm_train(
     model = Model.query.get(model_id)
     model.dataset = dataset
     model.epoch = epoch
+    model.gpu = gpu_num
     model.enable_wakatigaki(use_wakatigaki)
     (input_data_path, pretrained_vocab, model) = deeplearning.prepare.prepare_for_lstm.do(
         model, prepared_data_root, pretrained_model, use_wakatigaki)

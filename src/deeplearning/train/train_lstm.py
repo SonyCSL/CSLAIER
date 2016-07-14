@@ -9,6 +9,7 @@ import codecs
 import imp
 import re
 import shutil
+import datetime
 from logging import getLogger
 
 import numpy as np
@@ -82,7 +83,6 @@ def do_train(
     use_mecab=False,
     initmodel=None,
     resume=None,
-    gpu=-1,
     rnn_size=128,
     learning_rate=2e-3,
     learning_rate_decay=0.97,
@@ -94,7 +94,7 @@ def do_train(
     grad_clip=5    # gradient norm threshold to clip
 ):
     logger.info('Start LSTM training. model_id: {0}, use_mecab: {1}, initmodel: {2}, gpu: {3}'
-                .format(db_model.id, use_mecab, initmodel, gpu))
+                .format(db_model.id, use_mecab, initmodel, db_model.gpu))
     n_epoch = db_model.epoch
     bprop_len = seq_length   # length of truncated BPTT
     grad_clip = grad_clip
@@ -115,9 +115,9 @@ def do_train(
         vocab = pickle.load(open(vocabulary, 'rb'))
         vocab_size = len(vocab)
 
-    if gpu >= 0:
+    if db_model.gpu >= 0:
         cuda.check_cuda_available()
-    xp = cuda.cupy if gpu >= 0 else np
+    xp = cuda.cupy if db_model.gpu >= 0 else np
 
     train_data, words, vocab = load_data(filename, use_mecab, vocab)
     pickle.dump(vocab, open('%s/vocab2.bin' % db_model.trained_model_path, 'wb'))
@@ -166,8 +166,8 @@ def do_train(
                                      .format(os.path.join(db_model.trained_model_path, m), e))
                     raise e
 
-    if gpu >= 0:
-        cuda.get_device(gpu).use()
+    if db_model.gpu >= 0:
+        cuda.get_device(db_model.gpu).use()
         model.to_gpu()
 
     # Load pretrained optimizer
@@ -205,6 +205,9 @@ def do_train(
     loss_for_graph = xp.zeros(())
     batch_idxs = list(range(batchsize))
     log_file.write("going to train {} iterations<br>".format(jump * n_epoch))
+    log_file.write("[TIME]{},{}<br>"
+                   .format(epoch,
+                           datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')))
     log_file.flush()
     for i in six.moves.range(jump * n_epoch):
         x = chainer.Variable(
@@ -229,6 +232,9 @@ def do_train(
             perp = math.exp(float(cur_log_perp) / 10000)
             log_file.write('iter {} training perplexity: {:.2f} ({:.2f} iters/sec)<br>'
                            .format(i + 1, perp, throuput))
+            log_file.write("[TIME]{},{}<br>"
+                           .format(epoch,
+                                   datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')))
             log_file.flush()
             cur_at = now
             cur_log_perp.fill(0)
@@ -247,6 +253,9 @@ def do_train(
             if epoch >= 6:
                 optimizer.lr /= 1.2
                 log_file.write('learning rate = {:.10f}<br>'.format(optimizer.lr))
+                log_file.write("[TIME]{},{}<br>"
+                               .format(epoch,
+                                       datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')))
                 log_file.flush()
             # Save the model and the optimizer
             serializers.save_npz(os.path.join(db_model.trained_model_path,
@@ -271,5 +280,6 @@ def do_train(
     graph_tsv.close()
     db_model.is_trained = 2
     db_model.pid = None
+    db_model.gpu = None
     db_model.update_and_commit()
     logger.info('Finish LSTM train. model_id: {0}'.format(db_model.id))
