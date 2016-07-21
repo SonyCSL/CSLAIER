@@ -52,7 +52,7 @@ def run_imagenet_train(
             args=(
                 model,
                 output_dir_root,
-                32,   # batchsize
+                256,   # batchsize
                 250,  # val_batchsize
                 pretrained_model,
                 train_image_num

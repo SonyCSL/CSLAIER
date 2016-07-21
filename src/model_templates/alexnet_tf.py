@@ -29,12 +29,10 @@ def inference(images, keep_prob):
     def max_pool(input, name, ksize=[1, 3, 3, 1], strides=[1, 2, 2, 1]):
         return tf.nn.max_pool(input, ksize=ksize, strides=strides, padding='VALID', data_format='NHWC', name=name)
 
-    x = tf.reshape(images, [-1, 128, 128, 3])
-
     # conv1
     with tf.name_scope('conv1') as scope:
         W_conv1 = weight_variable([11, 11, 3, 64])
-        c_conv1 = conv2d(x, W_conv1, strides=[1, 4, 4, 1], padding='VALID')
+        c_conv1 = conv2d(images, W_conv1, strides=[1, 4, 4, 1], padding='VALID')
         b_conv1 = bias_variable([64], c_conv1)
         h_conv1 = tf.nn.relu(b_conv1, name=scope)
 

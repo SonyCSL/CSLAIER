@@ -429,9 +429,8 @@ def _read_and_decode(filename_queue):
         }
     )
     image = tf.decode_raw(features['image_raw'], tf.uint8)
-    image = tf.reshape(image, [3, 128, 128])
-    image.set_shape([3, 128, 128])
-    image = tf.cast(image, tf.float32) * (1./255)
+    image = tf.reshape(image, [128, 128, 3])
+    image = tf.cast(image, tf.float32) / 255
     label = tf.cast(features['label'], tf.int32)
     return image, label
 
@@ -463,7 +462,8 @@ def do_train_by_tensorflow(
     else:
         device = '/cpu:0'
 
-    filename_queue = tf.train.string_input_producer([os.path.join(db_model.prepared_file_path, 'train.tfrecord')],
+    filename_queue = tf.train.string_input_producer([os.path.join(db_model.prepared_file_path,
+                                                                  'train.tfrecord')],
                                                     num_epochs=db_model.epoch)
     image, label = _read_and_decode(filename_queue)
     images, sparse_labels = tf.train.shuffle_batch([image, label],

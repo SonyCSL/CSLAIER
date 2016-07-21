@@ -8,8 +8,10 @@ import scipy.ndimage
 import cv2
 import cPickle as pickle
 from PIL import Image
-import tensorflow as tf
-
+try:
+    import tensorflow as tf
+except:
+    pass
 
 import common.utils as ds_utils
 
