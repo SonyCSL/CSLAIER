@@ -119,7 +119,7 @@ def feed_data(train_list, val_list, mean_image, batchsize, val_batchsize,
     data_q.put('train')
     use_flip = True
 
-    if avoid_flipping == 1:
+    if avoid_flipping:
         use_flip = False
 
     for epoch in six.moves.range(1, 1 + epoch):
@@ -299,7 +299,8 @@ def do_train_by_chainer(
     root_output_dir,
     val_batchsize=250,
     loaderjob=20,
-    pretrained_model=""
+    pretrained_model="",
+    avoid_flipping=False
 ):
     logger.info('Start imagenet train. model_id: {0} gpu: {1}, pretrained_model: {2}'
                 .format(db_model.id, db_model.gpu, pretrained_model))
@@ -384,7 +385,7 @@ def do_train_by_chainer(
             db_model.epoch,
             optimizer,
             data_q,
-            db_model.avoid_flipping
+            avoid_flipping
         )
     )
     feeder.daemon = True
@@ -417,7 +418,7 @@ def do_train_by_chainer(
     logger.info('Finish imagenet train. model_id: {0}'.format(db_model.id))
 
 
-def _read_and_decode(filename_queue):
+def _read_and_decode(filename_queue, avoid_flipping):
     reader = tf.TFRecordReader()
     _, serialized_example = reader.read(filename_queue)
     features = tf.parse_single_example(
@@ -429,6 +430,8 @@ def _read_and_decode(filename_queue):
     )
     image = tf.decode_raw(features['image_raw'], tf.uint8)
     image = tf.reshape(image, [128, 128, 3])
+    if not avoid_flipping:
+        image = tf.image.random_flip_left_right(image)
     image = tf.cast(image, tf.float32) / 255
     label = tf.cast(features['label'], tf.int32)
     return image, label
@@ -439,7 +442,8 @@ def do_train_by_tensorflow(
     output_dir_root,
     val_batchsize,
     pretrained_model,
-    train_image_num
+    train_image_num,
+    avoid_flipping
 ):
     logger.info('Start imagenet train. model_id: {}, pretrained_model: {}'
                 .format(db_model.id, pretrained_model))
@@ -463,7 +467,7 @@ def do_train_by_tensorflow(
     filename_queue = tf.train.string_input_producer([os.path.join(db_model.prepared_file_path,
                                                                   'train.tfrecord')],
                                                     num_epochs=db_model.epoch)
-    image, label = _read_and_decode(filename_queue)
+    image, label = _read_and_decode(filename_queue, avoid_flipping)
     images, sparse_labels = tf.train.shuffle_batch([image, label],
                                                    batch_size=db_model.batchsize,
                                                    num_threads=2,

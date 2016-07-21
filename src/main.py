@@ -364,6 +364,10 @@ def api_start_train():
         resize_mode = request.form['resize_mode']
         channels = request.form['channels']
         avoid_flipping = request.form['avoid_flipping']
+        if int(avoid_flipping) == 1:
+            avoid_flipping = True
+        else:
+            avoid_fliping = False
         runner.run_imagenet_train(
             app.config['PREPARED_DATA'],
             app.config['TRAINED_DATA'],
@@ -374,7 +378,7 @@ def api_start_train():
             int(gpu_num),
             resize_mode,
             int(channels),
-            int(avoid_flipping),
+            avoid_flipping,
             int(batchsize)
         )
     elif type == 'text':

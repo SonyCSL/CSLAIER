@@ -32,7 +32,6 @@ def run_imagenet_train(
     model.epoch = epoch
     model.resize_mode = resize_mode
     model.channels = channels
-    model.avoid_flipping = avoid_flipping
     model.gpu = gpu_num
     model.batchsize = batchsize
     model, train_image_num = deeplearning.prepare.prepare_for_imagenet.do(model, prepared_data_root)
@@ -45,6 +44,7 @@ def run_imagenet_train(
                 250,  # val_batchsize
                 20,   # loader_job
                 pretrained_model,
+                avoid_flipping
             )
         )
     elif model.framework == 'tensorflow':
@@ -55,7 +55,8 @@ def run_imagenet_train(
                 output_dir_root,
                 250,  # val_batchsize
                 pretrained_model,
-                train_image_num
+                train_image_num,
+                avoid_flipping
             )
         )
     else:
