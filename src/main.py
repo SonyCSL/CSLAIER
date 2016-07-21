@@ -359,6 +359,7 @@ def api_start_train():
     pretrained_model = request.form['pretrained_model']
     gpu_num = request.form['gpu_num']
     type = request.form['model_type']
+    batchsize = request.form['batchsize']
     if type == 'image':
         resize_mode = request.form['resize_mode']
         channels = request.form['channels']
@@ -373,7 +374,8 @@ def api_start_train():
             int(gpu_num),
             resize_mode,
             int(channels),
-            int(avoid_flipping)
+            int(avoid_flipping),
+            int(batchsize)
         )
     elif type == 'text':
         use_wakati_temp = int(request.form['use_wakatigaki'])
@@ -386,7 +388,8 @@ def api_start_train():
             int(epoch),
             pretrained_model,
             int(gpu_num),
-            use_wakatigaki
+            use_wakatigaki,
+            int(batchsize)
         )
     return jsonify({'status': 'OK'})
 

@@ -19,7 +19,8 @@ create table if not exists Model(
     type text,
     use_wakatigaki integer default 0,
     framework text,
-    gpu integer
+    gpu integer,
+    batchsize integer
 );
 
 create table if not exists Dataset(

@@ -36,6 +36,7 @@ class Model(db.Model):
     channels = db.Column(db.Integer)
     use_wakatigaki = db.Column(db.Integer)
     gpu = db.Column(db.Integer)
+    batchsize = db.Column(db.Integer)
     dataset_id = db.Column(db.Integer, db.ForeignKey('dataset.id'))
     updated_at = db.Column(db.DateTime)
     created_at = db.Column(db.DateTime)
@@ -84,6 +85,13 @@ class Model(db.Model):
             return '---'
         else:
             return 'GPU: ' + str(self.gpu)
+
+    @property
+    def batchsize_str(self):
+        if self.batchsize is None:
+            return '---'
+        else:
+            return str(self.batchsize)
 
     def __get_file_path(self, path, filename):
         if path is None:

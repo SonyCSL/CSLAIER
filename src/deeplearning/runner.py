@@ -23,7 +23,8 @@ def run_imagenet_train(
     gpu_num,
     resize_mode,
     channels,
-    avoid_flipping
+    avoid_flipping,
+    batchsize
 ):
     dataset = Dataset.query.get(dataset_id)
     model = Model.query.get(model_id)
@@ -33,6 +34,7 @@ def run_imagenet_train(
     model.channels = channels
     model.avoid_flipping = avoid_flipping
     model.gpu = gpu_num
+    model.batchsize = batchsize
     model, train_image_num = deeplearning.prepare.prepare_for_imagenet.do(model, prepared_data_root)
     if model.framework == 'chainer':
         train_process = Process(
@@ -40,7 +42,6 @@ def run_imagenet_train(
             args=(
                 model,
                 output_dir_root,
-                32,   # bachsize
                 250,  # val_batchsize
                 20,   # loader_job
                 pretrained_model,
@@ -52,7 +53,6 @@ def run_imagenet_train(
             args=(
                 model,
                 output_dir_root,
-                256,   # batchsize
                 250,  # val_batchsize
                 pretrained_model,
                 train_image_num
@@ -75,7 +75,8 @@ def run_lstm_train(
     epoch,
     pretrained_model,
     gpu_num,
-    use_wakatigaki
+    use_wakatigaki,
+    batchsize=50
 ):
     dataset = Dataset.query.get(dataset_id)
     model = Model.query.get(model_id)
@@ -83,6 +84,7 @@ def run_lstm_train(
     model.epoch = epoch
     model.gpu = gpu_num
     model.enable_wakatigaki(use_wakatigaki)
+    model.batchsize = batchsize
     (input_data_path, pretrained_vocab, model) = deeplearning.prepare.prepare_for_lstm.do(
         model, prepared_data_root, pretrained_model, use_wakatigaki)
     train_process = Process(
@@ -94,17 +96,17 @@ def run_lstm_train(
             pretrained_vocab,
             use_wakatigaki,
             pretrained_model,
-            None,    # resume
+            None,       # resume
             gpu_num,
-            128,     # runsize
-            2e-3,    # learning_rate
-            0.97,    # learning_rate_decay
-            10,      # learning_rate_decay_after
-            0.95,    # decay_rate
-            0.0,     # dropout
-            50,      # seq_length
-            50,      # batchsize
-            5        # grad_clip
+            128,        # runsize
+            2e-3,       # learning_rate
+            0.97,       # learning_rate_decay
+            10,         # learning_rate_decay_after
+            0.95,       # decay_rate
+            0.0,        # dropout
+            50,         # seq_length
+            batchsize,  # batchsize
+            5           # grad_clip
         )
     )
     train_process.start()

@@ -16,10 +16,11 @@
                 <li>Updated: {{model.updated_at.strftime('%Y-%m-%d %H:%M:%S')}}</li>
                 <li>Framework: {{model.framework}}</li>
                 <li>Epoch: <span id="epoch_info">{{model.epoch}}</span></li>
+                <li>Processing Unit: {{model.gpu_str}}</li>
+                <li>Batch Size: {{model.batchsize_str}}</li>
                 {% if model.dataset %}
                     <li data-datasetid="{{model.dataset.id}}">Dataset: <span id="dataset_name_info">{{model.dataset.name}}</span></li>
                 {% endif %}
-                <li>Processing Unit: {{model.gpu_str}}</li>
                 <li>
                     Train Type:
                     {% if model.type == 'image' %}

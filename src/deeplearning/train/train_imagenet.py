@@ -297,7 +297,6 @@ def load_module(dir_name, symbol):
 def do_train_by_chainer(
     db_model,
     root_output_dir,
-    batchsize=32,
     val_batchsize=250,
     loaderjob=20,
     pretrained_model=""
@@ -378,7 +377,7 @@ def do_train_by_chainer(
             train_list,
             val_list,
             mean_image,
-            batchsize,
+            db_model.batchsize,
             val_batchsize,
             model,
             loaderjob,
@@ -393,7 +392,7 @@ def do_train_by_chainer(
     train_logger = threading.Thread(
         target=log_result,
         args=(
-            batchsize,
+            db_model.batchsize,
             val_batchsize,
             os.path.join(db_model.trained_model_path, 'line_graph.tsv'),
             os.path.join(db_model.trained_model_path, 'log.html'),
@@ -438,7 +437,6 @@ def _read_and_decode(filename_queue):
 def do_train_by_tensorflow(
     db_model,
     output_dir_root,
-    batchsize,
     val_batchsize,
     pretrained_model,
     train_image_num
@@ -467,9 +465,9 @@ def do_train_by_tensorflow(
                                                     num_epochs=db_model.epoch)
     image, label = _read_and_decode(filename_queue)
     images, sparse_labels = tf.train.shuffle_batch([image, label],
-                                                   batch_size=batchsize,
+                                                   batch_size=db_model.batchsize,
                                                    num_threads=2,
-                                                   capacity=1000 + 3*batchsize,
+                                                   capacity=1000 + 3*db_model.batchsize,
                                                    min_after_dequeue=1000)
 
     keep_prob = tf.placeholder(tf.float32)
@@ -506,12 +504,12 @@ def do_train_by_tensorflow(
                     train_cur_loss += train_loss
                     train_cur_accuracy += train_acc
 
-                    current_epoch = int(math.floor(step * batchsize / train_image_num))
+                    current_epoch = int(math.floor(step * db_model.batchsize / train_image_num))
                     if step % 100 == 0:
                         duration = time.time() - begin_at
-                        throughput = step * batchsize / duration
+                        throughput = step * db_model.batchsize / duration
                         log_file.write('train {} updates ({} samples) time: {} ({} images/sec)<br>'
-                                       .format(step, step * batchsize,
+                                       .format(step, step * db_model.batchsize,
                                                datetime.timedelta(seconds=duration), throughput))
                         log_file.write("[TIME]{},{}<br>"
                                        .format(current_epoch,

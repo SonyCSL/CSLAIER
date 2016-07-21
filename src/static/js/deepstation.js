@@ -358,6 +358,7 @@ $('#start_train_btn').on('click', function(e){
     var model_type = $(this).data('modeltype');
     var use_wakatigaki = $('#use_wakachigaki').prop('checked') ? 1 : 0;
     var gpu_num = $('#gpu_num').val() || $('input[name="gpu_num"]:checked').val();
+    var batchsize = $('#batchsize_input').val()
 
     $('#start_train_modal').modal('hide');
     $('#processing_screen').removeClass('hidden');
@@ -367,6 +368,7 @@ $('#start_train_btn').on('click', function(e){
     formData.append("dataset_id", dataset_id);
     formData.append("epoch", epoch);
     formData.append("gpu_num", gpu_num);
+    formData.append("batchsize", batchsize);
     formData.append("resize_mode",resize_mode);
     formData.append("channels", channels);
     formData.append("avoid_flipping",flipping_mode);
