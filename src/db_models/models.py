@@ -181,9 +181,13 @@ class Model(db.Model):
     def get_pretrained_models(self):
         pretrained_models = ["New"]
         if self.trained_model_path:
-            candidate = sorted(os.listdir(self.trained_model_path), reverse=True)
+            candidate = os.listdir(self.trained_model_path)
             if pretrained_models:
-                pretrained_models = filter(lambda file: file.find('model') > -1, candidate)
+                pretrained_models = filter(lambda file: file.find('model') > -1
+                                           and file.find('.meta') < 0, candidate)
+                pretrained_models = sorted(pretrained_models,
+                                           key=lambda x: int(re.sub(r'(previous_)?model-?', '', x)),
+                                           reverse=True)
                 pretrained_models.append("New")
         return pretrained_models
 

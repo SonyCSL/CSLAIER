@@ -489,6 +489,32 @@ def do_train_by_tensorflow(
         line_graph.write("count\tepoch\taccuracy\tloss\taccuracy(val)\tloss(val)\n")
         line_graph.flush()
         with tf.Session() as sess:
+            # Load pretrained model
+            if pretrained_model is not None and pretrained_model.find("model") > -1:
+                logger.info("load pretrained model : "
+                            + os.path.join(db_model.trained_model_path, pretrained_model))
+                saver.restore(sess, os.path.join(db_model.trained_model_path, pretrained_model))
+                # delete old models
+                try:
+                    shutil.copyfile(os.path.join(db_model.trained_model_path, pretrained_model),
+                                    os.path.join(db_model.trained_model_path,
+                                    'previous_' + pretrained_model))
+                except Exception as e:
+                    logger.exception('Could not copy {0} to {1}. {2}'
+                                     .format(os.path.join(db_model.trained_model_path, pretrained_model),
+                                             os.path.join(db_model.trained_model_path,
+                                             'previous_' + pretrained_model), e))
+                    raise e
+                pretrained_models = sorted(os.listdir(db_model.trained_model_path), reverse=True)
+                for m in pretrained_models:
+                    if m.startswith('model') and pretrained_model != m:
+                        try:
+                            os.remove(os.path.join(db_model.trained_model_path, m))
+                        except Exception as e:
+                            logger.exception('Could not remove old models: {0} {1}'
+                                             .format(os.path.join(db_model.trained_model_path, m), e))
+                            raise e
+
             # TODO: implement validation
 
             sess.run(tf.initialize_all_variables())
@@ -509,7 +535,7 @@ def do_train_by_tensorflow(
                     train_cur_accuracy += train_acc
 
                     current_epoch = int(math.floor(step * db_model.batchsize / train_image_num))
-                    if step % 100 == 0:
+                    if step % 100 == 0 and step != 0:
                         duration = time.time() - begin_at
                         throughput = step * db_model.batchsize / duration
                         log_file.write('train {} updates ({} samples) time: {} ({} images/sec)<br>'
