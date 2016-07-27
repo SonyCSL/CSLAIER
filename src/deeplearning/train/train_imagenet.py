@@ -43,6 +43,31 @@ def _create_trained_model_dir(path, root_output_dir, model_name):
     return path
 
 
+def _delete_old_models(db_model, pretrained_model):
+    pretrained_models = sorted(os.listdir(db_model.trained_model_path), reverse=True)
+    for m in pretrained_models:
+        if m.startswith('model') and pretrained_model != m:
+            try:
+                os.remove(os.path.join(db_model.trained_model_path, m))
+            except Exception as e:
+                logger.exception('Could not remove old models: {0} {1}'
+                                 .format(os.path.join(db_model.trained_model_path, m), e))
+                raise e
+
+
+def _backup_pretrained_model(db_model, pretrained_model):
+    try:
+        shutil.copyfile(os.path.join(db_model.trained_model_path, pretrained_model),
+                        os.path.join(db_model.trained_model_path,
+                        'previous_' + pretrained_model))
+    except Exception as e:
+        logger.exception('Could not copy {0} to {1}. {2}'
+                         .format(os.path.join(db_model.trained_model_path, pretrained_model),
+                                 os.path.join(db_model.trained_model_path,
+                                 'previous_' + pretrained_model), e))
+        raise e
+
+
 def _post_process(db_model, pretrained_model):
     # post-processing
     db_model.is_trained = 2
@@ -328,26 +353,8 @@ def do_train_by_chainer(
         logger.info("load pretrained model : "
                     + os.path.join(db_model.trained_model_path, pretrained_model))
         serializers.load_hdf5(os.path.join(db_model.trained_model_path, pretrained_model), model)
-        # delete old models
-        try:
-            shutil.copyfile(os.path.join(db_model.trained_model_path, pretrained_model),
-                            os.path.join(db_model.trained_model_path,
-                            'previous_' + pretrained_model))
-        except Exception as e:
-            logger.exception('Could not copy {0} to {1}. {2}'
-                             .format(os.path.join(db_model.trained_model_path, pretrained_model),
-                                     os.path.join(db_model.trained_model_path,
-                                     'previous_' + pretrained_model), e))
-            raise e
-        pretrained_models = sorted(os.listdir(db_model.trained_model_path), reverse=True)
-        for m in pretrained_models:
-            if m.startswith('model') and pretrained_model != m:
-                try:
-                    os.remove(os.path.join(db_model.trained_model_path, m))
-                except Exception as e:
-                    logger.exception('Could not remove old models: {0} {1}'
-                                     .format(os.path.join(db_model.trained_model_path, m), e))
-                    raise e
+        _backup_pretrained_model(db_model, pretrained_model)
+        _delete_old_models(db_model, pretrained_model)
 
     # delete layer visualization cache
     for f in os.listdir(db_model.trained_model_path):
@@ -437,6 +444,24 @@ def _read_and_decode(filename_queue, avoid_flipping):
     return image, label
 
 
+def _extract_tfrecord(files, batchsize, num_epochs=None, avoid_flipping=True, use_shuffle=False):
+    filename_queue = tf.train.string_input_producer(files, num_epochs=num_epochs)
+    image, label = _read_and_decode(filename_queue, avoid_flipping)
+    if use_shuffle:
+        images, sparse_labels = tf.train.shuffle_batch([image, label],
+                                                       batch_size=batchsize,
+                                                       num_threads=8,
+                                                       capacity=1000 + 3*batchsize,
+                                                       min_after_dequeue=1000)
+    else:
+        images, sparse_labels = tf.train.batch([image, label],
+                                               batch_size=batchsize,
+                                               num_threads=8,
+                                               capacity=1000 + 3*batchsize)
+
+    return images, sparse_labels
+
+
 def do_train_by_tensorflow(
     db_model,
     output_dir_root,
@@ -473,13 +498,22 @@ def do_train_by_tensorflow(
                                                    num_threads=2,
                                                    capacity=1000 + 3*db_model.batchsize,
                                                    min_after_dequeue=1000)
+    train_images, train_sparse_labels = _extract_tfrecord([os.path.join(db_model.prepared_file_path,
+                                                                        'train.tfrecord')],
+                                                          val_batchsize, num_epochs=db_model.epoch,
+                                                          use_shuffle=True)
+    val_images, val_sparse_labels = _extract_tfrecord([os.path.join(db_model.prepared_file_path,
+                                                                    'test.tfrecord')],
+                                                      db_model.batchsize, num_epochs=db_model.epoch)
 
+    images_placeholder = tf.placeholder(tf.float32)
+    labels_placeholder = tf.placeholder(tf.int32)
     keep_prob = tf.placeholder(tf.float32)
     with tf.device(device):
-        logits = model.inference(images, keep_prob)
-        loss_value = model.loss(logits, sparse_labels)
+        logits = model.inference(images_placeholder, keep_prob)
+        loss_value = model.loss(logits, labels_placeholder)
         train_op = model.training(loss_value, 1e-4)
-    acc = model.accuracy(logits, sparse_labels)
+    acc = model.accuracy(logits, labels_placeholder)
 
     first_and_last_saver = tf.train.Saver(max_to_keep=2)
     saver = tf.train.Saver(max_to_keep=50)
@@ -494,28 +528,8 @@ def do_train_by_tensorflow(
                 logger.info("load pretrained model : "
                             + os.path.join(db_model.trained_model_path, pretrained_model))
                 saver.restore(sess, os.path.join(db_model.trained_model_path, pretrained_model))
-                # delete old models
-                try:
-                    shutil.copyfile(os.path.join(db_model.trained_model_path, pretrained_model),
-                                    os.path.join(db_model.trained_model_path,
-                                    'previous_' + pretrained_model))
-                except Exception as e:
-                    logger.exception('Could not copy {0} to {1}. {2}'
-                                     .format(os.path.join(db_model.trained_model_path, pretrained_model),
-                                             os.path.join(db_model.trained_model_path,
-                                             'previous_' + pretrained_model), e))
-                    raise e
-                pretrained_models = sorted(os.listdir(db_model.trained_model_path), reverse=True)
-                for m in pretrained_models:
-                    if m.startswith('model') and pretrained_model != m:
-                        try:
-                            os.remove(os.path.join(db_model.trained_model_path, m))
-                        except Exception as e:
-                            logger.exception('Could not remove old models: {0} {1}'
-                                             .format(os.path.join(db_model.trained_model_path, m), e))
-                            raise e
-
-            # TODO: implement validation
+                _backup_pretrained_model(db_model, pretrained_model)
+                _delete_old_models(db_model, pretrained_model)
 
             sess.run(tf.initialize_all_variables())
 
@@ -529,13 +543,28 @@ def do_train_by_tensorflow(
                 train_cur_loss = 0
                 train_cur_accuracy = 0
                 while not coord.should_stop():
+                    images, sparse_labels = sess.run([train_images, train_sparse_labels])
                     _, train_loss, train_acc = sess.run([train_op, loss_value, acc],
-                                                        feed_dict={keep_prob: 0.5})
+                                                        feed_dict={
+                                                            images_placeholder: images,
+                                                            labels_placeholder: sparse_labels,
+                                                            keep_prob: 0.5})
                     train_cur_loss += train_loss
                     train_cur_accuracy += train_acc
 
                     current_epoch = int(math.floor(step * db_model.batchsize / train_image_num))
-                    if step % 100 == 0 and step != 0:
+
+                    if step % 1000 == 0 and step != 0:
+                        images, sparse_labels = sess.run([val_images, val_sparse_labels])
+                        val_loss_result, val_acc_result = sess.run([loss_value, acc],
+                                                                   feed_dict={
+                                                                       images_placeholder: images,
+                                                                       labels_placeholder: sparse_labels,
+                                                                       keep_prob: 1.0})
+                        line_graph.write('{}\t{}\t\t\t{}\t{}\n'
+                                         .format(step, current_epoch, val_acc_result, val_loss_result))
+                        line_graph.flush()
+                    elif step % 100 == 0 and step != 0:
                         duration = time.time() - begin_at
                         throughput = step * db_model.batchsize / duration
                         log_file.write('train {} updates ({} samples) time: {} ({} images/sec)<br>'
