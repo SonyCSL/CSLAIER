@@ -77,7 +77,9 @@
                             <label for="select_color_mode" class="label-control">Select Color mode</label>
                             <select class="form-control" id="select_color_mode">
                                 <option value="rgb">RGB</option>
-                                <option value="grayscale">Grayscale</option>
+                                {% if model.framework == 'chainer' %}
+                                    <option value="grayscale">Grayscale</option>
+                                {% endif %}
                             </select>
                         </div>
                         <div class="form-group">

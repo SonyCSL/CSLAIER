@@ -521,7 +521,8 @@ def do_train_by_tensorflow(
 
     with open(os.path.join(db_model.trained_model_path, 'line_graph.tsv'), 'w') as line_graph, \
             open(os.path.join(db_model.trained_model_path, 'log.html'), 'w') as log_file:
-        log_file.write('train: {} images, val: {} images'.format(train_image_num, val_image_num))
+        log_file.write('train: {} images, val: {} images, epoch: {}<br>'
+                       .format(train_image_num, val_image_num, db_model.epoch))
         log_file.flush()
         line_graph.write("count\tepoch\taccuracy\tloss\taccuracy(val)\tloss(val)\n")
         line_graph.flush()
