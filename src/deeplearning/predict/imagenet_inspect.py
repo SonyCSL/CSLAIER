@@ -179,16 +179,14 @@ def inspect_by_tensorflow(image_path, mean, model_path, label,
     model_module = load_module(network_path)
     img = read_image(image_path, 128, 128, resize_mode, channels)
     if img.ndim == 3:
-        img = img.transpose(2, 0, 1).astype(np.float32)
+        img = img.astype(np.float32)
     else:
         zeros = np.zeros(128, 128)
         img = np.array([img, zeros, zeros]).astype(np.float32)
-    mean_image = pickle.load(open(mean, 'rb'))
-    img -= mean_image[:, 0:128, 0:128]
     feed_data = []
-    feed_data.append(img.flatten().astype(np.float32) / 255.0)
+    feed_data.append(img.astype(np.float32) / 255.0)
 
-    images_placeholder = tf.placeholder(tf.float32, [None, 128*128*3])
+    images_placeholder = tf.placeholder(tf.float32, [None, 128, 128, 3])
     keep_prob = tf.placeholder(tf.float32)
 
     logits = model_module.inference(images_placeholder, keep_prob)

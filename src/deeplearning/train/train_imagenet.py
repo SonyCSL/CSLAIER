@@ -468,6 +468,7 @@ def do_train_by_tensorflow(
     val_batchsize,
     pretrained_model,
     train_image_num,
+    val_image_num,
     avoid_flipping
 ):
     logger.info('Start imagenet train. model_id: {}, pretrained_model: {}'
@@ -520,6 +521,8 @@ def do_train_by_tensorflow(
 
     with open(os.path.join(db_model.trained_model_path, 'line_graph.tsv'), 'w') as line_graph, \
             open(os.path.join(db_model.trained_model_path, 'log.html'), 'w') as log_file:
+        log_file.write('train: {} images, val: {} images'.format(train_image_num, val_image_num))
+        log_file.flush()
         line_graph.write("count\tepoch\taccuracy\tloss\taccuracy(val)\tloss(val)\n")
         line_graph.flush()
         with tf.Session() as sess:
@@ -549,12 +552,17 @@ def do_train_by_tensorflow(
                                                             images_placeholder: images,
                                                             labels_placeholder: sparse_labels,
                                                             keep_prob: 0.5})
+
                     train_cur_loss += train_loss
                     train_cur_accuracy += train_acc
 
                     current_epoch = int(math.floor(step * db_model.batchsize / train_image_num))
 
-                    if step % 1000 == 0 and step != 0:
+                    line_graph.write('{}\t{}\t{}\t{}\t\t\n'
+                                     .format(step, current_epoch, train_acc, train_loss))
+                    line_graph.flush()
+
+                    if step % 100 == 0 and step != 0:
                         images, sparse_labels = sess.run([val_images, val_sparse_labels])
                         val_loss_result, val_acc_result = sess.run([loss_value, acc],
                                                                    feed_dict={
@@ -564,7 +572,7 @@ def do_train_by_tensorflow(
                         line_graph.write('{}\t{}\t\t\t{}\t{}\n'
                                          .format(step, current_epoch, val_acc_result, val_loss_result))
                         line_graph.flush()
-                    elif step % 100 == 0 and step != 0:
+                    if step % 50 == 0 and step != 0:
                         duration = time.time() - begin_at
                         throughput = step * db_model.batchsize / duration
                         log_file.write('train {} updates ({} samples) time: {} ({} images/sec)<br>'
@@ -574,9 +582,6 @@ def do_train_by_tensorflow(
                                        .format(current_epoch,
                                                datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')))
                         log_file.flush()
-                        line_graph.write('{}\t{}\t{}\t{}\t\t\n'
-                                         .format(step, current_epoch, train_acc, train_loss))
-                        line_graph.flush()
 
                         if step % 1000 == 0:
                             mean_loss = train_cur_loss / 1000
@@ -612,7 +617,7 @@ def do_train_by_tensorflow(
                     step += 1
                     prev_epoch = current_epoch
             except tf.errors.OutOfRangeError as e:
-                logger.exception(e)
+                logger.info('Epoch limit reached.')
             finally:
                 first_and_last_saver.save(sess,
                                           os.path.join(db_model.trained_model_path, 'model'),

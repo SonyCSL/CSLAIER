@@ -29,18 +29,19 @@ def do(model, prepared_data_root):
     model.update_and_commit()
     logger.info('Start making training data.')
     if model.framework == 'chainer':
-        train_image_num = make_train_data_for_chainer(model)
+        train_image_num, val_image_num = make_train_data_for_chainer(model)
         compute_mean(model.prepared_file_path)
     else:
-        train_image_num = make_train_data_for_tensorflow(model)
+        train_image_num, val_image_num = make_train_data_for_tensorflow(model)
     logger.info('Finish making training data.')
-    return model, train_image_num
+    return model, train_image_num, val_image_num
 
 
 def make_train_data_for_chainer(model):
     class_no = 0
     count = 0
     train_images_counter = 0
+    val_images_counter = 0
     with open(os.path.join(model.prepared_file_path, 'train.txt'), 'w') as train_text, \
         open(os.path.join(model.prepared_file_path, 'test.txt'), 'w') as test_text, \
             open(os.path.join(model.prepared_file_path, 'labels.txt'), 'w') as labels_text:
@@ -71,9 +72,10 @@ def make_train_data_for_chainer(model):
                         train_images_counter += 1
                     else:
                         test_text.write("{0} {1:d}\n".format(new_image_path, class_no))
+                        val_images_counter += 1
                     count += 1
                 class_no += 1
-    return train_images_counter
+    return train_images_counter, val_images_counter
 
 
 def make_train_data_for_tensorflow(model):
@@ -82,6 +84,7 @@ def make_train_data_for_tensorflow(model):
             open(os.path.join(model.prepared_file_path, 'labels.txt'), 'w') as labels_text:
         class_no = 0
         train_images_counter = 0
+        val_images_counter = 0
         for path, dirs, files in os.walk(model.dataset.dataset_path):
             if not dirs:
                 (head, tail) = os.path.split(path)
@@ -110,8 +113,9 @@ def make_train_data_for_tensorflow(model):
                         train_images_counter += 1
                     else:
                         test_data.write(example.SerializeToString())
+                        val_images_counter += 1
                 class_no += 1
-    return train_images_counter
+    return train_images_counter, val_images_counter
 
 
 def resize_image(source, dest, model):
