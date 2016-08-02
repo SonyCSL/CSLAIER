@@ -27,7 +27,8 @@ def inference(images, keep_prob):
         return bias
 
     def max_pool(input, name, ksize=[1, 3, 3, 1], strides=[1, 2, 2, 1]):
-        return tf.nn.max_pool(input, ksize=ksize, strides=strides, padding='VALID', data_format='NHWC', name=name)
+        return tf.nn.max_pool(input, ksize=ksize, strides=strides,
+                              padding='VALID', data_format='NHWC', name=name)
 
     # conv1
     with tf.name_scope('conv1') as scope:

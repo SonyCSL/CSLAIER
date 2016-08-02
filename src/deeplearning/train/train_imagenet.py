@@ -490,22 +490,13 @@ def do_train_by_tensorflow(
     else:
         device = '/cpu:0'
 
-    filename_queue = tf.train.string_input_producer([os.path.join(db_model.prepared_file_path,
-                                                                  'train.tfrecord')],
-                                                    num_epochs=db_model.epoch)
-    image, label = _read_and_decode(filename_queue, avoid_flipping)
-    images, sparse_labels = tf.train.shuffle_batch([image, label],
-                                                   batch_size=db_model.batchsize,
-                                                   num_threads=2,
-                                                   capacity=1000 + 3*db_model.batchsize,
-                                                   min_after_dequeue=1000)
     train_images, train_sparse_labels = _extract_tfrecord([os.path.join(db_model.prepared_file_path,
                                                                         'train.tfrecord')],
                                                           val_batchsize, num_epochs=db_model.epoch,
                                                           use_shuffle=True)
     val_images, val_sparse_labels = _extract_tfrecord([os.path.join(db_model.prepared_file_path,
                                                                     'test.tfrecord')],
-                                                      db_model.batchsize, num_epochs=db_model.epoch)
+                                                      db_model.batchsize)
 
     images_placeholder = tf.placeholder(tf.float32)
     labels_placeholder = tf.placeholder(tf.int32)
