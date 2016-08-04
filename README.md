@@ -37,7 +37,7 @@ DEEPstation is tested on Ubuntu 14.04. We recommend them to use DEEPstation, tho
 * Firefox
 
 ### System
-* NVIDIA CUDA Technology GPU and drivers
+* NVIDIA CUDA Technology GPU and drivers / CUDA 7.5
 * Python 2.7
   * python-opencv
   * python-scipy
@@ -181,7 +181,7 @@ DEEPstation
 Requirement
 ------------
 
-DEEPstationはUbuntu14.04でテストしています。 Ubuntu上で動かすことをおすすめしますが、他のプラットフォームでも動作します。
+DEEPstationはUbuntu14.04でテストしています。
 
 ### Supported Browsers
 
@@ -190,7 +190,7 @@ DEEPstationはUbuntu14.04でテストしています。 Ubuntu上で動かすこ
 * Firefox
 
 ### System
-* NVIDIA CUDA Technology GPU and drivers
+* NVIDIA CUDA Technology GPU and drivers / CUDA 7.5
 * Python 2.7
   * python-opencv
   * python-scipy
