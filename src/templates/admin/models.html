@@ -28,26 +28,33 @@
         </tr>
         {% for m in models %}
             <tr>
-                <td>{{m.id}}</td>
-                <td>{{m.name}}</td>
-                <td>{{m.type}}</td>
-                <td>{{m.framework}}</td>
-                <td>{{m.epoch}}</td>
-                <td>{{m.network_name}}</td>
-                <td>{{m.trained_model_path}}</td>
-                <td>{{m.prepared_file_path}}</td>
-                <td>{{m.is_trained}}</td>
-                <td>{{m.pid}}</td>
-                <td>{{m.resize_mode}}</td>
-                <td>{{m.channels}}</td>
-                <td>{{m.use_wakatigaki}}</td>
-                <td>{{m.gpu}}</td>
-                <td>{{m.batchsize}}</td>
-                <td>{{m.dataset_id}}</td>
-                <td>{{m.updated_at}}</td>
-                <td>{{m.created_at}}</td>
-                <td></td>
-                <td></td>
+                <form action="/admin/models/remove/" method="POST">
+                    <td>
+                        {{m.id}}
+                        <input type="hidden" name="model_id" value="{{m.id}}">
+                    </td>
+                    <td>{{m.name}}</td>
+                    <td>{{m.type}}</td>
+                    <td>{{m.framework}}</td>
+                    <td>{{m.epoch}}</td>
+                    <td>{{m.network_name}}</td>
+                    <td>{{m.trained_model_path}}</td>
+                    <td>{{m.prepared_file_path}}</td>
+                    <td>{{m.is_trained}}</td>
+                    <td>{{m.pid}}</td>
+                    <td>{{m.resize_mode}}</td>
+                    <td>{{m.channels}}</td>
+                    <td>{{m.use_wakatigaki}}</td>
+                    <td>{{m.gpu}}</td>
+                    <td>{{m.batchsize}}</td>
+                    <td>{{m.dataset_id}}</td>
+                    <td>{{m.updated_at}}</td>
+                    <td>{{m.created_at}}</td>
+                    <td></td>
+                    <td>
+                        <button class="btn btn-danger" type="submit">Delete</button>
+                    </td>
+                </form>
             </tr>
         {% endfor %}
     </table>

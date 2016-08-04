@@ -241,6 +241,14 @@ def admin_maintain_models():
     return render_template('admin/models.html', models=models)
 
 
+@app.route('/admin/models/remove/', methods=['POST'])
+def admin_remove_model():
+    id = int(request.form['model_id'])
+    model = Model.query.get(id)
+    model.delete()
+    return redirect(url_for('admin_maintain_models'))
+
+
 @app.route('/admin/datasets/')
 def admin_maintain_datasets():
     datasets = Dataset.query.all()
