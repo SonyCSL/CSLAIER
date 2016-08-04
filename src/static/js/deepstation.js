@@ -607,6 +607,7 @@ $('#log_tab').on('click', function(e){
     $('#network_tab').removeClass('active');
     update_train_log();
 });
+
 var  update_train_log = function(){
     var model_id = $('#model_id').val();
 
@@ -972,3 +973,10 @@ var showResultScreen = function(){
             $('#model_detail_layers').addClass('hidden');
         }
 };
+
+
+// Admin
+
+$('.admin_dataset_delete').on('click', function(e){
+    location.href = '/admin/datasets/remove/' + $(this).data('datasetid');
+});

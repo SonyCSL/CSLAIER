@@ -267,6 +267,16 @@ class Dataset(db.Model):
         text = text.replace("\n", '<br>')
         return text
 
+    def update_dataset_path(self, new_path):
+        if not os.path.exists(new_path):
+            logger.error('directory not exists: {}'.format(new_path))
+            raise Exception('Directory not exists: {}'.format(new_path))
+        if not os.path.isdir(new_path):
+            logger.error('not a directory: {}'.format(new_path))
+            raise Exception('Not a directory: {}'.format(new_path))
+        self.dataset_path = new_path
+        self.update_and_commit()
+
     def update_and_commit(self):
         self.updated_at = datetime.datetime.now()
         db.session.add(self)

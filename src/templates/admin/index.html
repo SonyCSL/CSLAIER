@@ -1,0 +1,24 @@
+{% extends 'common/base.html' %}
+{% block title %} Admin index {% endblock %}
+{% block main_content %}
+<div class="container">
+    <h1>DEEPstation Admin</h1>
+    <button id="maintain_dataset_button" class="btn btn-cyber btn-block">Maintain Dataset</button>
+    <button id="maintain_model_button" class="btn btn-cyber btn-block">Maintain Model</button>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+
+    <script type="text/javascript">
+        $('#maintain_dataset_button').on('click', function(e){
+            location.href = '{{ url_for(".admin_maintain_datasets") }}';
+        });
+
+        $('#maintain_model_button').on('click', function(e){
+            location.href = '{{ url_for(".admin_maintain_models") }}';
+        });
+    </script>
+
+{% endblock %}

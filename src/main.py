@@ -229,6 +229,43 @@ def inspect_image():
                            results=results, model=model,
                            epoch=epoch, image=image_path)
 
+
+@app.route('/admin/')
+def admin_index():
+    return render_template('admin/index.html')
+
+
+@app.route('/admin/models/')
+def admin_maintain_models():
+    models = Model.query.all()
+    return render_template('admin/models.html', models=models)
+
+
+@app.route('/admin/datasets/')
+def admin_maintain_datasets():
+    datasets = Dataset.query.all()
+    return render_template('admin/datasets.html', datasets=datasets)
+
+
+@app.route('/admin/datasets/remove/<int:id>')
+def admin_remove_dataset(id):
+    dataset = Dataset.query.get(id)
+    dataset.delete()
+    return redirect(url_for('admin_maintain_datasets'))
+
+
+@app.route('/admin/datasets/update/', methods=['POST'])
+def admin_update_dataset_path():
+    id = int(request.form['dataset_id'])
+    new_path = request.form['new_path']
+    dataset = Dataset.query.get(id)
+    try:
+        dataset.update_dataset_path(new_path)
+    except Exception as e:
+        return 'Could no update dataset_path: {}'.format(e)
+    return redirect(url_for('admin_maintain_datasets'))
+
+
 # =====================================================================
 # API
 # =====================================================================
@@ -367,7 +404,7 @@ def api_start_train():
         if int(avoid_flipping) == 1:
             avoid_flipping = True
         else:
-            avoid_fliping = False
+            avoid_flipping = False
         runner.run_imagenet_train(
             app.config['PREPARED_DATA'],
             app.config['TRAINED_DATA'],
