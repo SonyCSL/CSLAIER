@@ -87,7 +87,7 @@ def _post_process(db_model, pretrained_model):
     for f in os.listdir(db_model.prepared_file_path):
         (head, ext) = os.path.splitext(f)
         ext = ext.lower()
-        if ext in ['.jpg', '.jpeg', '.gif', '.png']:
+        if ext in ['.jpg', '.jpeg', '.gif', '.png', '.tfrecord']:
             try:
                 os.remove(os.path.join(db_model.prepared_file_path, f))
             except Exception as e:
