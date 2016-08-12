@@ -196,7 +196,7 @@ class Dataset(db.Model):
                 temp_path = os.path.join(extract_to, file_name)
                 if not os.path.basename(file_name):
                     if not os.path.exists(temp_path):
-                        os.mkdir(temp_path.encode(encoding='utf-8'))
+                        os.makedirs(temp_path.encode(encoding='utf-8'))
                         category_num += 1
                 else:
                     temp, ext = os.path.splitext(temp_path)
