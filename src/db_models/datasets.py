@@ -13,6 +13,7 @@ from werkzeug import secure_filename
 
 from db_models.shared_models import db
 import common.utils as ds_util
+import chardet
 
 logger = getLogger(__name__)
 
@@ -187,13 +188,15 @@ class Dataset(db.Model):
         category_num = 0
         try:
             zf = zipfile.ZipFile(os.path.join(save_raw_file_to, new_filename), 'r')
-            for f in zf.namelist():
-                if ('__MACOSX' in f) or ('.DS_Store' in f):
+            name_list = zf.namelist()
+            encoding = chardet.detect(''.join(name_list)).get('encoding', 'utf-8')
+            for file_name in (file_name.decode(encoding) for file_name in name_list):
+                if ('__MACOSX' in file_name) or ('.DS_Store' in file_name):
                     continue
-                temp_path = os.path.join(extract_to, f)
-                if not os.path.basename(f):
+                temp_path = os.path.join(extract_to, file_name)
+                if not os.path.basename(file_name):
                     if not os.path.exists(temp_path):
-                        os.mkdir(temp_path)
+                        os.makedirs(temp_path.encode(encoding='utf-8'))
                         category_num += 1
                 else:
                     temp, ext = os.path.splitext(temp_path)
@@ -208,7 +211,7 @@ class Dataset(db.Model):
                         uzf = file(temp_path, 'w+b')
                     else:
                         uzf = file(temp_path, 'wb')
-                    uzf.write(zf.read(f))
+                    uzf.write(zf.read(file_name.encode(encoding=encoding)))
                     uzf.close()
                     file_num += 1
         except Exception as e:
