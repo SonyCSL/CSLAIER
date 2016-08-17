@@ -590,8 +590,12 @@ $('#do_predict').on('click', function(e){
         result_length: result_length,
         primetext: primetext
     }, function(ret){
-        $('#prediction_result').text('');
-        $('#prediction_result').text(ret.result);
+        if (ret.error) {
+            alert(ret.error)
+        } else {
+            $('#prediction_result').text('');
+            $('#prediction_result').text(ret.result);
+        }
     });
 });
 

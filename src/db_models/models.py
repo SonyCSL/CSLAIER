@@ -8,7 +8,7 @@ import random
 import zipfile
 from logging import getLogger
 import cPickle as pickle
-
+import glob
 from werkzeug import secure_filename
 
 from db_models.shared_models import db
@@ -16,6 +16,7 @@ import common.utils as ds_utils
 import deeplearning.visualizer as visualizer
 import deeplearning.predict.imagenet_inspect as inspection
 import deeplearning.predict.text_predict as lstm_prediction
+
 
 logger = getLogger(__name__)
 
@@ -306,18 +307,10 @@ class Model(db.Model):
             self.update_and_commit()
 
     def get_usable_epochs(self):
-        ret = []
-        if self.is_trained == 0 or self.is_trained == 1:
-            return ret
-        for f in os.listdir(self.trained_model_path):
-            filename, ext = os.path.splitext(f)
-            if ext or not re.match(r"^model", f):
-                continue
-            epoch = re.sub(r"^model\-?", '', filename)
-            ret.append(int(epoch, 10))
-        ret.sort()
-        ret.reverse()
-        return ret
+        if self.is_trained == 0:
+            return []
+        ret = glob.glob1(self.trained_model_path, 'model*')
+        return [int(model.replace('model', '')) for model in ret]
 
     def __get_visualizer(self, epoch):
         if epoch > self.epoch:
