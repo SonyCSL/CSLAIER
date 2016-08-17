@@ -26,7 +26,7 @@
                 {% for result in results %}
                 <tr>
                     <td>{{result["rank"]}}</td>
-                    <td>{{result["name"]}}</td>
+                    <td>{{result["name"].decode('utf-8')}}</td>
                     <td>{{result["score"]}}</td>
                 </tr>
                 {% endfor %}
