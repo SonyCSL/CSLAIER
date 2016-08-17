@@ -99,7 +99,6 @@ def run_lstm_train(
             use_wakatigaki,
             pretrained_model,
             None,       # resume
-            gpu_num,
             128,        # runsize
             2e-3,       # learning_rate
             0.97,       # learning_rate_decay
