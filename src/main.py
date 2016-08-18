@@ -217,7 +217,6 @@ def show_model(id):
 def inspect_image():
     id = request.form['model_id']
     epoch = request.form['epoch']
-    print epoch
     uploaded = request.files['fileInput']
     model = Model.query.get(id)
     try:
