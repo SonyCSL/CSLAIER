@@ -16,6 +16,7 @@ from db_models.datasets import Dataset
 from db_models.models import Model
 import deeplearning.runner as runner
 import common.utils as ds_util
+from common import strings
 
 __version__ = '0.6.1'
 
@@ -217,17 +218,21 @@ def show_model(id):
 def inspect_image():
     id = request.form['model_id']
     epoch = request.form['epoch']
-    print epoch
     uploaded = request.files['fileInput']
     model = Model.query.get(id)
-    results, image_path = model.inspect(
-        int(epoch), uploaded, app.config['INSPECTION_TEMP'])
-    image_path = image_path.replace(app.config['INSPECTION_TEMP'], '')
-    if image_path.startswith('/'):
-        image_path = image_path.replace('/', '')
-    return render_template('model/inspect_result.html',
-                           results=results, model=model,
-                           epoch=epoch, image=image_path)
+    try:
+        results, image_path = model.inspect(
+            int(epoch), uploaded, app.config['INSPECTION_TEMP'])
+        image_path = image_path.replace(app.config['INSPECTION_TEMP'], '')
+        if image_path.startswith('/'):
+            image_path = image_path.replace('/', '')
+        return render_template('model/inspect_result.html',
+                               results=results, model=model,
+                               epoch=epoch, image=image_path)
+    except IOError:
+        return render_template('model/inspect_result.html',
+                               error=strings.EPOCH_FILE_UNDER_TRAINING_ERROR,
+                               model=model, epoch=epoch)
 
 
 @app.route('/admin/')
@@ -482,7 +487,12 @@ def api_do_lstm_prediction():
     result_length = int(request.form['result_length'])
     primetext = request.form['primetext']
     model = Model.query.get(id)
-    return jsonify({'result': model.lstm_predict(epoch, primetext, result_length)})
+
+    try:
+        return jsonify({'result': model.lstm_predict(epoch, primetext, result_length)})
+    except IOError:
+        # TODO: status code
+        return jsonify({'error': strings.EPOCH_FILE_UNDER_TRAINING_ERROR})
 
 
 @app.route('/api/models/download/files/', methods=['POST'])

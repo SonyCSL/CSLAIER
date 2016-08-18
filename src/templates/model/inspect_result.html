@@ -3,6 +3,11 @@
 {% block main_content %}
 <div class="container" id="main">
     <h2>{{model.name}} <small>Epoch:{{epoch}}</small></h2>
+    {% if error %}
+
+    <p>{{ error }}</p>
+
+    {% else %}
     <div class="model-sub-header">
         <div class="model-control-div">
             <a href="{{url_for('show_model', id=model.id)}}">
@@ -21,12 +26,13 @@
                 {% for result in results %}
                 <tr>
                     <td>{{result["rank"]}}</td>
-                    <td>{{result["name"]}}</td>
+                    <td>{{result["name"].decode('utf-8')}}</td>
                     <td>{{result["score"]}}</td>
                 </tr>
                 {% endfor %}
             </table>
         </div>
     </div>
-</div>
+    {% endif %}
+</p>
 {% endblock %}
