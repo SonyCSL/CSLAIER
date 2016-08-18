@@ -16,6 +16,7 @@ from db_models.datasets import Dataset
 from db_models.models import Model
 import deeplearning.runner as runner
 import common.utils as ds_util
+from common import strings
 
 __version__ = '0.6.1'
 
@@ -230,7 +231,7 @@ def inspect_image():
                                epoch=epoch, image=image_path)
     except IOError:
         return render_template('model/inspect_result.html',
-                               error='ご指定のepochのモデルファイルを開けませんでした。しばらく時間をおいてお試しください。',
+                               error=strings.EPOCH_FILE_UNDER_TRAINING_ERROR,
                                model=model, epoch=epoch)
 
 
@@ -491,7 +492,7 @@ def api_do_lstm_prediction():
         return jsonify({'result': model.lstm_predict(epoch, primetext, result_length)})
     except IOError:
         # TODO: status code
-        return jsonify({'error': 'ご指定のepochのモデルファイルを開けませんでした。しばらく時間をおいてお試しください。'})
+        return jsonify({'error': strings.EPOCH_FILE_UNDER_TRAINING_ERROR})
 
 
 @app.route('/api/models/download/files/', methods=['POST'])
