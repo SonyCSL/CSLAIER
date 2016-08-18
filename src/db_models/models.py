@@ -310,7 +310,7 @@ class Model(db.Model):
         if self.is_trained == 0:
             return []
         ret = glob.glob1(self.trained_model_path, 'model*')
-        return [int(model.replace('model', '')) for model in ret]
+        return [int(filter(lambda x: x not in 'model-', model)) for model in ret]
 
     def __get_visualizer(self, epoch):
         if epoch > self.epoch:
