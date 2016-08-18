@@ -309,8 +309,8 @@ class Model(db.Model):
     def get_usable_epochs(self):
         if self.is_trained == 0:
             return []
-        ret = glob.glob1(self.trained_model_path, 'model*')
-        return [int(filter(lambda x: x not in 'model-', model)) for model in ret]
+        ret = glob.glob1(self.trained_model_path, 'model*[!.meta]')
+        return [int(filter(lambda x: x not in 'model-', model)) for model in ret].reverse()
 
     def __get_visualizer(self, epoch):
         if epoch > self.epoch:
