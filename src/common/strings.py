@@ -1,1 +1,1 @@
-EPOCH_FILE_UNDER_TRAINING_ERROR = 'Selected epoch is currently under training. Could no use for inspection. Please wait for a while.'
+EPOCH_FILE_UNDER_TRAINING_ERROR = 'Selected epoch is currently under training. Could not use for inspection. Please wait for a while.'
