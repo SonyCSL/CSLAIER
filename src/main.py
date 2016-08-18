@@ -489,7 +489,6 @@ def api_do_lstm_prediction():
     model = Model.query.get(id)
 
     try:
-        raise IOError
         return jsonify({'result': model.lstm_predict(epoch, primetext, result_length)})
     except IOError:
         # TODO: status code
