@@ -56,7 +56,7 @@
                 </tr>
             </table>
         </div>
-        {% if usable_epochs %}
+        {% if usable_epochs and not model.framework == 'tensorflow' %}
         <div>
             <div id="model_detail_buttons">
                 <div class="form-group">
