@@ -308,8 +308,8 @@ def train_loop(model, output_dir, xp, optimizer, res_q, data_q):
         else:
             model(x, t)
 
-        serializers.save_hdf5(output_dir + os.sep + 'model%04d' % inp[2], model)
-        # serializers.save_hdf5(output_dir + os.sep + 'optimizer%04d'%inp[2], optimizer)
+        serializers.save_hdf5(os.path.join(output_dir, 'model%04d' % inp[2]), model)
+        serializers.save_hdf5(os.path.join(output_dir, 'resume.state'), optimizer)
         res_q.put((float(model.loss.data), float(model.accuracy.data), inp[2]))
         del x, t
 
