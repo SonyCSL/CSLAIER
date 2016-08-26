@@ -451,6 +451,12 @@ def api_start_train():
     return jsonify({'status': 'OK'})
 
 
+@app.route('/api/models/resume/train', methods=['POST'])
+def api_resume_train():
+    print(request.form)
+    return jsonify({'status': 'OK'})
+
+
 @app.route('/api/models/<int:id>/get/train_data/log/')
 def api_get_training_log(id):
     model = Model.query.get(id)

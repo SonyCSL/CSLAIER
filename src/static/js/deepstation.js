@@ -339,6 +339,55 @@ $('#epoch_select').on('keypress, change', function(e){
     $('#epoch_on_modal_title').text("Epoch:" + current_val);
 });
 
+$('#resume_train_btn').on('click', function(e){
+    var model_id = $('#model_id').val();
+    var gpu_num = $('#gpu_num').val() || $('input[name="gpu_num"]:checked').val();
+    $('#resume_train_modal').modal('hide');
+    $('#processing_screen').removeClass('hidden');
+
+    var formData = new FormData();
+    formData.append("model_id", model_id);
+    formData.append("gpu_num", gpu_num);
+    $.ajax({
+           url: "/api/models/resume/train",
+           data: formData,
+           method: "POST",
+           processData: false,
+           contentType: false,
+    }).done(function(ret){
+        console.log(ret)
+        if(ret.status === "OK") {
+            $('#processing_screen').addClass('hidden');
+            $('#start_train_div').addClass('hidden');
+            $('#model_detail_buttons').addClass('hidden');
+            $('span.label.label-nottrained')
+                .removeClass('label-nottrained')
+                .addClass('label-progress')
+                .text('In Progress');
+            $('span.label.label-trained')
+                .removeClass('label-trained')
+                .addClass('label-progress')
+                .text('In Progress');
+            $('#terminate_train_button').removeClass('hidden');
+            $('#delete_model_button').addClass('hidden');
+            $('#epoch_info').text(epoch);
+            $('#dataset_name_info').text(ret.dataset_name);
+            showResultScreen();
+            location.hash = "result";
+            return;
+        }
+        console.log(ret.traceback);
+        alert('Failed to resume train.');
+        $('#processing_screen').addClass('hidden');
+        return;
+
+    }).fail(function(ret){
+            alert('Failed to resume train.');
+            $('#processing_screen').addClass('hidden');
+    });
+
+});
+
 $('#start_train_btn').on('click', function(e){
     var model_id = $('#model_id').val();
     var dataset_id = parseInt($('#select_dataset').val(), 10);
