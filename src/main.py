@@ -207,12 +207,14 @@ def create_new_model():
 def show_model(id):
     model = Model.get_model_with_code(id)
     datasets = Dataset.query.filter_by(type=model.type)
+    resumable = os.path.exists(os.path.join(model.trained_model_path, 'resume.state'))
     return render_template('model/show.html',
                            model=model, datasets=datasets,
                            pretrained_models=model.get_pretrained_models(),
                            mecab_available=ds_util.is_module_available('Mecab'),
                            system_info=get_system_info(),
-                           usable_epochs=model.get_usable_epochs())
+                           usable_epochs=model.get_usable_epochs(),
+                           resumable=resumable)
 
 
 @app.route('/models/inspect/', methods=['POST'])
