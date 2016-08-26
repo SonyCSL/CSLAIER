@@ -128,6 +128,32 @@ def read_image(path, model_insize, mean_image, center=False, flip=False, origina
         return image
 
 
+class TrainingEpoch(object):
+    def __init__(self, number_of_epoch=0, number_of_batch=0, permutation=None):
+        super(TrainingEpoch, self).__init__()
+        self.epoch = number_of_epoch
+        self.number_of_batch = number_of_batch
+        self.permutation = permutation
+
+    def __eq__(self, other):
+        return other == 'epoch'
+
+    def increment_number_of_batch(self):
+        self.number_of_batch += 1
+
+    def serialize(self, fp):
+        json.dump({
+            'epoch': self.epoch,
+            'batch': self.number_of_batch,
+            'permutation': list(self.permutation)
+        }, fp)
+
+    @staticmethod
+    def deserialize(json_file):
+        dictionary = json.load(json_file)
+        return TrainingEpoch(dictionary['epoch'], dictionary['batch'], np.array(dictionary['permutation']))
+
+
 def feed_data(train_list, val_list, mean_image, batchsize, val_batchsize,
               model, loaderjob, epoch, optimizer, data_q, avoid_flipping):
     denominator = 1000 if len(train_list) > 1000 else len(train_list)
@@ -151,6 +177,7 @@ def feed_data(train_list, val_list, mean_image, batchsize, val_batchsize,
         logger.info('epoch: {0}'.format(epoch))
         logger.info('learning rate: {0}'.format(optimizer.lr))
         perm = np.random.permutation(len(train_list))
+        data_q.put(TrainingEpoch(epoch, 0, perm))
         for idx in perm:
             path, label = train_list[idx]
             batch_pool[i] = pool.apply_async(read_image, (path, model.insize, mean_image,
@@ -281,20 +308,24 @@ def log_result(batchsize, val_batchsize, log_file, log_html, res_q):
 
 def train_loop(model, output_dir, xp, optimizer, res_q, data_q, interrupt_event,interruptable_event):
     graph_generated = False
+    training_epoch = None
     while True:
         if interrupt_event.is_set():
-            print('>>>interrupt')
             serializers.save_hdf5(os.path.join(output_dir, 'resume.state'), optimizer)
+            training_epoch.serialize(open(os.path.join(output_dir, 'resume.json'), 'w'))
             interruptable_event.set()
-            print('>>>break?')
             break
 
         while data_q.empty():
             time.sleep(0.1)
         inp = data_q.get()
+
         if inp == 'end':
             res_q.put('end')
             break
+        elif inp == 'epoch':
+            training_epoch = inp
+            continue
         elif inp == 'train':
             res_q.put('train')
             model.train = True
@@ -308,6 +339,7 @@ def train_loop(model, output_dir, xp, optimizer, res_q, data_q, interrupt_event,
         t = chainer.Variable(xp.asarray(inp[1]), volatile=volatile)
         if model.train:
             optimizer.update(model, x, t)
+            training_epoch.increment_number_of_batch()
             if not graph_generated:
                 with open(output_dir + os.sep + 'graph.dot', 'w') as o:
                     o.write(computational_graph.build_computational_graph((model.loss,)).dump())
@@ -316,12 +348,9 @@ def train_loop(model, output_dir, xp, optimizer, res_q, data_q, interrupt_event,
             model(x, t)
 
         serializers.save_hdf5(os.path.join(output_dir, 'model%04d' % inp[2]), model)
-        with open(os.path.join(output_dir, 'epoch'), 'w') as fp:
-            fp.write(str(inp[2]))
 
         res_q.put((float(model.loss.data), float(model.accuracy.data), inp[2]))
         del x, t
-    print('train_loop tail')
 
 
 def load_module(dir_name, symbol):
