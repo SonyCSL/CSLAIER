@@ -279,12 +279,13 @@ def log_result(batchsize, val_batchsize, log_file, log_html, res_q):
     fH.close()
 
 
-def train_loop(model, output_dir, xp, optimizer, res_q, data_q, interrupt_event):
+def train_loop(model, output_dir, xp, optimizer, res_q, data_q, interrupt_event,interruptable_event):
     graph_generated = False
     while True:
         if interrupt_event.is_set():
             print('>>>interrupt')
             serializers.save_hdf5(os.path.join(output_dir, 'resume.state'), optimizer)
+            interruptable_event.set()
             print('>>>break?')
             break
 
@@ -335,7 +336,8 @@ def do_train_by_chainer(
     loaderjob=20,
     pretrained_model="",
     avoid_flipping=False,
-    interrupt_event=None
+    interrupt_event=None,
+    interruptable_event=None
 ):
     logger.info('Start imagenet train. model_id: {0} gpu: {1}, pretrained_model: {2}'
                 .format(db_model.id, db_model.gpu, pretrained_model))
@@ -426,7 +428,8 @@ def do_train_by_chainer(
         optimizer,
         res_q,
         data_q,
-        interrupt_event
+        interrupt_event,
+        interruptable_event
     )
     feeder.join()
     train_logger.join()

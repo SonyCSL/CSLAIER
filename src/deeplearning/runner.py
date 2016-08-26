@@ -17,12 +17,16 @@ INTERRUPTABLE_PROCESSES = {}
 
 
 class Interruptable(object):
-    def __init__(self, interrupt_event):
+    def __init__(self, interrupt_event, interruptable_event):
         super(Interruptable, self).__init__()
         self.interrupt_event = interrupt_event
+        self.interruptable_event = interruptable_event
 
     def interrupt(self):
         self.interrupt_event.set()
+
+    def interruptable(self):
+        return self.interruptable_event.is_set()
 
 
 def run_imagenet_train(
@@ -39,6 +43,7 @@ def run_imagenet_train(
     batchsize
 ):
     interrupt_event = Event()
+    interruptable_event = Event()
     dataset = Dataset.query.get(dataset_id)
     model = Model.query.get(model_id)
     model.dataset = dataset
@@ -59,7 +64,8 @@ def run_imagenet_train(
                 20,   # loader_job
                 pretrained_model,
                 avoid_flipping,
-                interrupt_event
+                interrupt_event,
+                interruptable_event
             )
         )
     elif model.framework == 'tensorflow':
@@ -81,7 +87,7 @@ def run_imagenet_train(
     model.pid = train_process.pid
     model.update_and_commit()
     logging.info('start imagenet training. PID: ', model.pid)
-    INTERRUPTABLE_PROCESSES[model.pid] = Interruptable(interrupt_event)
+    INTERRUPTABLE_PROCESSES[model.pid] = Interruptable(interrupt_event, interruptable_event)
     return
 
 

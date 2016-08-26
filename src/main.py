@@ -4,6 +4,7 @@ import re
 import logging
 from logging.handlers import RotatingFileHandler
 from logging import getLogger
+from time import sleep
 
 from flask import Flask, url_for, render_template, request, redirect,\
              jsonify, send_from_directory, send_file
@@ -513,11 +514,14 @@ def download_trained_files():
 def api_terminate_trained():
     id = request.form['id']
     model = Model.query.get(id)
+    interruptable = runner.INTERRUPTABLE_PROCESSES.get(model.pid)
+    print(interruptable)
+    if interruptable:
+        interruptable.interrupt()
+        while not interruptable.interruptable():
+            sleep(0.2)
+        del runner.INTERRUPTABLE_PROCESSES[model.pid]
     model.terminate_train()
-    # interruptable = runner.INTERRUPTABLE_PROCESSES.get(model.pid)
-    # if interruptable:
-    #     interruptable.interrupt()
-
     return jsonify({'status': 'success'})
 
 
