@@ -1,7 +1,7 @@
 # -*- encoding:utf-8 -*-
 import os
 import logging
-from multiprocessing import Process
+from multiprocessing import Process, Event
 
 from db_models.datasets import Dataset
 from db_models.models import Model
@@ -11,6 +11,18 @@ import deeplearning.train.train_imagenet
 import deeplearning.train.train_lstm
 
 logger = logging.getLogger(__name__)
+
+
+INTERRUPTABLE_PROCESSES = {}
+
+
+class Interruptable(object):
+    def __init__(self, interrupt_event):
+        super(Interruptable, self).__init__()
+        self.interrupt_event = interrupt_event
+
+    def interrupt(self):
+        self.interrupt_event.set()
 
 
 def run_imagenet_train(
@@ -26,6 +38,7 @@ def run_imagenet_train(
     avoid_flipping,
     batchsize
 ):
+    interrupt_event = Event()
     dataset = Dataset.query.get(dataset_id)
     model = Model.query.get(model_id)
     model.dataset = dataset
@@ -45,7 +58,8 @@ def run_imagenet_train(
                 250,  # val_batchsize
                 20,   # loader_job
                 pretrained_model,
-                avoid_flipping
+                avoid_flipping,
+                interrupt_event
             )
         )
     elif model.framework == 'tensorflow':
@@ -67,6 +81,7 @@ def run_imagenet_train(
     model.pid = train_process.pid
     model.update_and_commit()
     logging.info('start imagenet training. PID: ', model.pid)
+    INTERRUPTABLE_PROCESSES[model.pid] = Interruptable(interrupt_event)
     return
 
 

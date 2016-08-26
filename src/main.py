@@ -514,6 +514,10 @@ def api_terminate_trained():
     id = request.form['id']
     model = Model.query.get(id)
     model.terminate_train()
+    # interruptable = runner.INTERRUPTABLE_PROCESSES.get(model.pid)
+    # if interruptable:
+    #     interruptable.interrupt()
+
     return jsonify({'status': 'success'})
 
 

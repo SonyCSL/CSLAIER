@@ -279,9 +279,15 @@ def log_result(batchsize, val_batchsize, log_file, log_html, res_q):
     fH.close()
 
 
-def train_loop(model, output_dir, xp, optimizer, res_q, data_q):
+def train_loop(model, output_dir, xp, optimizer, res_q, data_q, interrupt_event):
     graph_generated = False
     while True:
+        if interrupt_event.is_set():
+            print('>>>interrupt')
+            serializers.save_hdf5(os.path.join(output_dir, 'resume.state'), optimizer)
+            print('>>>break?')
+            break
+
         while data_q.empty():
             time.sleep(0.1)
         inp = data_q.get()
@@ -309,9 +315,12 @@ def train_loop(model, output_dir, xp, optimizer, res_q, data_q):
             model(x, t)
 
         serializers.save_hdf5(os.path.join(output_dir, 'model%04d' % inp[2]), model)
-        serializers.save_hdf5(os.path.join(output_dir, 'resume.state'), optimizer)
+        with open(os.path.join(output_dir, 'epoch'), 'w') as fp:
+            fp.write(str(inp[2]))
+
         res_q.put((float(model.loss.data), float(model.accuracy.data), inp[2]))
         del x, t
+    print('train_loop tail')
 
 
 def load_module(dir_name, symbol):
@@ -325,7 +334,8 @@ def do_train_by_chainer(
     val_batchsize=250,
     loaderjob=20,
     pretrained_model="",
-    avoid_flipping=False
+    avoid_flipping=False,
+    interrupt_event=None
 ):
     logger.info('Start imagenet train. model_id: {0} gpu: {1}, pretrained_model: {2}'
                 .format(db_model.id, db_model.gpu, pretrained_model))
@@ -392,7 +402,7 @@ def do_train_by_chainer(
             db_model.epoch,
             optimizer,
             data_q,
-            avoid_flipping
+            avoid_flipping,
         )
     )
     feeder.daemon = True
@@ -415,7 +425,8 @@ def do_train_by_chainer(
         xp,
         optimizer,
         res_q,
-        data_q
+        data_q,
+        interrupt_event
     )
     feeder.join()
     train_logger.join()
