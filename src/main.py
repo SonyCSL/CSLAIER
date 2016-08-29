@@ -207,7 +207,10 @@ def create_new_model():
 def show_model(id):
     model = Model.get_model_with_code(id)
     datasets = Dataset.query.filter_by(type=model.type)
-    resumable = os.path.exists(os.path.join(model.trained_model_path, 'resume.state'))
+    print model.trained_model_path
+    resumable = False
+    if model.trained_model_path:
+        resumable = os.path.exists(os.path.join(model.trained_model_path, 'resume.state'))
     return render_template('model/show.html',
                            model=model, datasets=datasets,
                            pretrained_models=model.get_pretrained_models(),
@@ -454,6 +457,14 @@ def api_start_train():
 @app.route('/api/models/resume/train', methods=['POST'])
 def api_resume_train():
     print(request.form)
+    model_id = request.form['model_id']
+    gpu_num = int(request.form['gpu_num'])
+    runner.resume_imagenet_train(
+        model_id,
+        gpu_num,
+        app.config['PREPARED_DATA'],
+        app.config['TRAINED_DATA'],
+    )
     return jsonify({'status': 'OK'})
 
 
@@ -523,7 +534,6 @@ def api_terminate_trained():
     id = request.form['id']
     model = Model.query.get(id)
     interruptable = runner.INTERRUPTABLE_PROCESSES.get(model.pid)
-    print(interruptable)
     if interruptable:
         interruptable.interrupt()
         while not interruptable.interruptable():

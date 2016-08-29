@@ -91,6 +91,52 @@ def run_imagenet_train(
     return
 
 
+# 再現に必要な情報はモデルと、稼働させるGPUだけのはず。
+def resume_imagenet_train(model_id, gpu_num, prepared_data_root, output_dir_root, ):
+    interrupt_event = Event()
+    interruptable_event = Event()
+    model = Model.query.get(model_id)
+    model.gpu = gpu_num
+    # model, train_image_num, val_image_num = deeplearning.prepare.prepare_for_imagenet.do(model, prepared_data_root)
+    if model.framework == 'chainer':
+        train_process = Process(
+            target=deeplearning.train.train_imagenet.resume_train_by_chainer,
+            args=(
+                model,
+                output_dir_root,
+                250,  # val_batchsize
+                20,  # loader_job
+                interrupt_event,
+                interruptable_event
+            )
+        )
+    else:
+        return
+    '''
+    # elif model.framework == 'tensorflow':
+    #     train_process = Process(
+    #         target=deeplearning.train.train_imagenet.do_train_by_tensorflow,
+    #         args=(
+    #             model,
+    #             output_dir_root,
+    #             500,  # val_batchsize
+    #             pretrained_model,
+    #             train_image_num,
+    #             val_image_num,
+    #             avoid_flipping
+    #         )
+    #     )
+    # '''
+    # else:
+    #     raise Exception('Unknown framework')
+    train_process.start()
+    model.pid = train_process.pid
+    model.update_and_commit()
+    logging.info('start imagenet training. PID: ', model.pid)
+    INTERRUPTABLE_PROCESSES[model.pid] = Interruptable(interrupt_event, interruptable_event)
+    return
+
+
 def run_lstm_train(
     prepared_data_root,
     output_dir_root,

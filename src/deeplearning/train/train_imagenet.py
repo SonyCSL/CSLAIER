@@ -128,13 +128,17 @@ def read_image(path, model_insize, mean_image, center=False, flip=False, origina
         return image
 
 
+# 状態の再現に必要でかつSQLiteに格納されていないものはこのクラスが持ち、JSON化します。
 class TrainingEpoch(object):
-    def __init__(self, number_of_epoch=0, number_of_batch=0, permutation=None):
+    def __init__(self, number_of_epoch=0, number_of_batch=0, permutation=None, avoid_flipping=False, pretrained_model=None):
         super(TrainingEpoch, self).__init__()
         self.epoch = number_of_epoch
         self.number_of_batch = number_of_batch
         self.permutation = permutation
+        self.avoid_flipping = avoid_flipping
+        self.pretrained_model = pretrained_model
 
+    # self == 'epoch' == Trueになります。train_loop内の取り回しのため。
     def __eq__(self, other):
         return other == 'epoch'
 
@@ -145,17 +149,24 @@ class TrainingEpoch(object):
         json.dump({
             'epoch': self.epoch,
             'batch': self.number_of_batch,
-            'permutation': list(self.permutation)
+            'permutation': list(self.permutation),
+            'avoid_flipping': self.avoid_flipping,
+            'pretrained_model': self.pretrained_model
         }, fp)
 
     @staticmethod
     def deserialize(json_file):
-        dictionary = json.load(json_file)
-        return TrainingEpoch(dictionary['epoch'], dictionary['batch'], np.array(dictionary['permutation']))
+        d = json.load(open(json_file))
+        return TrainingEpoch(
+            d['epoch'],
+            d['batch'],
+            np.array(d['permutation']),
+            d['avoid_flipping'],
+            d['pretrained_model'])
 
 
 def feed_data(train_list, val_list, mean_image, batchsize, val_batchsize,
-              model, loaderjob, epoch, optimizer, data_q, avoid_flipping):
+              model, loaderjob, epoch, optimizer, data_q, avoid_flipping, resume_perm=None, resume_epoch=1):
     denominator = 1000 if len(train_list) > 1000 else len(train_list)
     i = 0
     count = 0
@@ -173,11 +184,14 @@ def feed_data(train_list, val_list, mean_image, batchsize, val_batchsize,
     if avoid_flipping:
         use_flip = False
 
-    for epoch in six.moves.range(1, 1 + epoch):
+    for epoch in six.moves.range(resume_epoch, 1 + epoch):
         logger.info('epoch: {0}'.format(epoch))
         logger.info('learning rate: {0}'.format(optimizer.lr))
-        perm = np.random.permutation(len(train_list))
-        data_q.put(TrainingEpoch(epoch, 0, perm))
+        if resume_perm is not None and resume_epoch == epoch:
+            perm = resume_perm
+        else:
+            perm = np.random.permutation(len(train_list))
+        data_q.put(TrainingEpoch(epoch, 0, perm, avoid_flipping))
         for idx in perm:
             path, label = train_list[idx]
             batch_pool[i] = pool.apply_async(read_image, (path, model.insize, mean_image,
@@ -216,12 +230,13 @@ def feed_data(train_list, val_list, mean_image, batchsize, val_batchsize,
     return
 
 
-def log_result(batchsize, val_batchsize, log_file, log_html, res_q):
-    fH = open(log_html, 'w')
+def log_result(batchsize, val_batchsize, log_file, log_html, res_q, add_mode=False):
+    fH = open(log_html, 'a' if add_mode else 'w')
     fH.flush()
 
-    f = open(log_file, 'w')
-    f.write("count\tepoch\taccuracy\tloss\taccuracy(val)\tloss(val)\n")
+    f = open(log_file, 'a' if add_mode else 'w')
+    if not add_mode:
+        f.write("count\tepoch\taccuracy\tloss\taccuracy(val)\tloss(val)\n")
     f.flush()
     count = 0
     train_count = 0
@@ -311,7 +326,7 @@ def train_loop(model, output_dir, xp, optimizer, res_q, data_q, interrupt_event,
     training_epoch = None
     while True:
         if interrupt_event.is_set():
-            serializers.save_hdf5(os.path.join(output_dir, 'resume.state'), optimizer)
+            serializers.save_npz(os.path.join(output_dir, 'resume.state'), optimizer)
             training_epoch.serialize(open(os.path.join(output_dir, 'resume.json'), 'w'))
             interruptable_event.set()
             break
@@ -324,6 +339,7 @@ def train_loop(model, output_dir, xp, optimizer, res_q, data_q, interrupt_event,
             res_q.put('end')
             break
         elif inp == 'epoch':
+            print('new epoch')
             training_epoch = inp
             continue
         elif inp == 'train':
@@ -465,6 +481,108 @@ def do_train_by_chainer(
 
     # post-processing
     _post_process(db_model, pretrained_model)
+    logger.info('Finish imagenet train. model_id: {0}'.format(db_model.id))
+
+
+def resume_train_by_chainer(
+    db_model,
+    root_output_dir,
+    val_batchsize=250,
+    loaderjob=20,
+    interrupt_event=None,
+    interruptable_event=None
+):
+    logger.info('resume last imagenet train. model_id: {0} gpu: {1}'
+                .format(db_model.id, db_model.gpu))
+    # start initialization
+    if db_model.gpu >= 0:
+        cuda.check_cuda_available()
+    xp = cuda.cupy if db_model.gpu >= 0 else np
+
+    train_list = load_image_list(os.path.join(db_model.prepared_file_path, 'train.txt'))
+    val_list = load_image_list(os.path.join(db_model.prepared_file_path, 'test.txt'))
+    mean_image = pickle.load(open(os.path.join(db_model.prepared_file_path, 'mean.npy'), 'rb'))
+
+    # @see http://qiita.com/progrommer/items/abd2276f314792c359da
+    (model_dir, model_name) = os.path.split(db_model.network_path)
+    model_name = re.sub(r"\.py$", "", model_name)
+    model_module = load_module(model_dir, model_name)
+    model = model_module.Network()
+
+    # create directory for saving trained models
+    db_model.trained_model_path = _create_trained_model_dir(db_model.trained_model_path,
+                                                            root_output_dir, model_name)
+
+    if db_model.gpu >= 0:
+        cuda.get_device(db_model.gpu).use()
+        model.to_gpu()
+
+    optimizer = optimizers.MomentumSGD(lr=0.01, momentum=0.9)
+    optimizer.setup(model)
+
+    resume_epoch = TrainingEpoch.deserialize(os.path.join(db_model.trained_model_path, 'resume.json'))
+    perm = resume_epoch.permutation[resume_epoch.number_of_batch * db_model.batchsize:]
+    print(perm, len(perm))
+
+    logger.info("Load optimizer state from : {}"
+                .format(os.path.join(db_model.trained_model_path, 'resume.state')))
+    serializers.load_npz(os.path.join(db_model.trained_model_path, 'resume.state'), optimizer)
+
+    data_q = queue.Queue(maxsize=1)
+    res_q = queue.Queue()
+
+    db_model.is_trained = 1
+    db_model.update_and_commit()
+
+    # Invoke threads
+    feeder = threading.Thread(
+        target=feed_data,
+        args=(
+            train_list,
+            val_list,
+            mean_image,
+            db_model.batchsize,
+            val_batchsize,
+            model,
+            loaderjob,
+            db_model.epoch,
+            optimizer,
+            data_q,
+            resume_epoch.avoid_flipping,
+            perm,
+            resume_epoch.epoch
+        )
+    )
+    feeder.daemon = True
+    feeder.start()
+    train_logger = threading.Thread(
+        target=log_result,
+        args=(
+            db_model.batchsize,
+            val_batchsize,
+            os.path.join(db_model.trained_model_path, 'line_graph.tsv'),
+            os.path.join(db_model.trained_model_path, 'log.html'),
+            res_q,
+            True
+        )
+    )
+    train_logger.daemon = True
+    train_logger.start()
+    train_loop(
+        model,
+        db_model.trained_model_path,
+        xp,
+        optimizer,
+        res_q,
+        data_q,
+        interrupt_event,
+        interruptable_event
+    )
+    feeder.join()
+    train_logger.join()
+
+    # post-processing
+    _post_process(db_model, '')
     logger.info('Finish imagenet train. model_id: {0}'.format(db_model.id))
 
 
