@@ -130,25 +130,31 @@ def read_image(path, model_insize, mean_image, center=False, flip=False, origina
 
 # 状態の再現に必要でかつSQLiteに格納されていないものはこのクラスが持ち、JSON化します。
 class TrainingEpoch(object):
-    def __init__(self, number_of_epoch=0, number_of_batch=0, permutation=None, avoid_flipping=False, pretrained_model=None):
+    def __init__(self, number_of_epoch, batch_size, permutation=None, avoid_flipping=False, pretrained_model=None):
         super(TrainingEpoch, self).__init__()
         self.epoch = number_of_epoch
-        self.number_of_batch = number_of_batch
         self.permutation = permutation
         self.avoid_flipping = avoid_flipping
         self.pretrained_model = pretrained_model
+        self.batch_size = batch_size
+        self.number_of_before_epoch_train = 0
 
     # self == 'epoch' == Trueになります。train_loop内の取り回しのため。
     def __eq__(self, other):
         return other == 'epoch'
 
-    def increment_number_of_batch(self):
-        self.number_of_batch += 1
+    # 済んだ学習のidxを削っていく(Epochを跨いでいる分を加味)
+    def batch_updated(self):
+        self.permutation = self.permutation[(self.batch_size - self.number_of_before_epoch_train):]
+        self.number_of_before_epoch_train = 0
+
+    def next_number_of_before_epoch_train(self):
+        return len(self.permutation) + self.number_of_before_epoch_train
 
     def serialize(self, fp):
         json.dump({
             'epoch': self.epoch,
-            'batch': self.number_of_batch,
+            'batch_size': self.batch_size,
             'permutation': list(self.permutation),
             'avoid_flipping': self.avoid_flipping,
             'pretrained_model': self.pretrained_model
@@ -159,7 +165,7 @@ class TrainingEpoch(object):
         d = json.load(open(json_file))
         return TrainingEpoch(
             d['epoch'],
-            d['batch'],
+            d['batch_size'],
             np.array(d['permutation']),
             d['avoid_flipping'],
             d['pretrained_model'])
@@ -191,7 +197,7 @@ def feed_data(train_list, val_list, mean_image, batchsize, val_batchsize,
             perm = resume_perm
         else:
             perm = np.random.permutation(len(train_list))
-        data_q.put(TrainingEpoch(epoch, 0, perm, avoid_flipping))
+        data_q.put(TrainingEpoch(epoch, batchsize, perm, avoid_flipping))
         for idx in perm:
             path, label = train_list[idx]
             batch_pool[i] = pool.apply_async(read_image, (path, model.insize, mean_image,
@@ -339,7 +345,8 @@ def train_loop(model, output_dir, xp, optimizer, res_q, data_q, interrupt_event,
             res_q.put('end')
             break
         elif inp == 'epoch':
-            print('new epoch')
+            if training_epoch:
+                inp.number_of_before_epoch_train = training_epoch.next_number_of_before_epoch_train()
             training_epoch = inp
             continue
         elif inp == 'train':
@@ -355,7 +362,7 @@ def train_loop(model, output_dir, xp, optimizer, res_q, data_q, interrupt_event,
         t = chainer.Variable(xp.asarray(inp[1]), volatile=volatile)
         if model.train:
             optimizer.update(model, x, t)
-            training_epoch.increment_number_of_batch()
+            training_epoch.batch_updated()
             if not graph_generated:
                 with open(output_dir + os.sep + 'graph.dot', 'w') as o:
                     o.write(computational_graph.build_computational_graph((model.loss,)).dump())
@@ -521,8 +528,6 @@ def resume_train_by_chainer(
     optimizer.setup(model)
 
     resume_epoch = TrainingEpoch.deserialize(os.path.join(db_model.trained_model_path, 'resume.json'))
-    perm = resume_epoch.permutation[resume_epoch.number_of_batch * db_model.batchsize:]
-    print(perm, len(perm))
 
     logger.info("Load optimizer state from : {}"
                 .format(os.path.join(db_model.trained_model_path, 'resume.state')))
@@ -549,7 +554,7 @@ def resume_train_by_chainer(
             optimizer,
             data_q,
             resume_epoch.avoid_flipping,
-            perm,
+            resume_epoch.permutation,
             resume_epoch.epoch
         )
     )
