@@ -59,12 +59,12 @@ def _backup_pretrained_model(db_model, pretrained_model):
     try:
         shutil.copyfile(os.path.join(db_model.trained_model_path, pretrained_model),
                         os.path.join(db_model.trained_model_path,
-                        'previous_' + pretrained_model))
+                                     'previous_' + pretrained_model))
     except Exception as e:
         logger.exception('Could not copy {0} to {1}. {2}'
                          .format(os.path.join(db_model.trained_model_path, pretrained_model),
                                  os.path.join(db_model.trained_model_path,
-                                 'previous_' + pretrained_model), e))
+                                              'previous_' + pretrained_model), e))
         raise e
 
 
@@ -74,7 +74,7 @@ def _post_process(db_model, pretrained_model):
     db_model.pid = None
     db_model.gpu = None
     db_model.update_and_commit()
-    if os.path.exists(os.path.join(db_model.trained_model_path,  'previous_' + pretrained_model)):
+    if os.path.exists(os.path.join(db_model.trained_model_path, 'previous_' + pretrained_model)):
         # delete backup file
         try:
             os.remove(os.path.join(db_model.trained_model_path, 'previous_' + pretrained_model))
@@ -272,8 +272,8 @@ def log_result(batchsize, val_batchsize, log_file, log_html, res_q, add_mode=Fal
             throughput = train_count * batchsize / duration
             fH.write(
                 'train {} updates ({} samples) time: {} ({} images/sec)<br>'
-                .format(train_count, train_count * batchsize,
-                        datetime.timedelta(seconds=duration), throughput))
+                    .format(train_count, train_count * batchsize,
+                            datetime.timedelta(seconds=duration), throughput))
             fH.write("[TIME]{},{}<br>"
                      .format(epoch, datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')))
             fH.flush()
@@ -288,10 +288,10 @@ def log_result(batchsize, val_batchsize, log_file, log_html, res_q, add_mode=Fal
                 mean_error = 1 - train_cur_accuracy / 10000
                 fH.write("<strong>"
                          + json.dumps({
-                             'type': 'train',
-                             'iteration': train_count,
-                             'error': mean_error,
-                             'loss': mean_loss})
+                    'type': 'train',
+                    'iteration': train_count,
+                    'error': mean_error,
+                    'loss': mean_loss})
                          + "</strong><br>")
                 fH.flush()
                 train_cur_loss = 0
@@ -302,8 +302,8 @@ def log_result(batchsize, val_batchsize, log_file, log_html, res_q, add_mode=Fal
             throughput = val_count / duration
             fH.write(
                 'val {} batches ({} samples) time: {} ({} images/sec)'
-                .format(val_count / val_batchsize, val_count,
-                        datetime.timedelta(seconds=duration), throughput)
+                    .format(val_count / val_batchsize, val_count,
+                            datetime.timedelta(seconds=duration), throughput)
             )
             fH.flush()
             val_loss += loss
@@ -313,10 +313,10 @@ def log_result(batchsize, val_batchsize, log_file, log_html, res_q, add_mode=Fal
                 mean_accuracy = val_accuracy * val_batchsize / VALIDATION_TIMING
                 fH.write("<strong>"
                          + json.dumps({
-                             'type': 'val',
-                             'iteration': train_count,
-                             'error': (1 - mean_accuracy),
-                             'loss': mean_loss})
+                    'type': 'val',
+                    'iteration': train_count,
+                    'error': (1 - mean_accuracy),
+                    'loss': mean_loss})
                          + "</strong><br>")
                 fH.flush()
                 f.write(str(count) + "\t" + str(epoch) + "\t\t\t"
@@ -327,7 +327,7 @@ def log_result(batchsize, val_batchsize, log_file, log_html, res_q, add_mode=Fal
     fH.close()
 
 
-def train_loop(model, output_dir, xp, optimizer, res_q, data_q, interrupt_event,interruptable_event):
+def train_loop(model, output_dir, xp, optimizer, res_q, data_q, interrupt_event, interruptable_event):
     graph_generated = False
     training_epoch = None
     while True:
@@ -383,14 +383,14 @@ def load_module(dir_name, symbol):
 
 
 def do_train_by_chainer(
-    db_model,
-    root_output_dir,
-    val_batchsize=250,
-    loaderjob=20,
-    pretrained_model="",
-    avoid_flipping=False,
-    interrupt_event=None,
-    interruptable_event=None
+        db_model,
+        root_output_dir,
+        val_batchsize=250,
+        loaderjob=20,
+        pretrained_model="",
+        avoid_flipping=False,
+        interrupt_event=None,
+        interruptable_event=None
 ):
     logger.info('Start imagenet train. model_id: {0} gpu: {1}, pretrained_model: {2}'
                 .format(db_model.id, db_model.gpu, pretrained_model))
@@ -503,12 +503,12 @@ def remove_resume_file(base_path):
 
 
 def resume_train_by_chainer(
-    db_model,
-    root_output_dir,
-    val_batchsize=250,
-    loaderjob=20,
-    interrupt_event=None,
-    interruptable_event=None
+        db_model,
+        root_output_dir,
+        val_batchsize=250,
+        loaderjob=20,
+        interrupt_event=None,
+        interruptable_event=None
 ):
     logger.info('resume last imagenet train. model_id: {0} gpu: {1}'
                 .format(db_model.id, db_model.gpu))
@@ -632,25 +632,25 @@ def _extract_tfrecord(files, batchsize, num_epochs=None, avoid_flipping=True, us
         images, sparse_labels = tf.train.shuffle_batch([image, label],
                                                        batch_size=batchsize,
                                                        num_threads=8,
-                                                       capacity=1000 + 3*batchsize,
+                                                       capacity=1000 + 3 * batchsize,
                                                        min_after_dequeue=1000)
     else:
         images, sparse_labels = tf.train.batch([image, label],
                                                batch_size=batchsize,
                                                num_threads=8,
-                                               capacity=1000 + 3*batchsize)
+                                               capacity=1000 + 3 * batchsize)
 
     return images, sparse_labels
 
 
 def do_train_by_tensorflow(
-    db_model,
-    output_dir_root,
-    val_batchsize,
-    pretrained_model,
-    train_image_num,
-    val_image_num,
-    avoid_flipping
+        db_model,
+        output_dir_root,
+        val_batchsize,
+        pretrained_model,
+        train_image_num,
+        val_image_num,
+        avoid_flipping
 ):
     logger.info('Start imagenet train. model_id: {}, pretrained_model: {}'
                 .format(db_model.id, pretrained_model))
