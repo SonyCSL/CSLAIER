@@ -335,7 +335,8 @@ def train_loop(model, output_dir, xp, optimizer, res_q, data_q, interrupt_event,
             serializers.save_npz(os.path.join(output_dir, 'resume.state'), optimizer)
             training_epoch.serialize(open(os.path.join(output_dir, 'resume.json'), 'w'))
             interruptable_event.set()
-            break
+            while True:
+                time.sleep(1)
 
         while data_q.empty():
             time.sleep(0.1)
