@@ -427,6 +427,40 @@ Modelの詳細画面内の'Download Trained Files'ボタンを押下すると、
 * サーバーを再起動します。
 * DEEPstationが動いている以外のマシンでブラウザより、deepstation.cfgに指定したURLにアクセスし、DEEPstationの画面が開いたら成功です。
 
+#### Dockerの利用
+
+* Ubuntu14.04、GPU無しでchainerとtensorflowを利用するDockerfileが用意されています。利用するときは`docker build`する必要があります。
+* dockerを利用する場合、deepstation.cfgは `docker_config/deepstation.cfg`を利用してください。ただし、`HOST='0.0.0.0'`はそのままにしておく必要があります。
+
+##### Dockerイメージのビルド
+
+末尾の`.`を忘れないように
+
+```
+$ cd (deepstationのルート・ディレクトリ)
+$ docker build -t deepstation/ubuntu14_cpu_ds .
+```
+
+##### DEEPstation用Dockerイメージの起動
+
+```
+$ docker run -d -p 8080:8080 deepstation/ubuntu14_cpu_ds
+```
+
+上記コマンド実行後、ブラウザで `http://localhost:8080` にアクセスする
+
+##### DEEPstation用Dockerイメージの終了
+
+```
+$ docker ps
+CONTAINER ID        IMAGE                               COMMAND                  CREATED             STATUS              PORTS                     NAMES
+7803235d494c        deepstation/ubuntu14_cpu            "/bin/sh -c 'sh -c 'l"   5 seconds ago       Up 3 seconds        0.0.0.0:32769->8080/tcp   desperate_hawking
+# docker ps 出力のCONTAINER IDを指定する
+$ docker stop 7803235d494c
+```
+
+
+
 License
 --------
 
