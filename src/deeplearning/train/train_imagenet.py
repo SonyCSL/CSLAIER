@@ -443,6 +443,8 @@ def do_train_by_chainer(
     db_model.is_trained = 1
     db_model.update_and_commit()
 
+    remove_resume_file(db_model.trained_model_path)
+
     # Invoke threads
     feeder = threading.Thread(
         target=feed_data,
@@ -492,6 +494,14 @@ def do_train_by_chainer(
     logger.info('Finish imagenet train. model_id: {0}'.format(db_model.id))
 
 
+def remove_resume_file(base_path):
+    try:
+        os.remove(os.path.join(base_path, 'resume.state'))
+        os.remove(os.path.join(base_path, 'resume.json'))
+    except OSError:
+        pass
+
+
 def resume_train_by_chainer(
     db_model,
     root_output_dir,
@@ -528,11 +538,15 @@ def resume_train_by_chainer(
     optimizer = optimizers.MomentumSGD(lr=0.01, momentum=0.9)
     optimizer.setup(model)
 
-    resume_epoch = TrainingEpoch.deserialize(os.path.join(db_model.trained_model_path, 'resume.json'))
+    resume_json = os.path.join(db_model.trained_model_path, 'resume.json')
+    resume_state = os.path.join(db_model.trained_model_path, 'resume.state')
 
+    resume_epoch = TrainingEpoch.deserialize(resume_json)
     logger.info("Load optimizer state from : {}"
-                .format(os.path.join(db_model.trained_model_path, 'resume.state')))
-    serializers.load_npz(os.path.join(db_model.trained_model_path, 'resume.state'), optimizer)
+                .format(resume_state))
+    serializers.load_npz(resume_state, optimizer)
+
+    remove_resume_file(db_model.trained_model_path)
 
     data_q = queue.Queue(maxsize=1)
     res_q = queue.Queue()

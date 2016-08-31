@@ -456,7 +456,6 @@ def api_start_train():
 
 @app.route('/api/models/resume/train', methods=['POST'])
 def api_resume_train():
-    print(request.form)
     model_id = request.form['model_id']
     gpu_num = int(request.form['gpu_num'])
     runner.resume_imagenet_train(
