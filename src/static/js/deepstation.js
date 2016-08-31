@@ -479,7 +479,9 @@ $('#delete_model_button').on('click', function(e){
 $('#terminate_train_button').on('click', function(e){
     if(window.confirm('Is it okay to terminate this trainning?')) {
         var model_id = $('#model_id').val();
+        $('#processing_screen').removeClass('hidden');
         $.post('/api/models/terminate/train/', {id: model_id}, function(ret){
+            $('#processing_screen').addClass('hidden');
             if(ret.status == 'success') {
                 alert('Successfully terminated');
                 location.reload();
