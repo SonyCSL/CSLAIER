@@ -458,12 +458,21 @@ def api_start_train():
 def api_resume_train():
     model_id = request.form['model_id']
     gpu_num = int(request.form['gpu_num'])
-    runner.resume_imagenet_train(
-        model_id,
-        gpu_num,
-        app.config['PREPARED_DATA'],
-        app.config['TRAINED_DATA'],
-    )
+    model = Model.query.get(model_id)
+    if model.type == 'image':
+        runner.resume_imagenet_train(
+            app.config['PREPARED_DATA'],
+            app.config['TRAINED_DATA'],
+            model,
+            gpu_num
+        )
+    elif model.type == 'text':
+        runner.resume_lstm_train(
+            app.config['PREPARED_DATA'],
+            app.config['TRAINED_DATA'],
+            model,
+            gpu_num
+        )
     return jsonify({'status': 'OK'})
 
 
