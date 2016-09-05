@@ -25,6 +25,8 @@ from chainer import cuda
 from chainer import optimizers
 from chainer import serializers
 
+from .utils import remove_resume_file
+
 try:
     import tensorflow as tf
 except:
@@ -492,14 +494,6 @@ def do_train_by_chainer(
     # post-processing
     _post_process(db_model, pretrained_model)
     logger.info('Finish imagenet train. model_id: {0}'.format(db_model.id))
-
-
-def remove_resume_file(base_path):
-    try:
-        os.remove(os.path.join(base_path, 'resume.state'))
-        os.remove(os.path.join(base_path, 'resume.json'))
-    except OSError:
-        pass
 
 
 def resume_train_by_chainer(

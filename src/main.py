@@ -207,10 +207,9 @@ def create_new_model():
 def show_model(id):
     model = Model.get_model_with_code(id)
     datasets = Dataset.query.filter_by(type=model.type)
-    print model.trained_model_path
     resumable = False
     if model.trained_model_path:
-        resumable = os.path.exists(os.path.join(model.trained_model_path, 'resume.state'))
+        resumable = os.path.exists(os.path.join(model.trained_model_path, 'resume'))
     return render_template('model/show.html',
                            model=model, datasets=datasets,
                            pretrained_models=model.get_pretrained_models(),

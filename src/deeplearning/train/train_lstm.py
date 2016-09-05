@@ -23,6 +23,8 @@ import chainer.links as L
 from chainer import optimizers
 from chainer import serializers
 from chainer import link
+# from .utils import remove_resume_file
+
 
 logger = getLogger(__name__)
 
@@ -182,16 +184,6 @@ def do_train(
         serializers.load_npz(os.path.join(resume_path, 'resume.state'), optimizer)
     # TODO: delete old states ??
 
-    # delete layer visualization cache
-    for f in os.listdir(db_model.trained_model_path):
-        if os.path.isdir(os.path.join(db_model.trained_model_path, f)):
-            try:
-                shutil.rmtree(os.path.join(db_model.trained_model_path, f))
-            except Exception as e:
-                logger.exception('Could not remove visualization cache: {0} {1}'
-                                 .format(os.path.join(db_model.trained_model_path, f), e))
-                raise e
-
     db_model.is_trained = 1
     db_model.update_and_commit()
 
@@ -232,11 +224,24 @@ def do_train(
     log_file.flush()
     graph_tsv.flush()
 
+    # delete layer visualization cache
+    # trained_model_pathに存在する全てのディレクトリを削除している。
+    for f in os.listdir(db_model.trained_model_path):
+        if os.path.isdir(os.path.join(db_model.trained_model_path, f)):
+            try:
+                shutil.rmtree(os.path.join(db_model.trained_model_path, f))
+            except Exception as e:
+                logger.exception('Could not remove visualization cache: {0} {1}'
+                                 .format(os.path.join(db_model.trained_model_path, f), e))
+                raise e
+    # ので、↓のresumeファイルの削除は不要
+    # remove_resume_file(db_model.trained_model_path)
+
     for i in six.moves.range(iteration_from, jump * n_epoch):
         # 1バッチが終わったタイミングを意図している。
         if interrupt_event.is_set() and isinstance(accum_loss, int):
-            os.mkdir('resume')
-            serializers.save_npz(os.path.join(resume_path, 'resume.optimizer'), optimizer)
+            os.mkdir(resume_path)
+            serializers.save_npz(os.path.join(resume_path, 'resume.state'), optimizer)
             serializers.save_npz(os.path.join(resume_path, 'resume.model'), model)
             json.dump({
                 'i': i,
