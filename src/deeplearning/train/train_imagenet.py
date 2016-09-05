@@ -334,8 +334,11 @@ def train_loop(model, output_dir, xp, optimizer, res_q, data_q, interrupt_event,
     training_epoch = None
     while True:
         if interrupt_event.is_set():
-            serializers.save_npz(os.path.join(output_dir, 'resume.state'), optimizer)
-            training_epoch.serialize(open(os.path.join(output_dir, 'resume.json'), 'w'))
+            resume_path = os.path.join(output_dir, 'resume')
+            os.mkdir(resume_path)
+            serializers.save_npz(os.path.join(resume_path, 'resume.model'), model)
+            serializers.save_npz(os.path.join(resume_path, 'resume.state'), optimizer)
+            training_epoch.serialize(open(os.path.join(resume_path, 'resume.json'), 'w'))
             interruptable_event.set()
             while True:
                 time.sleep(1)
@@ -532,14 +535,18 @@ def resume_train_by_chainer(
     optimizer = optimizers.MomentumSGD(lr=0.01, momentum=0.9)
     optimizer.setup(model)
 
-    resume_json = os.path.join(db_model.trained_model_path, 'resume.json')
-    resume_state = os.path.join(db_model.trained_model_path, 'resume.state')
+    resume_path = os.path.join(db_model.trained_model_path, 'resume')
+    resume_json = os.path.join(resume_path, 'resume.json')
 
     resume_epoch = TrainingEpoch.deserialize(resume_json)
+
+    # load resume data.
+    resume_state = os.path.join(resume_path, 'resume.state')
+    resume_model = os.path.join(resume_path, 'resume.model')
     logger.info("Load optimizer state from : {}"
                 .format(resume_state))
+    serializers.load_npz(resume_model, model)
     serializers.load_npz(resume_state, optimizer)
-
     remove_resume_file(db_model.trained_model_path)
 
     data_q = queue.Queue(maxsize=1)
