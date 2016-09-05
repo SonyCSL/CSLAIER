@@ -68,6 +68,8 @@ def make_train_text(model, use_wakatigaki):
         for f in ds_utils.find_all_files(model.dataset.dataset_path):
             temp_text = open(f, 'r').read()
             encoding = nkf.guess(temp_text)
+            if encoding == 'BINARY':
+                continue
             decoded_text = temp_text.decode(encoding, 'ignore')
             decoded_text = decoded_text.replace('\r', '')
             encoded_text = decoded_text.encode('UTF-8')
