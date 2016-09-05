@@ -651,7 +651,10 @@ def do_train_by_tensorflow(
         pretrained_model,
         train_image_num,
         val_image_num,
-        avoid_flipping
+        avoid_flipping,
+        resume,
+        interrupt_event,
+        interruptable_event
 ):
     logger.info('Start imagenet train. model_id: {}, pretrained_model: {}'
                 .format(db_model.id, pretrained_model))
@@ -700,6 +703,7 @@ def do_train_by_tensorflow(
         line_graph.write("count\tepoch\taccuracy\tloss\taccuracy(val)\tloss(val)\n")
         line_graph.flush()
         with tf.Session() as sess:
+
             # Load pretrained model
             if pretrained_model is not None and pretrained_model.find("model") > -1:
                 logger.info("load pretrained model : "
@@ -708,18 +712,42 @@ def do_train_by_tensorflow(
                 _backup_pretrained_model(db_model, pretrained_model)
                 _delete_old_models(db_model, pretrained_model)
 
+            resume_path = os.path.join(db_model.trained_model_path, 'resume')
+            if resume:
+                saver.restore(sess, os.path.join(resume_path, 'resume.sess'))
+                resume_data = json.load(open(os.path.join(resume_path, 'resume.json')))
+            else:
+                resume_data = {}
+            remove_resume_file(db_model.trained_model_path)
+
             sess.run(tf.initialize_all_variables())
 
             coord = tf.train.Coordinator()
             threads = tf.train.start_queue_runners(sess=sess, coord=coord)
 
             try:
-                step = 0
-                prev_epoch = None
-                begin_at = time.time()
-                train_cur_loss = 0
-                train_cur_accuracy = 0
+                step = resume_data.get('step', 0)
+                prev_epoch = resume_data.get('prev_epoch', None)
+                begin_at = time.time() - resume_data.get('duration', 0)
+                train_cur_loss = resume_data.get('train_cur_loss', 0)
+                train_cur_accuracy = resume_data.get('train_cur_accuracy', 0)
                 while not coord.should_stop():
+                    if interrupt_event.is_set():
+                        print('interrupt')
+                        os.mkdir(resume_path)
+                        json.dump({
+                            'step': step,
+                            'prev_epoch': prev_epoch,
+                            'duration': time.time() - begin_at,
+                            'train_cur_loss': train_cur_loss,
+                            'train_cur_accuracy': train_cur_accuracy
+                        }, open(os.path.join(resume_path, 'resume.json'), 'w'))
+
+                        saver.save(sess, os.path.join(resume_path, 'resume.sess'))
+                        interruptable_event.set()
+                        while True:
+                            time.sleep(0.5)
+
                     images, sparse_labels = sess.run([train_images, train_sparse_labels])
                     _, train_loss, train_acc = sess.run([train_op, loss_value, acc],
                                                         feed_dict={
