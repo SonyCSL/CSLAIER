@@ -695,12 +695,17 @@ def do_train_by_tensorflow(
     first_and_last_saver = tf.train.Saver(max_to_keep=2)
     saver = tf.train.Saver(max_to_keep=50)
 
-    with open(os.path.join(db_model.trained_model_path, 'line_graph.tsv'), 'w') as line_graph, \
-            open(os.path.join(db_model.trained_model_path, 'log.html'), 'w') as log_file:
+    if resume:
+        mode = 'a'
+    else:
+        mode = 'w'
+    with open(os.path.join(db_model.trained_model_path, 'line_graph.tsv'), mode) as line_graph, \
+            open(os.path.join(db_model.trained_model_path, 'log.html'), mode) as log_file:
         log_file.write('train: {} images, val: {} images, epoch: {}<br>'
                        .format(train_image_num, val_image_num, db_model.epoch))
         log_file.flush()
-        line_graph.write("count\tepoch\taccuracy\tloss\taccuracy(val)\tloss(val)\n")
+        if not resume:
+            line_graph.write("count\tepoch\taccuracy\tloss\taccuracy(val)\tloss(val)\n")
         line_graph.flush()
         with tf.Session() as sess:
 
@@ -732,6 +737,7 @@ def do_train_by_tensorflow(
                 train_cur_loss = resume_data.get('train_cur_loss', 0)
                 train_cur_accuracy = resume_data.get('train_cur_accuracy', 0)
                 while not coord.should_stop():
+                    print(step)
                     if interrupt_event.is_set():
                         print('interrupt')
                         os.mkdir(resume_path)
