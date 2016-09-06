@@ -329,7 +329,7 @@ def log_result(batchsize, val_batchsize, log_file, log_html, res_q, add_mode=Fal
     fH.close()
 
 
-def train_loop(model, output_dir, xp, optimizer, res_q, data_q, interrupt_event, interruptable_event):
+def train_loop(model, output_dir, xp, optimizer, res_q, data_q, pretrained_model, interrupt_event, interruptable_event):
     graph_generated = False
     training_epoch = None
     while True:
@@ -338,6 +338,7 @@ def train_loop(model, output_dir, xp, optimizer, res_q, data_q, interrupt_event,
             os.mkdir(resume_path)
             serializers.save_npz(os.path.join(resume_path, 'resume.model'), model)
             serializers.save_npz(os.path.join(resume_path, 'resume.state'), optimizer)
+            training_epoch.pretrained_model = pretrained_model
             training_epoch.serialize(open(os.path.join(resume_path, 'resume.json'), 'w'))
             interruptable_event.set()
             while True:
@@ -488,6 +489,7 @@ def do_train_by_chainer(
         optimizer,
         res_q,
         data_q,
+        pretrained_model,
         interrupt_event,
         interruptable_event
     )
@@ -596,6 +598,7 @@ def resume_train_by_chainer(
         optimizer,
         res_q,
         data_q,
+        resume_epoch.pretrained_model,
         interrupt_event,
         interruptable_event
     )
@@ -603,7 +606,7 @@ def resume_train_by_chainer(
     train_logger.join()
 
     # post-processing
-    _post_process(db_model, '')
+    _post_process(db_model, resume_epoch.pretrained_model)
     logger.info('Finish imagenet train. model_id: {0}'.format(db_model.id))
 
 
@@ -715,10 +718,10 @@ def do_train_by_tensorflow(
                 saver.restore(sess, os.path.join(db_model.trained_model_path, pretrained_model))
                 _backup_pretrained_model(db_model, pretrained_model)
                 _delete_old_models(db_model, pretrained_model)
-
             resume_path = os.path.join(db_model.trained_model_path, 'resume')
             if resume:
                 resume_data = json.load(open(os.path.join(resume_path, 'resume.json')))
+                pretrained_model = resume_data.get('pretrained_model', '')
                 saver.restore(sess, resume_data['saved_path'])
             else:
                 resume_data = {}
@@ -740,6 +743,7 @@ def do_train_by_tensorflow(
                     if interrupt_event.is_set():
                         os.mkdir(resume_path)
                         data = {
+                            'pretrained_model': pretrained_model,
                             'step': step,
                             'prev_epoch': prev_epoch,
                             'duration': time.time() - begin_at,
@@ -834,5 +838,5 @@ def do_train_by_tensorflow(
             coord.join(threads)
 
     # post-processing
-    _post_process(db_model, pretrained_model if pretrained_model else '')
+    _post_process(db_model, pretrained_model)
     logger.info('Finish imagenet train. model_id: {0}'.format(db_model.id))
