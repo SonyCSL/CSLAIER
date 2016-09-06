@@ -674,7 +674,6 @@ def do_train_by_tensorflow(
         device = '/gpu:' + str(db_model.gpu)
     else:
         device = '/cpu:0'
-
     train_images, train_sparse_labels = _extract_tfrecord([os.path.join(db_model.prepared_file_path,
                                                                         'train.tfrecord')],
                                                           val_batchsize, num_epochs=db_model.epoch,
@@ -719,13 +718,13 @@ def do_train_by_tensorflow(
 
             resume_path = os.path.join(db_model.trained_model_path, 'resume')
             if resume:
-                saver.restore(sess, os.path.join(resume_path, 'resume.sess'))
                 resume_data = json.load(open(os.path.join(resume_path, 'resume.json')))
+                saver.restore(sess, resume_data['saved_path'])
             else:
                 resume_data = {}
-            remove_resume_file(db_model.trained_model_path)
+                sess.run(tf.initialize_all_variables())
 
-            sess.run(tf.initialize_all_variables())
+            remove_resume_file(db_model.trained_model_path)
 
             coord = tf.train.Coordinator()
             threads = tf.train.start_queue_runners(sess=sess, coord=coord)
@@ -736,20 +735,20 @@ def do_train_by_tensorflow(
                 begin_at = time.time() - resume_data.get('duration', 0)
                 train_cur_loss = resume_data.get('train_cur_loss', 0)
                 train_cur_accuracy = resume_data.get('train_cur_accuracy', 0)
+
                 while not coord.should_stop():
-                    print(step)
                     if interrupt_event.is_set():
-                        print('interrupt')
                         os.mkdir(resume_path)
-                        json.dump({
+                        data = {
                             'step': step,
                             'prev_epoch': prev_epoch,
                             'duration': time.time() - begin_at,
                             'train_cur_loss': train_cur_loss,
                             'train_cur_accuracy': train_cur_accuracy
-                        }, open(os.path.join(resume_path, 'resume.json'), 'w'))
-
-                        saver.save(sess, os.path.join(resume_path, 'resume.sess'))
+                        }
+                        saved_path = saver.save(sess, os.path.join(resume_path, 'resume.ckpt'))
+                        data['saved_path'] = saved_path
+                        json.dump(data, open(os.path.join(resume_path, 'resume.json'), 'w'))
                         interruptable_event.set()
                         while True:
                             time.sleep(0.5)
@@ -835,5 +834,5 @@ def do_train_by_tensorflow(
             coord.join(threads)
 
     # post-processing
-    _post_process(db_model, pretrained_model)
+    _post_process(db_model, pretrained_model if pretrained_model else '')
     logger.info('Finish imagenet train. model_id: {0}'.format(db_model.id))
