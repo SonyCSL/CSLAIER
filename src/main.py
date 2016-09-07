@@ -460,7 +460,6 @@ def api_resume_train():
     model = Model.query.get(model_id)
     if model.type == 'image':
         runner.resume_imagenet_train(
-            app.config['PREPARED_DATA'],
             app.config['TRAINED_DATA'],
             model,
             gpu_num

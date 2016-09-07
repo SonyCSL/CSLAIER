@@ -37,6 +37,29 @@ def do(model, prepared_data_root):
     return model, train_image_num, val_image_num
 
 
+def get_image_num(dataset_path):
+    class_no = 0
+
+    train_images_counter = 0
+    val_images_counter = 0
+    for path, dirs, files in os.walk(dataset_path):
+        if not dirs:
+            length = len(files)
+            for i, f in enumerate(files):
+                (head, ext) = os.path.splitext(f)
+                ext = ext.lower()
+                if ext not in ['.jpg', 'jpeg', '.gif', '.png']:
+                    continue
+                if os.path.getsize(os.path.join(path, f)) <= 0:
+                    continue
+                if i < length * 0.75:
+                    train_images_counter += 1
+                else:
+                    val_images_counter += 1
+            class_no += 1
+    return train_images_counter, val_images_counter
+
+
 def make_train_data_for_chainer(model):
     class_no = 0
     count = 0

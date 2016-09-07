@@ -12,7 +12,6 @@ import deeplearning.train.train_lstm
 
 logger = logging.getLogger(__name__)
 
-
 INTERRUPTABLE_PROCESSES = {}
 
 
@@ -30,17 +29,17 @@ class Interruptable(object):
 
 
 def run_imagenet_train(
-    prepared_data_root,
-    output_dir_root,
-    dataset_id,
-    model_id,
-    epoch,
-    pretrained_model,
-    gpu_num,
-    resize_mode,
-    channels,
-    avoid_flipping,
-    batchsize
+        prepared_data_root,
+        output_dir_root,
+        dataset_id,
+        model_id,
+        epoch,
+        pretrained_model,
+        gpu_num,
+        resize_mode,
+        channels,
+        avoid_flipping,
+        batchsize
 ):
     interrupt_event = Event()
     interruptable_event = Event()
@@ -61,7 +60,7 @@ def run_imagenet_train(
                 model,
                 output_dir_root,
                 250,  # val_batchsize
-                20,   # loader_job
+                20,  # loader_job
                 pretrained_model,
                 avoid_flipping,
                 interrupt_event,
@@ -82,7 +81,7 @@ def run_imagenet_train(
                 False,  # resume
                 interrupt_event,
                 interruptable_event
-        )
+            )
         )
     else:
         raise Exception('Unknown framework')
@@ -95,11 +94,11 @@ def run_imagenet_train(
 
 
 # 再現に必要な情報はモデルと、稼働させるGPUだけのはず。
-def resume_imagenet_train(prepared_data_root, output_dir_root, model, gpu_num):
+def resume_imagenet_train(output_dir_root, model, gpu_num):
     interrupt_event = Event()
     interruptable_event = Event()
     model.gpu = gpu_num
-    model, train_image_num, val_image_num = deeplearning.prepare.prepare_for_imagenet.do(model, prepared_data_root)
+    model.update_and_commit()
     if model.framework == 'chainer':
         train_process = Process(
             target=deeplearning.train.train_imagenet.resume_train_by_chainer,
@@ -113,6 +112,8 @@ def resume_imagenet_train(prepared_data_root, output_dir_root, model, gpu_num):
             )
         )
     elif model.framework == 'tensorflow':
+        train_image_num, val_image_num = deeplearning.prepare.prepare_for_imagenet.get_image_num(
+            model.dataset.dataset_path)
         train_process = Process(
             target=deeplearning.train.train_imagenet.do_train_by_tensorflow,
             args=(
@@ -139,15 +140,15 @@ def resume_imagenet_train(prepared_data_root, output_dir_root, model, gpu_num):
 
 
 def run_lstm_train(
-    prepared_data_root,
-    output_dir_root,
-    dataset_id,
-    model_id,
-    epoch,
-    pretrained_model,
-    gpu_num,
-    use_wakatigaki,
-    batchsize=50
+        prepared_data_root,
+        output_dir_root,
+        dataset_id,
+        model_id,
+        epoch,
+        pretrained_model,
+        gpu_num,
+        use_wakatigaki,
+        batchsize=50
 ):
     interrupt_event = Event()
     interruptable_event = Event()
@@ -169,16 +170,16 @@ def run_lstm_train(
             pretrained_vocab,
             use_wakatigaki,
             pretrained_model,
-            None,       # resume
-            128,        # runsize
-            2e-3,       # learning_rate
-            0.97,       # learning_rate_decay
-            10,         # learning_rate_decay_after
-            0.95,       # decay_rate
-            0.0,        # dropout
-            50,         # seq_length
+            None,  # resume
+            128,  # runsize
+            2e-3,  # learning_rate
+            0.97,  # learning_rate_decay
+            10,  # learning_rate_decay_after
+            0.95,  # decay_rate
+            0.0,  # dropout
+            50,  # seq_length
             batchsize,  # batchsize
-            5,          # grad_clip
+            5,  # grad_clip
             interrupt_event,
             interruptable_event
         )
@@ -191,10 +192,10 @@ def run_lstm_train(
 
 
 def resume_lstm_train(
-    prepared_data_root,
-    output_dir_root,
-    model,
-    gpu_num,
+        prepared_data_root,
+        output_dir_root,
+        model,
+        gpu_num,
 ):
     interrupt_event = Event()
     interruptable_event = Event()
@@ -210,16 +211,16 @@ def resume_lstm_train(
             pretrained_vocab,
             model.use_wakatigaki,
             '',
-            True,       # resume
-            128,        # runsize
-            2e-3,       # learning_rate
-            0.97,       # learning_rate_decay
-            10,         # learning_rate_decay_after
-            0.95,       # decay_rate
-            0.0,        # dropout
-            50,         # seq_length
+            True,  # resume
+            128,  # runsize
+            2e-3,  # learning_rate
+            0.97,  # learning_rate_decay
+            10,  # learning_rate_decay_after
+            0.95,  # decay_rate
+            0.0,  # dropout
+            50,  # seq_length
             model.batchsize,  # batchsize
-            5,          # grad_clip
+            5,  # grad_clip
             interrupt_event,
             interruptable_event
         )
