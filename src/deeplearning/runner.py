@@ -34,6 +34,7 @@ def run_imagenet_train(
     model.channels = channels
     model.gpu = gpu_num
     model.batchsize = batchsize
+    model.update_and_commit()
     model, train_image_num, val_image_num = deeplearning.prepare.prepare_for_imagenet.do(model, prepared_data_root)
     if model.framework == 'chainer':
         train_process = Process(
