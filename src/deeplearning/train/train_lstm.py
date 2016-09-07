@@ -325,4 +325,5 @@ def do_train(
     db_model.pid = None
     db_model.gpu = None
     db_model.update_and_commit()
+    interrupt_event.clear()
     logger.info('Finish LSTM train. model_id: {0}'.format(db_model.id))

@@ -24,6 +24,9 @@ class Interruptable(object):
     def interrupt(self):
         self.interrupt_event.set()
 
+    def interrupting(self):
+        return self.interrupt_event.is_set()
+
     def interruptable(self):
         return self.interruptable_event.is_set()
 

@@ -543,9 +543,13 @@ def api_terminate_trained():
     if interruptable:
         interruptable.interrupt()
         while not interruptable.interruptable():
-            sleep(0.2)
+            if not interruptable.interrupting():
+                del runner.INTERRUPTABLE_PROCESSES[model.pid]
+                return jsonify({'status': 'success'})
+            sleep(0.5)
         del runner.INTERRUPTABLE_PROCESSES[model.pid]
     model.terminate_train()
+
     return jsonify({'status': 'success'})
 
 

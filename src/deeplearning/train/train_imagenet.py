@@ -498,6 +498,7 @@ def do_train_by_chainer(
 
     # post-processing
     _post_process(db_model, pretrained_model)
+    interrupt_event.clear()
     logger.info('Finish imagenet train. model_id: {0}'.format(db_model.id))
 
 
@@ -607,6 +608,7 @@ def resume_train_by_chainer(
 
     # post-processing
     _post_process(db_model, resume_epoch.pretrained_model)
+    interrupt_event.clear()
     logger.info('Finish imagenet train. model_id: {0}'.format(db_model.id))
 
 
@@ -710,7 +712,6 @@ def do_train_by_tensorflow(
             line_graph.write("count\tepoch\taccuracy\tloss\taccuracy(val)\tloss(val)\n")
         line_graph.flush()
         with tf.Session() as sess:
-
             # Load pretrained model
             if pretrained_model is not None and pretrained_model.find("model") > -1:
                 logger.info("load pretrained model : "
@@ -839,4 +840,5 @@ def do_train_by_tensorflow(
 
     # post-processing
     _post_process(db_model, pretrained_model)
+    interrupt_event.clear()
     logger.info('Finish imagenet train. model_id: {0}'.format(db_model.id))
