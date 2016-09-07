@@ -238,15 +238,27 @@ def feed_data(train_list, val_list, mean_image, batchsize, val_batchsize,
     return
 
 
-def log_result(batchsize, val_batchsize, log_file, log_html, res_q, add_mode=False):
-    fH = open(log_html, 'a' if add_mode else 'w')
-    fH.flush()
-
-    f = open(log_file, 'a' if add_mode else 'w')
-    if not add_mode:
+def log_result(batchsize, val_batchsize, log_file, log_html, res_q, resume=False):
+    if resume:
+        fH = open(log_html, 'a')
+        # ログをちゃんと連番にするためにログの最後の行のcountをとる
+        with open(log_file) as fp:
+            row = '0'
+            # 一行目を捨てる(header)
+            fp.next()
+            for row in filter(lambda line: line.strip(), fp):
+                pass
+            # 最後の行を取得
+            count = int(row.split('\t')[0]) + 1
+        f = open(log_file, 'a')
+    else:
+        fH = open(log_html, 'w')
+        f = open(log_file, 'w')
         f.write("count\tepoch\taccuracy\tloss\taccuracy(val)\tloss(val)\n")
-    f.flush()
-    count = 0
+        fH.flush()
+        f.flush()
+        count = 0
+
     train_count = 0
     train_cur_loss = 0
     train_cur_accuracy = 0
