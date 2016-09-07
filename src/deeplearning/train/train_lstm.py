@@ -192,6 +192,7 @@ def do_train(
     jump = whole_len // batchsize
     if resume:
         resume_data = json.load(open(os.path.join(resume_path, 'resume.json')))
+        initmodel = resume_data['initmodel']
         cur_log_perp = xp.zeros(())
         cur_log_perp += resume_data['cur_log_perp']
         loss_for_graph = xp.zeros(())
@@ -245,6 +246,7 @@ def do_train(
             serializers.save_npz(os.path.join(resume_path, 'resume.model'), model)
             json.dump({
                 'i': i,
+                'initmodel': initmodel,
                 'cur_log_perp': float(cur_log_perp),
                 'loss_for_graph': float(loss_for_graph)
             }, open(os.path.join(resume_path, 'resume.json'), 'w'))
