@@ -184,8 +184,9 @@ class Model(db.Model):
         if self.trained_model_path:
             candidate = os.listdir(self.trained_model_path)
             if pretrained_models:
-                pretrained_models = filter(lambda file: file.find('model') > -1
-                                           and file.find('.meta') < 0, candidate)
+                pretrained_models = filter(
+                    lambda file_name: 'model' in file_name and '.meta' not in file_name and 'temp' not in file_name,
+                    candidate)
                 pretrained_models = sorted(pretrained_models,
                                            key=lambda x: int(re.sub(r'(previous_)?model-?', '', x)),
                                            reverse=True)
