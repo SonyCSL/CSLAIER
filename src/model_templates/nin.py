@@ -52,7 +52,7 @@ class Network(chainer.Chain):
         h = F.max_pooling_2d(F.relu(self.mlpconv1(x)), 3, stride=2)
         h = F.max_pooling_2d(F.relu(self.mlpconv2(h)), 3, stride=2)
         h = F.max_pooling_2d(F.relu(self.mlpconv3(h)), 3, stride=2)
-        h = self.mlpconv4(F.dropout(h, train=self.train))
+        h = self.mlpconv4(F.dropout(h, train=False))
         h = F.reshape(F.average_pooling_2d(h, 6), (x.data.shape[0], 1000))
         return F.softmax(h)
 
