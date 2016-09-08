@@ -182,7 +182,6 @@ def do_train(
         logger.info("Load optimizer state from : {}".format(os.path.join(db_model.trained_model_path, 'resume.state')))
         serializers.load_npz(os.path.join(resume_path, 'resume.model'), model)
         serializers.load_npz(os.path.join(resume_path, 'resume.state'), optimizer)
-    # TODO: delete old states ??
 
     db_model.is_trained = 1
     db_model.update_and_commit()
