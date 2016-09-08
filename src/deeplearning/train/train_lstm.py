@@ -247,7 +247,8 @@ def do_train(
                 'i': i,
                 'initmodel': initmodel,
                 'cur_log_perp': float(cur_log_perp),
-                'loss_for_graph': float(loss_for_graph)
+                'loss_for_graph': float(loss_for_graph),
+                'epoch': epoch
             }, open(os.path.join(resume_path, 'resume.json'), 'w'))
             interruptable_event.set()
             while True:

@@ -199,7 +199,7 @@ def feed_data(train_list, val_list, mean_image, batchsize, val_batchsize,
             perm = resume_perm
         else:
             perm = np.random.permutation(len(train_list))
-        data_q.put(TrainingEpoch(epoch, batchsize, perm, avoid_flipping))
+        data_q.put(TrainingEpoch(epoch - 1, batchsize, perm, avoid_flipping))
         for idx in perm:
             path, label = train_list[idx]
             batch_pool[i] = pool.apply_async(read_image, (path, model.insize, mean_image,
@@ -761,7 +761,8 @@ def do_train_by_tensorflow(
                             'prev_epoch': prev_epoch,
                             'duration': time.time() - begin_at,
                             'train_cur_loss': train_cur_loss,
-                            'train_cur_accuracy': train_cur_accuracy
+                            'train_cur_accuracy': train_cur_accuracy,
+                            'epoch': current_epoch
                         }
                         saved_path = saver.save(sess, os.path.join(resume_path, 'resume.ckpt'))
                         data['saved_path'] = saved_path

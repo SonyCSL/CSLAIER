@@ -40,6 +40,9 @@
                     <li>Resize mode: ---</li>
                     <li>Color mode: ---</li>
                 {% endif %}
+                {% if resumable %}
+                    <li>Trained epoch: {{ trained_epoch }}</li>
+                {% endif %}
             </ul>
         </div>
         <div>
