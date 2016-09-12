@@ -25,6 +25,8 @@ from chainer import cuda
 from chainer import optimizers
 from chainer import serializers
 
+from .utils import remove_resume_file
+
 try:
     import tensorflow as tf
 except:
@@ -59,12 +61,12 @@ def _backup_pretrained_model(db_model, pretrained_model):
     try:
         shutil.copyfile(os.path.join(db_model.trained_model_path, pretrained_model),
                         os.path.join(db_model.trained_model_path,
-                        'previous_' + pretrained_model))
+                                     'previous_' + pretrained_model))
     except Exception as e:
         logger.exception('Could not copy {0} to {1}. {2}'
                          .format(os.path.join(db_model.trained_model_path, pretrained_model),
                                  os.path.join(db_model.trained_model_path,
-                                 'previous_' + pretrained_model), e))
+                                              'previous_' + pretrained_model), e))
         raise e
 
 
@@ -74,7 +76,7 @@ def _post_process(db_model, pretrained_model):
     db_model.pid = None
     db_model.gpu = None
     db_model.update_and_commit()
-    if os.path.exists(os.path.join(db_model.trained_model_path,  'previous_' + pretrained_model)):
+    if os.path.exists(os.path.join(db_model.trained_model_path, 'previous_' + pretrained_model)):
         # delete backup file
         try:
             os.remove(os.path.join(db_model.trained_model_path, 'previous_' + pretrained_model))
@@ -128,8 +130,51 @@ def read_image(path, model_insize, mean_image, center=False, flip=False, origina
         return image
 
 
+# 状態の再現に必要でかつSQLiteに格納されていないものはこのクラスが持ち、JSON化します。
+class TrainingEpoch(object):
+    def __init__(self, number_of_epoch, batch_size, permutation=None, avoid_flipping=False, pretrained_model=None):
+        super(TrainingEpoch, self).__init__()
+        self.epoch = number_of_epoch
+        self.permutation = permutation
+        self.avoid_flipping = avoid_flipping
+        self.pretrained_model = pretrained_model
+        self.batch_size = batch_size
+        self.number_of_before_epoch_train = 0
+
+    # self == 'epoch' == Trueになります。train_loop内の取り回しのため。
+    def __eq__(self, other):
+        return other == 'epoch'
+
+    # 済んだ学習のidxを削っていく(Epochを跨いでいる分を加味)
+    def batch_updated(self):
+        self.permutation = self.permutation[(self.batch_size - self.number_of_before_epoch_train):]
+        self.number_of_before_epoch_train = 0
+
+    def next_number_of_before_epoch_train(self):
+        return len(self.permutation) + self.number_of_before_epoch_train
+
+    def serialize(self, fp):
+        json.dump({
+            'epoch': self.epoch,
+            'batch_size': self.batch_size,
+            'permutation': list(self.permutation),
+            'avoid_flipping': self.avoid_flipping,
+            'pretrained_model': self.pretrained_model
+        }, fp)
+
+    @staticmethod
+    def deserialize(json_file):
+        d = json.load(open(json_file))
+        return TrainingEpoch(
+            d['epoch'],
+            d['batch_size'],
+            np.array(d['permutation']),
+            d['avoid_flipping'],
+            d['pretrained_model'])
+
+
 def feed_data(train_list, val_list, mean_image, batchsize, val_batchsize,
-              model, loaderjob, epoch, optimizer, data_q, avoid_flipping):
+              model, loaderjob, epoch, optimizer, data_q, avoid_flipping, resume_perm=None, resume_epoch=1):
     denominator = 1000 if len(train_list) > 1000 else len(train_list)
     i = 0
     count = 0
@@ -147,10 +192,14 @@ def feed_data(train_list, val_list, mean_image, batchsize, val_batchsize,
     if avoid_flipping:
         use_flip = False
 
-    for epoch in six.moves.range(1, 1 + epoch):
+    for epoch in six.moves.range(resume_epoch, 1 + epoch):
         logger.info('epoch: {0}'.format(epoch))
         logger.info('learning rate: {0}'.format(optimizer.lr))
-        perm = np.random.permutation(len(train_list))
+        if resume_perm is not None and resume_epoch == epoch:
+            perm = resume_perm
+        else:
+            perm = np.random.permutation(len(train_list))
+        data_q.put(TrainingEpoch(epoch - 1, batchsize, perm, avoid_flipping))
         for idx in perm:
             path, label = train_list[idx]
             batch_pool[i] = pool.apply_async(read_image, (path, model.insize, mean_image,
@@ -189,14 +238,27 @@ def feed_data(train_list, val_list, mean_image, batchsize, val_batchsize,
     return
 
 
-def log_result(batchsize, val_batchsize, log_file, log_html, res_q):
-    fH = open(log_html, 'w')
-    fH.flush()
+def log_result(batchsize, val_batchsize, log_file, log_html, res_q, resume=False):
+    if resume:
+        fH = open(log_html, 'a')
+        # ログをちゃんと連番にするためにログの最後の行のcountをとる
+        with open(log_file) as fp:
+            row = '0'
+            # 一行目を捨てる(header)
+            fp.next()
+            for row in filter(lambda line: line.strip(), fp):
+                pass
+            # 最後の行を取得
+            count = int(row.split('\t')[0]) + 1
+        f = open(log_file, 'a')
+    else:
+        fH = open(log_html, 'w')
+        f = open(log_file, 'w')
+        f.write("count\tepoch\taccuracy\tloss\taccuracy(val)\tloss(val)\n")
+        fH.flush()
+        f.flush()
+        count = 0
 
-    f = open(log_file, 'w')
-    f.write("count\tepoch\taccuracy\tloss\taccuracy(val)\tloss(val)\n")
-    f.flush()
-    count = 0
     train_count = 0
     train_cur_loss = 0
     train_cur_accuracy = 0
@@ -224,8 +286,8 @@ def log_result(batchsize, val_batchsize, log_file, log_html, res_q):
             throughput = train_count * batchsize / duration
             fH.write(
                 'train {} updates ({} samples) time: {} ({} images/sec)<br>'
-                .format(train_count, train_count * batchsize,
-                        datetime.timedelta(seconds=duration), throughput))
+                    .format(train_count, train_count * batchsize,
+                            datetime.timedelta(seconds=duration), throughput))
             fH.write("[TIME]{},{}<br>"
                      .format(epoch, datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')))
             fH.flush()
@@ -240,10 +302,10 @@ def log_result(batchsize, val_batchsize, log_file, log_html, res_q):
                 mean_error = 1 - train_cur_accuracy / 10000
                 fH.write("<strong>"
                          + json.dumps({
-                             'type': 'train',
-                             'iteration': train_count,
-                             'error': mean_error,
-                             'loss': mean_loss})
+                    'type': 'train',
+                    'iteration': train_count,
+                    'error': mean_error,
+                    'loss': mean_loss})
                          + "</strong><br>")
                 fH.flush()
                 train_cur_loss = 0
@@ -254,8 +316,8 @@ def log_result(batchsize, val_batchsize, log_file, log_html, res_q):
             throughput = val_count / duration
             fH.write(
                 'val {} batches ({} samples) time: {} ({} images/sec)'
-                .format(val_count / val_batchsize, val_count,
-                        datetime.timedelta(seconds=duration), throughput)
+                    .format(val_count / val_batchsize, val_count,
+                            datetime.timedelta(seconds=duration), throughput)
             )
             fH.flush()
             val_loss += loss
@@ -265,10 +327,10 @@ def log_result(batchsize, val_batchsize, log_file, log_html, res_q):
                 mean_accuracy = val_accuracy * val_batchsize / VALIDATION_TIMING
                 fH.write("<strong>"
                          + json.dumps({
-                             'type': 'val',
-                             'iteration': train_count,
-                             'error': (1 - mean_accuracy),
-                             'loss': mean_loss})
+                    'type': 'val',
+                    'iteration': train_count,
+                    'error': (1 - mean_accuracy),
+                    'loss': mean_loss})
                          + "</strong><br>")
                 fH.flush()
                 f.write(str(count) + "\t" + str(epoch) + "\t\t\t"
@@ -279,15 +341,33 @@ def log_result(batchsize, val_batchsize, log_file, log_html, res_q):
     fH.close()
 
 
-def train_loop(model, output_dir, xp, optimizer, res_q, data_q):
+def train_loop(model, output_dir, xp, optimizer, res_q, data_q, pretrained_model, interrupt_event, interruptable_event):
     graph_generated = False
+    training_epoch = None
     while True:
+        if interrupt_event.is_set():
+            resume_path = os.path.join(output_dir, 'resume')
+            os.mkdir(resume_path)
+            serializers.save_npz(os.path.join(resume_path, 'resume.model'), model)
+            serializers.save_npz(os.path.join(resume_path, 'resume.state'), optimizer)
+            training_epoch.pretrained_model = pretrained_model
+            training_epoch.serialize(open(os.path.join(resume_path, 'resume.json'), 'w'))
+            interruptable_event.set()
+            while True:
+                time.sleep(1)
+
         while data_q.empty():
             time.sleep(0.1)
         inp = data_q.get()
+
         if inp == 'end':
             res_q.put('end')
             break
+        elif inp == 'epoch':
+            if training_epoch:
+                inp.number_of_before_epoch_train = training_epoch.next_number_of_before_epoch_train()
+            training_epoch = inp
+            continue
         elif inp == 'train':
             res_q.put('train')
             model.train = True
@@ -301,6 +381,7 @@ def train_loop(model, output_dir, xp, optimizer, res_q, data_q):
         t = chainer.Variable(xp.asarray(inp[1]), volatile=volatile)
         if model.train:
             optimizer.update(model, x, t)
+            training_epoch.batch_updated()
             if not graph_generated:
                 with open(output_dir + os.sep + 'graph.dot', 'w') as o:
                     o.write(computational_graph.build_computational_graph((model.loss,)).dump())
@@ -308,8 +389,8 @@ def train_loop(model, output_dir, xp, optimizer, res_q, data_q):
         else:
             model(x, t)
 
-        serializers.save_hdf5(output_dir + os.sep + 'model%04d' % inp[2], model)
-        # serializers.save_hdf5(output_dir + os.sep + 'optimizer%04d'%inp[2], optimizer)
+        serializers.save_hdf5(os.path.join(output_dir, 'model{:04d}'.format(inp[2])), model)
+
         res_q.put((float(model.loss.data), float(model.accuracy.data), inp[2]))
         del x, t
 
@@ -320,12 +401,14 @@ def load_module(dir_name, symbol):
 
 
 def do_train_by_chainer(
-    db_model,
-    root_output_dir,
-    val_batchsize=250,
-    loaderjob=20,
-    pretrained_model="",
-    avoid_flipping=False
+        db_model,
+        root_output_dir,
+        val_batchsize=250,
+        loaderjob=20,
+        pretrained_model="",
+        avoid_flipping=False,
+        interrupt_event=None,
+        interruptable_event=None
 ):
     logger.info('Start imagenet train. model_id: {0} gpu: {1}, pretrained_model: {2}'
                 .format(db_model.id, db_model.gpu, pretrained_model))
@@ -378,6 +461,8 @@ def do_train_by_chainer(
     db_model.is_trained = 1
     db_model.update_and_commit()
 
+    remove_resume_file(db_model.trained_model_path)
+
     # Invoke threads
     feeder = threading.Thread(
         target=feed_data,
@@ -392,7 +477,7 @@ def do_train_by_chainer(
             db_model.epoch,
             optimizer,
             data_q,
-            avoid_flipping
+            avoid_flipping,
         )
     )
     feeder.daemon = True
@@ -415,13 +500,127 @@ def do_train_by_chainer(
         xp,
         optimizer,
         res_q,
-        data_q
+        data_q,
+        pretrained_model,
+        interrupt_event,
+        interruptable_event
     )
     feeder.join()
     train_logger.join()
 
     # post-processing
     _post_process(db_model, pretrained_model)
+    interrupt_event.clear()
+    logger.info('Finish imagenet train. model_id: {0}'.format(db_model.id))
+
+
+def resume_train_by_chainer(
+        db_model,
+        root_output_dir,
+        val_batchsize=250,
+        loaderjob=20,
+        interrupt_event=None,
+        interruptable_event=None
+):
+    logger.info('resume last imagenet train. model_id: {0} gpu: {1}'
+                .format(db_model.id, db_model.gpu))
+    # start initialization
+    if db_model.gpu >= 0:
+        cuda.check_cuda_available()
+    xp = cuda.cupy if db_model.gpu >= 0 else np
+
+    train_list = load_image_list(os.path.join(db_model.prepared_file_path, 'train.txt'))
+    val_list = load_image_list(os.path.join(db_model.prepared_file_path, 'test.txt'))
+    mean_image = pickle.load(open(os.path.join(db_model.prepared_file_path, 'mean.npy'), 'rb'))
+
+    # @see http://qiita.com/progrommer/items/abd2276f314792c359da
+    (model_dir, model_name) = os.path.split(db_model.network_path)
+    model_name = re.sub(r"\.py$", "", model_name)
+    model_module = load_module(model_dir, model_name)
+    model = model_module.Network()
+
+    # create directory for saving trained models
+    db_model.trained_model_path = _create_trained_model_dir(db_model.trained_model_path,
+                                                            root_output_dir, model_name)
+
+    if db_model.gpu >= 0:
+        cuda.get_device(db_model.gpu).use()
+        model.to_gpu()
+
+    optimizer = optimizers.MomentumSGD(lr=0.01, momentum=0.9)
+    optimizer.setup(model)
+
+    resume_path = os.path.join(db_model.trained_model_path, 'resume')
+    resume_json = os.path.join(resume_path, 'resume.json')
+
+    resume_epoch = TrainingEpoch.deserialize(resume_json)
+
+    # load resume data.
+    resume_state = os.path.join(resume_path, 'resume.state')
+    resume_model = os.path.join(resume_path, 'resume.model')
+    logger.info("Load optimizer state from : {}"
+                .format(resume_state))
+    serializers.load_npz(resume_model, model)
+    serializers.load_npz(resume_state, optimizer)
+    remove_resume_file(db_model.trained_model_path)
+
+    data_q = queue.Queue(maxsize=1)
+    res_q = queue.Queue()
+
+    db_model.is_trained = 1
+    db_model.update_and_commit()
+
+    # Invoke threads
+    feeder = threading.Thread(
+        target=feed_data,
+        args=(
+            train_list,
+            val_list,
+            mean_image,
+            db_model.batchsize,
+            val_batchsize,
+            model,
+            loaderjob,
+            db_model.epoch,
+            optimizer,
+            data_q,
+            resume_epoch.avoid_flipping,
+            resume_epoch.permutation,
+            resume_epoch.epoch
+        )
+    )
+    feeder.daemon = True
+    feeder.start()
+    train_logger = threading.Thread(
+        target=log_result,
+        args=(
+            db_model.batchsize,
+            val_batchsize,
+            os.path.join(db_model.trained_model_path, 'line_graph.tsv'),
+            os.path.join(db_model.trained_model_path, 'log.html'),
+            res_q,
+            True
+        )
+    )
+    train_logger.daemon = True
+    train_logger.start()
+    train_loop(
+        model,
+        db_model.trained_model_path,
+        xp,
+        optimizer,
+        res_q,
+        data_q,
+        resume_epoch.pretrained_model,
+        interrupt_event,
+        interruptable_event
+    )
+    feeder.join()
+    train_logger.join()
+
+    # post-processing
+    _post_process(db_model, resume_epoch.pretrained_model)
+    interrupt_event.clear()
     logger.info('Finish imagenet train. model_id: {0}'.format(db_model.id))
 
 
@@ -451,25 +650,28 @@ def _extract_tfrecord(files, batchsize, num_epochs=None, avoid_flipping=True, us
         images, sparse_labels = tf.train.shuffle_batch([image, label],
                                                        batch_size=batchsize,
                                                        num_threads=8,
-                                                       capacity=1000 + 3*batchsize,
+                                                       capacity=1000 + 3 * batchsize,
                                                        min_after_dequeue=1000)
     else:
         images, sparse_labels = tf.train.batch([image, label],
                                                batch_size=batchsize,
                                                num_threads=8,
-                                               capacity=1000 + 3*batchsize)
+                                               capacity=1000 + 3 * batchsize)
 
     return images, sparse_labels
 
 
 def do_train_by_tensorflow(
-    db_model,
-    output_dir_root,
-    val_batchsize,
-    pretrained_model,
-    train_image_num,
-    val_image_num,
-    avoid_flipping
+        db_model,
+        output_dir_root,
+        val_batchsize,
+        pretrained_model,
+        train_image_num,
+        val_image_num,
+        avoid_flipping,
+        resume,
+        interrupt_event,
+        interruptable_event
 ):
     logger.info('Start imagenet train. model_id: {}, pretrained_model: {}'
                 .format(db_model.id, pretrained_model))
@@ -489,7 +691,6 @@ def do_train_by_tensorflow(
         device = '/gpu:' + str(db_model.gpu)
     else:
         device = '/cpu:0'
-
     train_images, train_sparse_labels = _extract_tfrecord([os.path.join(db_model.prepared_file_path,
                                                                         'train.tfrecord')],
                                                           val_batchsize, num_epochs=db_model.epoch,
@@ -510,12 +711,17 @@ def do_train_by_tensorflow(
     first_and_last_saver = tf.train.Saver(max_to_keep=2)
     saver = tf.train.Saver(max_to_keep=50)
 
-    with open(os.path.join(db_model.trained_model_path, 'line_graph.tsv'), 'w') as line_graph, \
-            open(os.path.join(db_model.trained_model_path, 'log.html'), 'w') as log_file:
+    if resume:
+        mode = 'a'
+    else:
+        mode = 'w'
+    with open(os.path.join(db_model.trained_model_path, 'line_graph.tsv'), mode) as line_graph, \
+            open(os.path.join(db_model.trained_model_path, 'log.html'), mode) as log_file:
         log_file.write('train: {} images, val: {} images, epoch: {}<br>'
                        .format(train_image_num, val_image_num, db_model.epoch))
         log_file.flush()
-        line_graph.write("count\tepoch\taccuracy\tloss\taccuracy(val)\tloss(val)\n")
+        if not resume:
+            line_graph.write("count\tepoch\taccuracy\tloss\taccuracy(val)\tloss(val)\n")
         line_graph.flush()
         with tf.Session() as sess:
             # Load pretrained model
@@ -525,19 +731,46 @@ def do_train_by_tensorflow(
                 saver.restore(sess, os.path.join(db_model.trained_model_path, pretrained_model))
                 _backup_pretrained_model(db_model, pretrained_model)
                 _delete_old_models(db_model, pretrained_model)
+            resume_path = os.path.join(db_model.trained_model_path, 'resume')
+            if resume:
+                resume_data = json.load(open(os.path.join(resume_path, 'resume.json')))
+                pretrained_model = resume_data.get('pretrained_model', '')
+                saver.restore(sess, resume_data['saved_path'])
+            else:
+                resume_data = {}
+                sess.run(tf.initialize_all_variables())
 
-            sess.run(tf.initialize_all_variables())
+            remove_resume_file(db_model.trained_model_path)
 
             coord = tf.train.Coordinator()
             threads = tf.train.start_queue_runners(sess=sess, coord=coord)
 
             try:
-                step = 0
-                prev_epoch = None
-                begin_at = time.time()
-                train_cur_loss = 0
-                train_cur_accuracy = 0
+                step = resume_data.get('step', 0)
+                prev_epoch = resume_data.get('prev_epoch', None)
+                begin_at = time.time() - resume_data.get('duration', 0)
+                train_cur_loss = resume_data.get('train_cur_loss', 0)
+                train_cur_accuracy = resume_data.get('train_cur_accuracy', 0)
+
                 while not coord.should_stop():
+                    if interrupt_event.is_set():
+                        os.mkdir(resume_path)
+                        data = {
+                            'pretrained_model': pretrained_model,
+                            'step': step,
+                            'prev_epoch': prev_epoch,
+                            'duration': time.time() - begin_at,
+                            'train_cur_loss': train_cur_loss,
+                            'train_cur_accuracy': train_cur_accuracy,
+                            'epoch': current_epoch
+                        }
+                        saved_path = saver.save(sess, os.path.join(resume_path, 'resume.ckpt'))
+                        data['saved_path'] = saved_path
+                        json.dump(data, open(os.path.join(resume_path, 'resume.json'), 'w'))
+                        interruptable_event.set()
+                        while True:
+                            time.sleep(0.5)
+
                     images, sparse_labels = sess.run([train_images, train_sparse_labels])
                     _, train_loss, train_acc = sess.run([train_op, loss_value, acc],
                                                         feed_dict={
@@ -620,4 +853,5 @@ def do_train_by_tensorflow(
 
     # post-processing
     _post_process(db_model, pretrained_model)
+    interrupt_event.clear()
     logger.info('Finish imagenet train. model_id: {0}'.format(db_model.id))

@@ -386,6 +386,7 @@ $('#start_train_btn').on('click', function(e){
         if(ret.status === "OK") {
             $('#processing_screen').addClass('hidden');
             $('#start_train_div').addClass('hidden');
+            $('#resume_train_div').addClass('hidden');
             $('#model_detail_buttons').addClass('hidden');
             $('span.label.label-nottrained')
                 .removeClass('label-nottrained')
@@ -415,6 +416,55 @@ $('#start_train_btn').on('click', function(e){
 
 });
 
+$('#resume_train_btn').on('click', function(e){
+    var model_id = $('#model_id').val();
+    var gpu_num = $('#gpu_num').val() || $('input[name="gpu_num"]:checked').val();
+    $('#resume_train_modal').modal('hide');
+    $('#processing_screen').removeClass('hidden');
+
+    var formData = new FormData();
+    formData.append("model_id", model_id);
+    formData.append("gpu_num", gpu_num);
+    $.ajax({
+           url: "/api/models/resume/train",
+           data: formData,
+           method: "POST",
+           processData: false,
+           contentType: false,
+    }).done(function(ret){
+        console.log(ret)
+        if(ret.status === "OK") {
+            $('#processing_screen').addClass('hidden');
+            $('#start_train_div').addClass('hidden');
+            $('#resume_train_div').addClass('hidden');
+            $('#model_detail_buttons').addClass('hidden');
+            $('span.label.label-nottrained')
+                .removeClass('label-nottrained')
+                .addClass('label-progress')
+                .text('In Progress');
+            $('span.label.label-trained')
+                .removeClass('label-trained')
+                .addClass('label-progress')
+                .text('In Progress');
+            $('#terminate_train_button').removeClass('hidden');
+            $('#delete_model_button').addClass('hidden');
+            $('#dataset_name_info').text(ret.dataset_name);
+            showResultScreen();
+            location.hash = "result";
+            return;
+        }
+        console.log(ret.traceback);
+        alert('Failed to resume train.');
+        $('#processing_screen').addClass('hidden');
+        return;
+
+    }).fail(function(ret){
+            alert('Failed to resume train.');
+            $('#processing_screen').addClass('hidden');
+    });
+
+});
+
 $('#delete_model_button').on('click', function(e){
     if(window.confirm('Is it okay to remove this model?')) {
         var model_id = $('#model_id').val();
@@ -428,7 +478,10 @@ $('#delete_model_button').on('click', function(e){
 $('#terminate_train_button').on('click', function(e){
     if(window.confirm('Is it okay to terminate this trainning?')) {
         var model_id = $('#model_id').val();
+        $('#processing_screen').find('.processing_subject').text('Waiting for terminate...')
+        $('#processing_screen').removeClass('hidden');
         $.post('/api/models/terminate/train/', {id: model_id}, function(ret){
+            $('#processing_screen').addClass('hidden');
             if(ret.status == 'success') {
                 alert('Successfully terminated');
                 location.reload();

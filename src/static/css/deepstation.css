@@ -43,7 +43,7 @@ body.noscroll {
 }
 
 input.form-control, textarea.form-control, select.form-control,
-pre#network_edit_area,pre#training_log, .CodeMirror {
+pre#network_edit_area,pre#training_log, .CodeMirror, .form-control[disabled] {
     background-color: #020;
     color: #0c0;
     border-color: #060;
@@ -529,4 +529,8 @@ textarea.form-control {
 .pagination>.active>a:hover
 {
     border-color: #080;
+}
+
+#resume_train_div {
+    margin-bottom: 15px;
 }

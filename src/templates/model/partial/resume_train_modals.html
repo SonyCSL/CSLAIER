@@ -1,0 +1,50 @@
+<div class="modal fade" id="resume_train_modal" tabindex="-1" role="dialog" aria-labelledby="start_train_modal">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h4 class="modal-title" id="start_train_modal_title">Resume Last Train</h4>
+            </div>
+            <div class="modal-body">
+                <table class="table">
+                    <tbody>
+                        <tr>
+                            {% for ds in datasets %}
+                                {% if ds.id == model.dataset.id %}
+                                    <td>Dataset</td><td>{{ds.name}}</td>
+                                {% endif %}
+                            {% endfor %}
+                        </tr>
+                        <tr>
+                            <td>Epoch</td><td>{{ model.epoch }}</td>
+                        </tr>
+                        <tr>
+                            <td>Batch Size</td><td>{{ model.batchsize }}</td>
+                        </tr>
+                    </tbody>
+                </table>
+                <div class="form-group">
+                    <input type="hidden" id="default_dataset" value="{{model.id}}">
+                    <input type="hidden" name="model_type" value="{{model.type}}">
+                </div>
+                {% if system_info['gpu_info'] == None %}
+                    <input type="hidden" id="gpu_num" name="gpu_num" value="-1">
+                {% else %}
+                    <div class="form-group">
+                        <label for="gpu_num" class="label-control">Select GPU to compute.</label>
+                        {% for gpu in system_info['gpu_info']['gpus'] %}
+                            <label class="checkbox-inline">
+                                {% if loop.index0 == 0 %}
+                                    <input type="radio" name="gpu_num" value="{{ loop.index0 }}" checked> {{loop.index0}}
+                                {% else %}
+                                    <input type="radio" name="gpu_num" value="{{loop.index0}}"> {{loop.index0}}
+                                {% endif %}
+                            </label>
+                        {% endfor %}
+                    </div>
+                {% endif %}
+                <button type="button" id="resume_train_btn" class="btn btn-cyber" data-modeltype="{{model.type}}">Resume</button>
+                <button type="cancel" class="btn btn-cyber" data-dismiss="modal">Cancel</button>
+            </div>
+        </div>
+    </div>
+</div>

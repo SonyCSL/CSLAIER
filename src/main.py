@@ -1,9 +1,11 @@
 # -*- coding: utf-8 -*-
+import json
 import os
 import re
 import logging
 from logging.handlers import RotatingFileHandler
 from logging import getLogger
+from time import sleep
 
 from flask import Flask, url_for, render_template, request, redirect,\
              jsonify, send_from_directory, send_file
@@ -206,12 +208,21 @@ def create_new_model():
 def show_model(id):
     model = Model.get_model_with_code(id)
     datasets = Dataset.query.filter_by(type=model.type)
+    resumable = False
+    trained_epoch = 0
+    if model.trained_model_path:
+        resume_path = os.path.join(model.trained_model_path, 'resume')
+        resumable = os.path.exists(resume_path)
+        if resumable:
+            data = json.load(open(os.path.join(resume_path, 'resume.json')))
+            trained_epoch = data.get('epoch', 0)
     return render_template('model/show.html',
                            model=model, datasets=datasets,
                            pretrained_models=model.get_pretrained_models(),
                            mecab_available=ds_util.is_module_available('Mecab'),
                            system_info=get_system_info(),
-                           usable_epochs=model.get_usable_epochs())
+                           usable_epochs=model.get_usable_epochs(),
+                           resumable=resumable, trained_epoch=trained_epoch)
 
 
 @app.route('/models/inspect/', methods=['POST'])
@@ -448,6 +459,27 @@ def api_start_train():
     return jsonify({'status': 'OK'})
 
 
+@app.route('/api/models/resume/train', methods=['POST'])
+def api_resume_train():
+    model_id = request.form['model_id']
+    gpu_num = int(request.form['gpu_num'])
+    model = Model.query.get(model_id)
+    if model.type == 'image':
+        runner.resume_imagenet_train(
+            app.config['TRAINED_DATA'],
+            model,
+            gpu_num
+        )
+    elif model.type == 'text':
+        runner.resume_lstm_train(
+            app.config['PREPARED_DATA'],
+            app.config['TRAINED_DATA'],
+            model,
+            gpu_num
+        )
+    return jsonify({'status': 'OK'})
+
+
 @app.route('/api/models/<int:id>/get/train_data/log/')
 def api_get_training_log(id):
     model = Model.query.get(id)
@@ -513,7 +545,17 @@ def download_trained_files():
 def api_terminate_trained():
     id = request.form['id']
     model = Model.query.get(id)
+    interruptable = runner.INTERRUPTABLE_PROCESSES.get(model.pid)
+    if interruptable:
+        interruptable.interrupt()
+        while not interruptable.interruptable():
+            if not interruptable.interrupting():
+                del runner.INTERRUPTABLE_PROCESSES[model.pid]
+                return jsonify({'status': 'success'})
+            sleep(0.5)
+        del runner.INTERRUPTABLE_PROCESSES[model.pid]
     model.terminate_train()
+
     return jsonify({'status': 'success'})
 
 

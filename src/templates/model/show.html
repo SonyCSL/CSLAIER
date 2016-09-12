@@ -37,7 +37,7 @@
 
     <div id="processing_screen" class="hidden">
         <div class="progress-wrap">
-            <h4>Processing...</h4>
+            <h4 class="processing_subject">Processing...</h4>
             <div class="progress">
                 <div class="progress-bar progress-bar-striped active" role="progressbar" aria-valuenow="100" aria-valuemin="0" aria-valuemax="100" style="width: 100%">
                     <span class="sr-only">Processing Data...</span>
@@ -49,6 +49,7 @@
     {% include 'model/partial/prediction_modals.html' %}
     {% include 'model/partial/create_new_network_modals.html' %}
     {% include 'model/partial/start_train_modals.html' %}
+    {% include 'model/partial/resume_train_modals.html' %}
 {% endblock %}
 
 {% block scripts %}

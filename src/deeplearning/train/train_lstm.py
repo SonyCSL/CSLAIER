@@ -1,6 +1,8 @@
 # -*- coding: utf-8 -*-
 
 from __future__ import print_function
+
+import json
 import math
 import sys
 import time
@@ -21,6 +23,8 @@ import chainer.links as L
 from chainer import optimizers
 from chainer import serializers
 from chainer import link
+# from .utils import remove_resume_file
+
 
 logger = getLogger(__name__)
 
@@ -76,27 +80,29 @@ def load_data(filename, use_mecab, vocab):
 
 
 def do_train(
-    db_model,
-    root_output_dir,
-    filename,
-    vocabulary,
-    use_mecab=False,
-    initmodel=None,
-    resume=None,
-    rnn_size=128,
-    learning_rate=2e-3,
-    learning_rate_decay=0.97,
-    learning_rate_decay_after=10,
-    decay_rate=0.95,
-    dropout=0.0,
-    seq_length=50,
-    batchsize=50,  # minibatch size
-    grad_clip=5    # gradient norm threshold to clip
+        db_model,
+        root_output_dir,
+        filename,
+        vocabulary,
+        use_mecab=False,
+        initmodel=None,
+        resume=False,
+        rnn_size=128,
+        learning_rate=2e-3,
+        learning_rate_decay=0.97,
+        learning_rate_decay_after=10,
+        decay_rate=0.95,
+        dropout=0.0,
+        seq_length=50,
+        batchsize=50,  # minibatch size
+        grad_clip=5,  # gradient norm threshold to clip
+        interrupt_event=None,
+        interruptable_event=None
 ):
     logger.info('Start LSTM training. model_id: {0}, use_mecab: {1}, initmodel: {2}, gpu: {3}'
                 .format(db_model.id, use_mecab, initmodel, db_model.gpu))
     n_epoch = db_model.epoch
-    bprop_len = seq_length   # length of truncated BPTT
+    bprop_len = seq_length  # length of truncated BPTT
     grad_clip = grad_clip
 
     (model_dir, model_name) = os.path.split(db_model.network_path)
@@ -137,13 +143,13 @@ def do_train(
     # Load pretrained model
     if initmodel is not None and initmodel.find("model") > -1:
         if vocabulary == '':
-            logger.info("Load model from : "+db_model.trained_model_path + os.sep + initmodel)
+            logger.info("Load model from : " + db_model.trained_model_path + os.sep + initmodel)
             serializers.load_npz(os.path.join(db_model.trained_model_path, initmodel), model)
         else:
             lm2 = model_module.Network(vocab_size, rnn_size, dropout_ratio=dropout, train=False)
             model2 = L.Classifier(lm2)
             model2.compute_accuracy = False  # we only want the perplexity
-            logger.info("Load model from : "+db_model.trained_model_path + os.sep + initmodel)
+            logger.info("Load model from : " + db_model.trained_model_path + os.sep + initmodel)
             serializers.load_npz(os.path.join(db_model.trained_model_path, initmodel), model2)
             copy_model(model2, model)
         # delete old models
@@ -171,12 +177,55 @@ def do_train(
         model.to_gpu()
 
     # Load pretrained optimizer
-    if resume is not None and resume.find("state") > -1:
-        logger.info("Load optimizer state from : "+db_model.trained_model_path + os.sep + resume)
-        serializers.load_npz(os.path.join(db_model.trained_model_path, resume), optimizer)
-    # TODO: delete old states ??
+    resume_path = os.path.join(db_model.trained_model_path, 'resume')
+    if resume:
+        logger.info("Load optimizer state from : {}".format(os.path.join(db_model.trained_model_path, 'resume.state')))
+        serializers.load_npz(os.path.join(resume_path, 'resume.model'), model)
+        serializers.load_npz(os.path.join(resume_path, 'resume.state'), optimizer)
+
+    db_model.is_trained = 1
+    db_model.update_and_commit()
+
+    # Learning loop
+    whole_len = train_data.shape[0]
+    jump = whole_len // batchsize
+    if resume:
+        resume_data = json.load(open(os.path.join(resume_path, 'resume.json')))
+        initmodel = resume_data['initmodel']
+        cur_log_perp = xp.zeros(())
+        cur_log_perp += resume_data['cur_log_perp']
+        loss_for_graph = xp.zeros(())
+        loss_for_graph += resume_data['loss_for_graph']
+        iteration_from = resume_data['i']
+        epoch = (iteration_from + 1) / jump
+    else:
+        cur_log_perp = xp.zeros(())
+        loss_for_graph = xp.zeros(())
+        iteration_from = 0
+        epoch = 0
+
+    start_at = time.time()
+    cur_at = start_at
+    accum_loss = 0
+    batch_idxs = list(range(batchsize))
+
+    # 再開の場合はログファイルを追記モードで
+    if resume:
+        log_file = open(os.path.join(db_model.trained_model_path, 'log.html'), 'a')
+        graph_tsv = open(os.path.join(db_model.trained_model_path, 'line_graph.tsv'), 'a')
+    else:
+        log_file = open(os.path.join(db_model.trained_model_path, 'log.html'), 'w')
+        graph_tsv = open(os.path.join(db_model.trained_model_path, 'line_graph.tsv'), 'w')
+        graph_tsv.write('count\tepoch\tperplexity\n')
+        log_file.write("going to train {} iterations<br>".format(jump * n_epoch))
+        log_file.write("[TIME]{},{}<br>"
+                       .format(epoch,
+                               datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')))
+    log_file.flush()
+    graph_tsv.flush()
 
     # delete layer visualization cache
+    # trained_model_pathに存在する全てのディレクトリを削除している。
     for f in os.listdir(db_model.trained_model_path):
         if os.path.isdir(os.path.join(db_model.trained_model_path, f)):
             try:
@@ -185,31 +234,25 @@ def do_train(
                 logger.exception('Could not remove visualization cache: {0} {1}'
                                  .format(os.path.join(db_model.trained_model_path, f), e))
                 raise e
+    # ので、↓のresumeファイルの削除は不要
+    # remove_resume_file(db_model.trained_model_path)
 
-    db_model.is_trained = 1
-    db_model.update_and_commit()
-
-    log_file = open(os.path.join(db_model.trained_model_path, 'log.html'), 'w')
-    graph_tsv = open(os.path.join(db_model.trained_model_path, 'line_graph.tsv'), 'w')
-    graph_tsv.write('count\tepoch\tperplexity\n')
-    graph_tsv.flush()
-
-    # Learning loop
-    whole_len = train_data.shape[0]
-    jump = whole_len // batchsize
-    cur_log_perp = xp.zeros(())
-    epoch = 0
-    start_at = time.time()
-    cur_at = start_at
-    accum_loss = 0
-    loss_for_graph = xp.zeros(())
-    batch_idxs = list(range(batchsize))
-    log_file.write("going to train {} iterations<br>".format(jump * n_epoch))
-    log_file.write("[TIME]{},{}<br>"
-                   .format(epoch,
-                           datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')))
-    log_file.flush()
-    for i in six.moves.range(jump * n_epoch):
+    for i in six.moves.range(iteration_from, jump * n_epoch):
+        # 1バッチが終わったタイミングを意図している。
+        if interrupt_event.is_set() and isinstance(accum_loss, int):
+            os.mkdir(resume_path)
+            serializers.save_npz(os.path.join(resume_path, 'resume.state'), optimizer)
+            serializers.save_npz(os.path.join(resume_path, 'resume.model'), model)
+            json.dump({
+                'i': i,
+                'initmodel': initmodel,
+                'cur_log_perp': float(cur_log_perp),
+                'loss_for_graph': float(loss_for_graph),
+                'epoch': epoch
+            }, open(os.path.join(resume_path, 'resume.json'), 'w'))
+            interruptable_event.set()
+            while True:
+                time.sleep(1)
         x = chainer.Variable(
             xp.asarray([train_data[(jump * j + i) % whole_len] for j in batch_idxs]))
         t = chainer.Variable(
@@ -241,7 +284,7 @@ def do_train(
 
         if (i + 1) % 100 == 0:
             perp_for_graph = math.exp(float(loss_for_graph) / 100)
-            graph_tsv.write('{}\t{}\t{:.2f}\n'.format(i+1, epoch, perp_for_graph))
+            graph_tsv.write('{}\t{}\t{:.2f}\n'.format(i + 1, epoch, perp_for_graph))
             graph_tsv.flush()
             loss_for_graph.fill(0)
 
@@ -282,4 +325,5 @@ def do_train(
     db_model.pid = None
     db_model.gpu = None
     db_model.update_and_commit()
+    interrupt_event.clear()
     logger.info('Finish LSTM train. model_id: {0}'.format(db_model.id))

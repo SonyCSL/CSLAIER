@@ -40,9 +40,17 @@
                     <li>Resize mode: ---</li>
                     <li>Color mode: ---</li>
                 {% endif %}
+                {% if resumable %}
+                    <li>Trained epoch: {{ trained_epoch }}</li>
+                {% endif %}
             </ul>
         </div>
         <div>
+            {% if resumable %}
+            <div id="resume_train_div">
+                <button class="btn btn-cyber btn-block" data-toggle="modal" data-target="#resume_train_modal">Resume Last Train</button>
+            </div>
+            {% endif %}
             <div id="start_train_div">
                 <button class="btn btn-cyber btn-block" data-toggle="modal" data-target="#start_train_modal">Start Train</button>
             </div>
