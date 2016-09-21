@@ -8,7 +8,10 @@ from logging import getLogger
 from time import sleep
 
 from flask import Flask, url_for, render_template, request, redirect,\
-             jsonify, send_from_directory, send_file
+             jsonify, send_from_directory, send_file, Response
+import gevent
+from gevent.wsgi import WSGIServer
+from gevent.queue import Channel
 from werkzeug.contrib.cache import SimpleCache
 from sqlalchemy import desc
 from sqlalchemy.orm import eagerload
@@ -17,8 +20,10 @@ from db_models.shared_models import db
 from db_models.datasets import Dataset
 from db_models.models import Model
 import deeplearning.runner as runner
+from deeplearning.log_subscriber import LogSubscriber
 import common.utils as ds_util
 from common import strings
+
 
 __version__ = '0.6.1'
 
@@ -77,6 +82,8 @@ app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///' + app.config['DATABASE_PATH
 db.init_app(app)
 
 cache = SimpleCache()
+
+train_logger = LogSubscriber()
 
 
 @app.route('/')
@@ -487,6 +494,40 @@ def api_get_training_log(id):
         return jsonify({'status': 'log file not ready'})
     log = open(model.train_log).read()
     return jsonify({'status': 'ready', 'data': log, 'is_trained': model.is_trained})
+
+
+# SSE "protocol" is described here: http://mzl.la/UPFyxY
+class ServerSentEvent(object):
+    def __init__(self, data):
+        self.data = data
+        self.event = None
+        self.id = None
+        self.desc_map = {
+            self.data: "data",
+            self.event: "event",
+            self.id: "id"
+        }
+
+    def encode(self):
+        if not self.data:
+            return ""
+        lines = ["{}: {}".format(v, k) for k, v in self.desc_map.iteritems() if k]
+        return "{}\n\n".format("\n".join(lines))
+
+
+@app.route('/api/models/<int:model_id>/get/train_data/log/subscribe')
+def api_training_log_subscribe(model_id):
+    def gen():
+        channel = Channel()
+        train_logger.subscribe(model_id, channel)
+        try:
+            while True:
+                result = channel.get()
+                ev = ServerSentEvent(str(result))
+                yield ev.encode()
+        except GeneratorExit:  # Or maybe use flask signals
+            train_logger.unsubscribe(model_id, channel)
+    return Response(gen(), mimetype="text/event-stream")
 
 
 @app.route('/api/models/<int:id>/get/train_data/graph/')
