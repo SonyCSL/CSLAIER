@@ -202,7 +202,7 @@ class Dataset(db.Model):
                     temp, ext = os.path.splitext(temp_path)
                     ext = ext.lower()
                     if self.type == 'image':
-                        if ext not in ('.jpg', 'jpeg', '.png', '.gif'):
+                        if ext not in ('.jpg', '.jpeg', '.png', '.gif'):
                             continue
                     elif self.type == 'text':
                         if ext not in ('.txt',):
