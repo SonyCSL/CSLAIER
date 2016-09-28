@@ -67,6 +67,10 @@ class Model(db.Model):
         return self.__get_file_path(self.trained_model_path, 'log.html')
 
     @property
+    def train_log_path(self):
+        return self.__get_file_path(self.trained_model_path, 'train.log')
+
+    @property
     def mean_file(self):
         return self.__get_file_path(self.prepared_file_path, 'mean.npy')
 

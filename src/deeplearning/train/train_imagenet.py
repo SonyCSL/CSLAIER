@@ -238,7 +238,7 @@ def feed_data(train_list, val_list, mean_image, batchsize, val_batchsize,
     return
 
 
-def log_result(batchsize, val_batchsize, log_file, log_html, res_q, resume=False):
+def log_result(batchsize, val_batchsize, log_file, log_html, train_log, res_q, resume=False):
     if resume:
         fH = open(log_html, 'a')
         # ログをちゃんと連番にするためにログの最後の行のcountをとる
@@ -284,6 +284,15 @@ def log_result(batchsize, val_batchsize, log_file, log_html, res_q, resume=False
             train_count += 1
             duration = time.time() - begin_at
             throughput = train_count * batchsize / duration
+            with open(train_log, 'a') as fp:
+                fp.write(
+                    json.dumps({'train': train_count,
+                                'updates': train_count * batchsize,
+                                'time': '{} ({} images/sec)'.format(datetime.timedelta(seconds=duration), throughput),
+                                '[TIME]': '{},{}'.format(epoch, datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S'))
+                                })
+                )
+                fp.write('\n')
             fH.write(
                 'train {} updates ({} samples) time: {} ({} images/sec)<br>'
                     .format(train_count, train_count * batchsize,
@@ -489,6 +498,7 @@ def do_train_by_chainer(
             val_batchsize,
             os.path.join(db_model.trained_model_path, 'line_graph.tsv'),
             os.path.join(db_model.trained_model_path, 'log.html'),
+            os.path.join(db_model.trained_model_path, 'train.log'),
             res_q
         )
     )
@@ -598,6 +608,7 @@ def resume_train_by_chainer(
             val_batchsize,
             os.path.join(db_model.trained_model_path, 'line_graph.tsv'),
             os.path.join(db_model.trained_model_path, 'log.html'),
+            os.path.join(db_model.trained_model_path, 'train.log'),
             res_q,
             True
         )
@@ -807,7 +818,15 @@ def do_train_by_tensorflow(
                                        .format(current_epoch,
                                                datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')))
                         log_file.flush()
-
+                        with open(os.path.join(db_model.train_log_path), 'a') as train_log:
+                            train_log.write(json.dumps({
+                                'train': step,
+                                'updates': step * db_model.batchsize,
+                                'time': '{} ({} images/sec)'.format(datetime.timedelta(seconds=duration), throughput),
+                                '[TIME]': '{},{}'.format(current_epoch,
+                                                         datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S'))
+                            }))
+                            train_log.write('/n')
                         if step % 1000 == 0:
                             mean_loss = train_cur_loss / 1000
                             mean_error = 1 - train_cur_accuracy / 1000

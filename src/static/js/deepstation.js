@@ -679,6 +679,42 @@ var  update_train_log = function(){
     draw_train_graph();
 }
 
+var subscribe_train_log = function() {
+    var model_id = $('#model_id').val();
+    function LogSubscriber() {};
+    LogSubscriber.prototype = {
+        connect: function() {
+            if (this.timer) {
+                console.log('clear timer')
+                clearInterval(this.timer);
+            }
+            var url = '/api/models/' + model_id + '/get/train_data/log/subscribe';
+            var stream = new EventSource(url);
+            stream.addEventListener('message', function(e) {
+                console.log(e.data);
+            });
+            stream.addEventListener('error', function(e) {
+                console.log('stream error');
+            });
+            stream.addEventListener('close', function(e) {
+                console.log('close')
+                stream.close();
+            });
+            this.stream = stream;
+            var self = this;
+            this.timer = setInterval(function() {
+                console.log(self.stream.readyState);
+                if (self.stream.readyState == 2) {
+                    self.connect();
+                }
+            }, 1000);
+            console.log('set timer')
+        }
+    };
+    var subscriber = new LogSubscriber();
+    subscriber.connect();
+}
+
 var update_remain_time = function(train_log){
     var start_time, latest_time, current_epoch, end_time;
     var does_one_epoch_spent = false;

@@ -7,11 +7,11 @@ from logging.handlers import RotatingFileHandler
 from logging import getLogger
 from time import sleep
 
-from flask import Flask, url_for, render_template, request, redirect,\
-             jsonify, send_from_directory, send_file, Response
+from flask import Flask, url_for, render_template, request, redirect, \
+    jsonify, send_from_directory, send_file, Response
 import gevent
 from gevent.wsgi import WSGIServer
-from gevent.queue import Channel
+from gevent.queue import Queue
 from werkzeug.contrib.cache import SimpleCache
 from sqlalchemy import desc
 from sqlalchemy.orm import eagerload
@@ -20,10 +20,10 @@ from db_models.shared_models import db
 from db_models.datasets import Dataset
 from db_models.models import Model
 import deeplearning.runner as runner
-from deeplearning.log_subscriber import LogSubscriber
+from deeplearning.log_subscriber import train_logger
 import common.utils as ds_util
 from common import strings
-
+from gevent.wsgi import WSGIServer
 
 __version__ = '0.6.1'
 
@@ -41,6 +41,7 @@ def normalize_config_path():
         if not app.config[param].startswith('/'):
             app.config[param] = os.path.abspath(app.config['DEEPSTATION_ROOT']
                                                 + os.sep + app.config[param])
+
 
 normalize_config_path()
 
@@ -83,8 +84,6 @@ db.init_app(app)
 
 cache = SimpleCache()
 
-train_logger = LogSubscriber()
-
 
 @app.route('/')
 def index():
@@ -105,7 +104,7 @@ def show_dataset_image(dataset_id, image_path):
     if ds_path is None:
         dataset = Dataset.query.get(dataset_id)
         ds_path = dataset.dataset_path
-        cache.set('dataset_id_' + str(dataset_id), ds_path, timeout=24*60*60)
+        cache.set('dataset_id_' + str(dataset_id), ds_path, timeout=24 * 60 * 60)
     return send_from_directory(ds_path, image_path)
 
 
@@ -124,7 +123,7 @@ def show_inspection_uploaded_file(filename):
 def show_dataset(id):
     page = request.args.get('page', type=int, default=1)
     ds = Dataset.query.get(id)
-    dataset = ds.get_dataset_with_categories_and_samples(offset=(page-1)*20)
+    dataset = ds.get_dataset_with_categories_and_samples(offset=(page - 1) * 20)
     return render_template('dataset/show_dataset.html',
                            dataset=dataset, current_page=page)
 
@@ -135,7 +134,7 @@ def show_dataset_category(id, category):
     if category == '-':
         category = ''
     ds = Dataset.query.get(id)
-    dataset = ds.get_dataset_with_category_detail(category, offset=(page-1)*100)
+    dataset = ds.get_dataset_with_category_detail(category, offset=(page - 1) * 100)
     return render_template('dataset/show_category_detail.html',
                            dataset=dataset, current_page=page)
 
@@ -370,7 +369,7 @@ def api_dataset_register_by_path():
     else:
         # relative path
         abs_path = os.path.normpath(os.path.join(app.config['DEEPSTATION_ROOT'],
-                                    given_path))
+                                                 given_path))
         if os.path.exists(abs_path) and os.path.isdir(abs_path):
             path = abs_path
     if path is None:
@@ -509,8 +508,9 @@ class ServerSentEvent(object):
         }
 
     def encode(self):
-        if not self.data:
-            return ""
+        if self.data == 'None':
+            # これはタイムアウト避けのコメントアウト行なのでコンソールには出てこない。
+            return ':\n\n'
         lines = ["{}: {}".format(v, k) for k, v in self.desc_map.iteritems() if k]
         return "{}\n\n".format("\n".join(lines))
 
@@ -518,15 +518,17 @@ class ServerSentEvent(object):
 @app.route('/api/models/<int:model_id>/get/train_data/log/subscribe')
 def api_training_log_subscribe(model_id):
     def gen():
-        channel = Channel()
-        train_logger.subscribe(model_id, channel)
+        queue = Queue()
+        train_logger.subscribe(model_id, queue)
         try:
             while True:
-                result = channel.get()
+                result = queue.get()
                 ev = ServerSentEvent(str(result))
                 yield ev.encode()
         except GeneratorExit:  # Or maybe use flask signals
-            train_logger.unsubscribe(model_id, channel)
+            print('unsubscribe')
+            train_logger.unsubscribe(model_id, queue)
+
     return Response(gen(), mimetype="text/event-stream")
 
 
@@ -612,9 +614,15 @@ def get_system_info():
 
 
 if __name__ == '__main__':
-    app.run(
-        host=app.config['HOST'],
-        port=app.config['PORT'],
-        debug=app.config['DEBUG'],
-        use_evalex=False,
-        threaded=True)
+    app.debug = True
+    server = WSGIServer(("", 8080), app)
+    server.serve_forever()
+    # app.debug = app.config['DEBUG']
+    # server = WSGIServer((app.config['HOST'], app.config['PORT']), app)
+    # server.serve_forever()
+    # app.run(
+    #     host=app.config['HOST'],
+    #     port=app.config['PORT'],
+    #     debug=app.config['DEBUG'],
+    #     use_evalex=False,
+    #     threaded=True)

@@ -9,6 +9,7 @@ import deeplearning.prepare.prepare_for_imagenet
 import deeplearning.prepare.prepare_for_lstm
 import deeplearning.train.train_imagenet
 import deeplearning.train.train_lstm
+from deeplearning.log_subscriber import train_logger
 
 logger = logging.getLogger(__name__)
 
@@ -29,6 +30,14 @@ class Interruptable(object):
 
     def interruptable(self):
         return self.interruptable_event.is_set()
+
+
+def _create_trained_model_dir(path, root_output_dir, model_name):
+    if path is None:
+        path = os.path.join(root_output_dir, model_name)
+    if not os.path.exists(path):
+        os.mkdir(path)
+    return path
 
 
 def run_imagenet_train(
@@ -56,6 +65,13 @@ def run_imagenet_train(
     model.batchsize = batchsize
     model.update_and_commit()
     model, train_image_num, val_image_num = deeplearning.prepare.prepare_for_imagenet.do(model, prepared_data_root)
+
+    (model_dir, model_name) = os.path.split(model.network_path)
+    trained_model_path = _create_trained_model_dir(model.trained_model_path,
+                                                   output_dir_root, model_name)
+    train_log = os.path.join(trained_model_path, 'train.log')
+    open(train_log, 'w').close()
+    train_logger.file_subscribe(model_id, train_log)
     if model.framework == 'chainer':
         train_process = Process(
             target=deeplearning.train.train_imagenet.do_train_by_chainer,
@@ -102,6 +118,7 @@ def resume_imagenet_train(output_dir_root, model, gpu_num):
     interruptable_event = Event()
     model.gpu = gpu_num
     model.update_and_commit()
+    train_logger.file_subscribe(model.id, model.train_log_path)
     if model.framework == 'chainer':
         train_process = Process(
             target=deeplearning.train.train_imagenet.resume_train_by_chainer,
