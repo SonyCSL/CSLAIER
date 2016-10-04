@@ -525,7 +525,8 @@ def api_training_log_subscribe(model_id):
                 result = queue.get()
                 ev = ServerSentEvent(str(result))
                 yield ev.encode()
-        except GeneratorExit:  # Or maybe use flask signals
+        # 通信が切断されるとこの例外が上がる。
+        except GeneratorExit:
             print('unsubscribe')
             train_logger.unsubscribe(model_id, queue)
 
@@ -593,12 +594,11 @@ def api_terminate_trained():
         interruptable.interrupt()
         while not interruptable.interruptable():
             if not interruptable.interrupting():
-                del runner.INTERRUPTABLE_PROCESSES[model.pid]
+                interruptable.terminate()
                 return jsonify({'status': 'success'})
-            sleep(0.5)
-        del runner.INTERRUPTABLE_PROCESSES[model.pid]
+            sleep(1)
     model.terminate_train()
-
+    interruptable.terminate()
     return jsonify({'status': 'success'})
 
 

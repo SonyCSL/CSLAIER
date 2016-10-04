@@ -239,8 +239,10 @@ def feed_data(train_list, val_list, mean_image, batchsize, val_batchsize,
 
 
 def log_result(batchsize, val_batchsize, log_file, log_html, train_log, res_q, resume=False):
+    print(log_file)
     if resume:
         fH = open(log_html, 'a')
+        print(log_file)
         # ログをちゃんと連番にするためにログの最後の行のcountをとる
         with open(log_file) as fp:
             row = '0'
@@ -249,7 +251,7 @@ def log_result(batchsize, val_batchsize, log_file, log_html, train_log, res_q, r
             for row in filter(lambda line: line.strip(), fp):
                 pass
             # 最後の行を取得
-            count = int(row.split('\t')[0]) + 1
+            train_count = int(row.split('\t')[0])
         f = open(log_file, 'a')
     else:
         fH = open(log_html, 'w')
@@ -257,9 +259,7 @@ def log_result(batchsize, val_batchsize, log_file, log_html, train_log, res_q, r
         f.write("count\tepoch\taccuracy\tloss\taccuracy(val)\tloss(val)\n")
         fH.flush()
         f.flush()
-        count = 0
-
-    train_count = 0
+        train_count = 0
     train_cur_loss = 0
     train_cur_accuracy = 0
     begin_at = time.time()
@@ -300,10 +300,9 @@ def log_result(batchsize, val_batchsize, log_file, log_html, train_log, res_q, r
             fH.write("[TIME]{},{}<br>"
                      .format(epoch, datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')))
             fH.flush()
-            f.write(str(count) + "\t" + str(epoch) + "\t" + str(accuracy) + "\t" + str(loss)
+            f.write(str(train_count) + "\t" + str(epoch) + "\t" + str(accuracy) + "\t" + str(loss)
                     + "\t\t\n")
             f.flush()
-            count += 1
             train_cur_loss += loss
             train_cur_accuracy += accuracy
             if train_count % 1000 == 0:
@@ -342,9 +341,9 @@ def log_result(batchsize, val_batchsize, log_file, log_html, train_log, res_q, r
                     'loss': mean_loss})
                          + "</strong><br>")
                 fH.flush()
-                f.write(str(count) + "\t" + str(epoch) + "\t\t\t"
+                f.write(str(train_count) + "\t" + str(epoch) + "\t\t\t"
                         + str(mean_accuracy) + "\t" + str(mean_loss) + "\n")
-                count += 1
+                train_count += 1
                 f.flush()
     f.close()
     fH.close()
@@ -417,7 +416,7 @@ def do_train_by_chainer(
         pretrained_model="",
         avoid_flipping=False,
         interrupt_event=None,
-        interruptable_event=None
+        interruptable_event=None,
 ):
     logger.info('Start imagenet train. model_id: {0} gpu: {1}, pretrained_model: {2}'
                 .format(db_model.id, db_model.gpu, pretrained_model))
@@ -530,7 +529,7 @@ def resume_train_by_chainer(
         val_batchsize=250,
         loaderjob=20,
         interrupt_event=None,
-        interruptable_event=None
+        interruptable_event=None,
 ):
     logger.info('resume last imagenet train. model_id: {0} gpu: {1}'
                 .format(db_model.id, db_model.gpu))
@@ -682,7 +681,7 @@ def do_train_by_tensorflow(
         avoid_flipping,
         resume,
         interrupt_event,
-        interruptable_event
+        interruptable_event,
 ):
     logger.info('Start imagenet train. model_id: {}, pretrained_model: {}'
                 .format(db_model.id, pretrained_model))

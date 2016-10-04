@@ -10,6 +10,9 @@ import deeplearning.prepare.prepare_for_lstm
 import deeplearning.train.train_imagenet
 import deeplearning.train.train_lstm
 from deeplearning.log_subscriber import train_logger
+from time import sleep
+import gevent
+import gevent.event
 
 logger = logging.getLogger(__name__)
 
@@ -17,10 +20,22 @@ INTERRUPTABLE_PROCESSES = {}
 
 
 class Interruptable(object):
-    def __init__(self, interrupt_event, interruptable_event):
+    def __init__(self):
         super(Interruptable, self).__init__()
-        self.interrupt_event = interrupt_event
-        self.interruptable_event = interruptable_event
+        self.interrupt_event = Event()
+        self.interruptable_event = Event()
+        self.end_event = gevent.event.Event()
+        self.completion = None
+
+        def wait_for_end():
+            self.end_event.wait()
+            if self.completion:
+                self.completion()
+
+        gevent.spawn(wait_for_end)
+
+    def terminate(self):
+        self.end_event.set()
 
     def interrupt(self):
         self.interrupt_event.set()
@@ -40,6 +55,14 @@ def _create_trained_model_dir(path, root_output_dir, model_name):
     return path
 
 
+# 学習の後片付け...
+def _cleanup_for_train_terminate(model_id, pid):
+    print('_cleanup_for_train_terminate')
+    train_logger.terminate_train(model_id)
+    del INTERRUPTABLE_PROCESSES[pid]
+    print(INTERRUPTABLE_PROCESSES)
+
+
 def run_imagenet_train(
         prepared_data_root,
         output_dir_root,
@@ -53,8 +76,6 @@ def run_imagenet_train(
         avoid_flipping,
         batchsize
 ):
-    interrupt_event = Event()
-    interruptable_event = Event()
     dataset = Dataset.query.get(dataset_id)
     model = Model.query.get(model_id)
     model.dataset = dataset
@@ -72,6 +93,7 @@ def run_imagenet_train(
     train_log = os.path.join(trained_model_path, 'train.log')
     open(train_log, 'w').close()
     train_logger.file_subscribe(model_id, train_log)
+    interruptable = Interruptable()
     if model.framework == 'chainer':
         train_process = Process(
             target=deeplearning.train.train_imagenet.do_train_by_chainer,
@@ -82,8 +104,8 @@ def run_imagenet_train(
                 20,  # loader_job
                 pretrained_model,
                 avoid_flipping,
-                interrupt_event,
-                interruptable_event
+                interruptable.interrupt_event,
+                interruptable.interruptable_event,
             )
         )
     elif model.framework == 'tensorflow':
@@ -98,8 +120,8 @@ def run_imagenet_train(
                 val_image_num,
                 avoid_flipping,
                 False,  # resume
-                interrupt_event,
-                interruptable_event
+                interruptable.interrupt_event,
+                interruptable.interruptable_event,
             )
         )
     else:
@@ -108,17 +130,21 @@ def run_imagenet_train(
     model.pid = train_process.pid
     model.update_and_commit()
     logging.info('start imagenet training. PID: ', model.pid)
-    INTERRUPTABLE_PROCESSES[model.pid] = Interruptable(interrupt_event, interruptable_event)
-    return
+
+    def completion():
+        _cleanup_for_train_terminate(model.id, model.pid)
+
+    interruptable.completion = completion
+
+    INTERRUPTABLE_PROCESSES[model.pid] = interruptable
 
 
 # 再現に必要な情報はモデルと、稼働させるGPUだけのはず。
 def resume_imagenet_train(output_dir_root, model, gpu_num):
-    interrupt_event = Event()
-    interruptable_event = Event()
     model.gpu = gpu_num
     model.update_and_commit()
     train_logger.file_subscribe(model.id, model.train_log_path)
+    interruptable = Interruptable()
     if model.framework == 'chainer':
         train_process = Process(
             target=deeplearning.train.train_imagenet.resume_train_by_chainer,
@@ -127,8 +153,8 @@ def resume_imagenet_train(output_dir_root, model, gpu_num):
                 output_dir_root,
                 250,  # val_batchsize
                 20,  # loader_job
-                interrupt_event,
-                interruptable_event
+                interruptable.interrupt_event,
+                interruptable.interruptable_event,
             )
         )
     elif model.framework == 'tensorflow':
@@ -145,8 +171,8 @@ def resume_imagenet_train(output_dir_root, model, gpu_num):
                 val_image_num,
                 False,  # not used
                 True,  # resume
-                interrupt_event,
-                interruptable_event
+                interruptable.interrupt_event,
+                interruptable.interruptable_event,
             )
         )
     else:
@@ -155,8 +181,13 @@ def resume_imagenet_train(output_dir_root, model, gpu_num):
     model.pid = train_process.pid
     model.update_and_commit()
     logging.info('start imagenet training. PID: ', model.pid)
-    INTERRUPTABLE_PROCESSES[model.pid] = Interruptable(interrupt_event, interruptable_event)
-    return
+
+    def completion():
+        _cleanup_for_train_terminate(model.id, model.pid)
+
+    interruptable.completion = completion
+
+    INTERRUPTABLE_PROCESSES[model.pid] = interruptable
 
 
 def run_lstm_train(
@@ -170,8 +201,6 @@ def run_lstm_train(
         use_wakatigaki,
         batchsize=50
 ):
-    interrupt_event = Event()
-    interruptable_event = Event()
     dataset = Dataset.query.get(dataset_id)
     model = Model.query.get(model_id)
     model.dataset = dataset
@@ -181,6 +210,7 @@ def run_lstm_train(
     model.batchsize = batchsize
     (input_data_path, pretrained_vocab, model) = deeplearning.prepare.prepare_for_lstm.do(
         model, prepared_data_root, pretrained_model, use_wakatigaki)
+    interruptable = Interruptable()
     train_process = Process(
         target=deeplearning.train.train_lstm.do_train,
         args=(
@@ -200,15 +230,21 @@ def run_lstm_train(
             50,  # seq_length
             batchsize,  # batchsize
             5,  # grad_clip
-            interrupt_event,
-            interruptable_event
+            interruptable.interrupt_event,
+            interruptable.interruptable_event,
         )
     )
     train_process.start()
     model.pid = train_process.pid
     model.update_and_commit()
     logging.info('start LSTM training. PID: ', model.pid)
-    INTERRUPTABLE_PROCESSES[model.pid] = Interruptable(interrupt_event, interruptable_event)
+
+    def completion():
+        _cleanup_for_train_terminate(model.id, model.pid)
+
+    interruptable.completion = completion
+
+    INTERRUPTABLE_PROCESSES[model.pid] = interruptable
 
 
 def resume_lstm_train(
@@ -217,11 +253,10 @@ def resume_lstm_train(
         model,
         gpu_num,
 ):
-    interrupt_event = Event()
-    interruptable_event = Event()
     model.gpu = gpu_num
     (input_data_path, pretrained_vocab, model) = deeplearning.prepare.prepare_for_lstm.do(
         model, prepared_data_root, None, model.use_wakatigaki)
+    interruptable = Interruptable()
     train_process = Process(
         target=deeplearning.train.train_lstm.do_train,
         args=(
@@ -241,12 +276,17 @@ def resume_lstm_train(
             50,  # seq_length
             model.batchsize,  # batchsize
             5,  # grad_clip
-            interrupt_event,
-            interruptable_event
+            interruptable.interrupt_event,
+            interruptable.interruptable_event
         )
     )
     train_process.start()
     model.pid = train_process.pid
     model.update_and_commit()
     logging.info('start LSTM training. PID: ', model.pid)
-    INTERRUPTABLE_PROCESSES[model.pid] = Interruptable(interrupt_event, interruptable_event)
+
+    def completion():
+        _cleanup_for_train_terminate(model.id, model.pid)
+
+    interruptable.completion = completion
+    INTERRUPTABLE_PROCESSES[model.pid] = interruptable

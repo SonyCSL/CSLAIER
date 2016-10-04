@@ -12,6 +12,7 @@ class LogSubscriber(object):
 
     def file_subscribe(self, model_id, file_path):
         model_id = int(model_id)
+        print('subscribe', model_id, file_path)
         self.subscribing_files[model_id] = file_path
         tail = gevent.spawn(self._tail, model_id, file_path)
         avoid_timeout = gevent.spawn(self._avoid_timeout, model_id)
@@ -28,14 +29,28 @@ class LogSubscriber(object):
                 for row in fp:
                     gevent.spawn(notify, row)
         self.queues[model_id].append(queue)
+        print(self.queues)
 
     def unsubscribe(self, model_id, queue):
+        model_id = int(model_id)
         self.queues[model_id].remove(queue)
+        print('unsubscribe', self.queues)
 
     def terminate_train(self, model_id):
+        model_id = int(model_id)
+        print('terminate subscribe', model_id)
+        print('self.tail_processes', self.tail_processes)
+        print('self.subscribing_files', self.subscribing_files)
+        print('self.queues', self.queues)
         if model_id in self.tail_processes:
             for process in self.tail_processes[model_id]:
                 process.kill()
+            del self.tail_processes[model_id]
+            del self.subscribing_files[model_id]
+            del self.queues[model_id]
+        print('self.tail_processes', self.tail_processes)
+        print('self.subscribing_files', self.subscribing_files)
+        print('self.queues', self.queues)
 
     def _tail(self, model_id, file_path):
         def notify(msg):
@@ -48,7 +63,6 @@ class LogSubscriber(object):
 
     def _avoid_timeout(self, model_id):
         def notify():
-            print(self.queues[model_id])
             for queue in self.queues[model_id][:]:
                 queue.put(None)
 

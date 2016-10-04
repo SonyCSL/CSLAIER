@@ -685,7 +685,6 @@ var subscribe_train_log = function() {
     LogSubscriber.prototype = {
         connect: function() {
             if (this.timer) {
-                console.log('clear timer')
                 clearInterval(this.timer);
             }
             var url = '/api/models/' + model_id + '/get/train_data/log/subscribe';
@@ -703,12 +702,10 @@ var subscribe_train_log = function() {
             this.stream = stream;
             var self = this;
             this.timer = setInterval(function() {
-                console.log(self.stream.readyState);
                 if (self.stream.readyState == 2) {
                     self.connect();
                 }
             }, 1000);
-            console.log('set timer')
         }
     };
     var subscriber = new LogSubscriber();
