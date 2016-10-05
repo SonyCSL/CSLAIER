@@ -12,7 +12,7 @@ import deeplearning.train.train_lstm
 from deeplearning.log_subscriber import train_logger
 from time import sleep
 import gevent
-import gevent.event
+
 
 logger = logging.getLogger(__name__)
 
@@ -24,11 +24,14 @@ class Interruptable(object):
         super(Interruptable, self).__init__()
         self.interrupt_event = Event()
         self.interruptable_event = Event()
-        self.end_event = gevent.event.Event()
+        self.end_event = Event()
         self.completion = None
 
         def wait_for_end():
-            self.end_event.wait()
+            while True:
+                if self.end_event.is_set():
+                    break
+                gevent.sleep(1)
             if self.completion:
                 self.completion()
 
@@ -37,13 +40,22 @@ class Interruptable(object):
     def terminate(self):
         self.end_event.set()
 
-    def interrupt(self):
+    def set_interrupt(self):
         self.interrupt_event.set()
 
-    def interrupting(self):
+    def clear_interrupt(self):
+        self.interrupt_event.set()
+
+    def set_interruptable(self):
+        self.interruptable_event.set()
+
+    def clear_interruptable(self):
+        self.interruptable_event.set()
+
+    def is_interrupting(self):
         return self.interrupt_event.is_set()
 
-    def interruptable(self):
+    def is_interruptable(self):
         return self.interruptable_event.is_set()
 
 
@@ -104,8 +116,7 @@ def run_imagenet_train(
                 20,  # loader_job
                 pretrained_model,
                 avoid_flipping,
-                interruptable.interrupt_event,
-                interruptable.interruptable_event,
+                interruptable,
             )
         )
     elif model.framework == 'tensorflow':
@@ -120,8 +131,7 @@ def run_imagenet_train(
                 val_image_num,
                 avoid_flipping,
                 False,  # resume
-                interruptable.interrupt_event,
-                interruptable.interruptable_event,
+                interruptable,
             )
         )
     else:
@@ -153,8 +163,7 @@ def resume_imagenet_train(output_dir_root, model, gpu_num):
                 output_dir_root,
                 250,  # val_batchsize
                 20,  # loader_job
-                interruptable.interrupt_event,
-                interruptable.interruptable_event,
+                interruptable,
             )
         )
     elif model.framework == 'tensorflow':
@@ -171,8 +180,7 @@ def resume_imagenet_train(output_dir_root, model, gpu_num):
                 val_image_num,
                 False,  # not used
                 True,  # resume
-                interruptable.interrupt_event,
-                interruptable.interruptable_event,
+                interruptable,
             )
         )
     else:
@@ -230,8 +238,7 @@ def run_lstm_train(
             50,  # seq_length
             batchsize,  # batchsize
             5,  # grad_clip
-            interruptable.interrupt_event,
-            interruptable.interruptable_event,
+            interruptable,
         )
     )
     train_process.start()
@@ -276,8 +283,7 @@ def resume_lstm_train(
             50,  # seq_length
             model.batchsize,  # batchsize
             5,  # grad_clip
-            interruptable.interrupt_event,
-            interruptable.interruptable_event
+            interruptable,
         )
     )
     train_process.start()

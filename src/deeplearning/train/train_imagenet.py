@@ -349,18 +349,18 @@ def log_result(batchsize, val_batchsize, log_file, log_html, train_log, res_q, r
     fH.close()
 
 
-def train_loop(model, output_dir, xp, optimizer, res_q, data_q, pretrained_model, interrupt_event, interruptable_event):
+def train_loop(model, output_dir, xp, optimizer, res_q, data_q, pretrained_model, interruptable):
     graph_generated = False
     training_epoch = None
     while True:
-        if interrupt_event.is_set():
+        if interruptable.is_interrupting():
             resume_path = os.path.join(output_dir, 'resume')
             os.mkdir(resume_path)
             serializers.save_npz(os.path.join(resume_path, 'resume.model'), model)
             serializers.save_npz(os.path.join(resume_path, 'resume.state'), optimizer)
             training_epoch.pretrained_model = pretrained_model
             training_epoch.serialize(open(os.path.join(resume_path, 'resume.json'), 'w'))
-            interruptable_event.set()
+            interruptable.set_interruptable()
             while True:
                 time.sleep(1)
 
@@ -415,8 +415,7 @@ def do_train_by_chainer(
         loaderjob=20,
         pretrained_model="",
         avoid_flipping=False,
-        interrupt_event=None,
-        interruptable_event=None,
+        interruptable=None,
 ):
     logger.info('Start imagenet train. model_id: {0} gpu: {1}, pretrained_model: {2}'
                 .format(db_model.id, db_model.gpu, pretrained_model))
@@ -511,15 +510,15 @@ def do_train_by_chainer(
         res_q,
         data_q,
         pretrained_model,
-        interrupt_event,
-        interruptable_event
+        interruptable
     )
     feeder.join()
     train_logger.join()
 
     # post-processing
     _post_process(db_model, pretrained_model)
-    interrupt_event.clear()
+    interruptable.clear_interrupt()
+    interruptable.terminate()
     logger.info('Finish imagenet train. model_id: {0}'.format(db_model.id))
 
 
@@ -528,8 +527,7 @@ def resume_train_by_chainer(
         root_output_dir,
         val_batchsize=250,
         loaderjob=20,
-        interrupt_event=None,
-        interruptable_event=None,
+        interruptable=None,
 ):
     logger.info('resume last imagenet train. model_id: {0} gpu: {1}'
                 .format(db_model.id, db_model.gpu))
@@ -622,15 +620,15 @@ def resume_train_by_chainer(
         res_q,
         data_q,
         resume_epoch.pretrained_model,
-        interrupt_event,
-        interruptable_event
+        interruptable
     )
     feeder.join()
     train_logger.join()
 
     # post-processing
     _post_process(db_model, resume_epoch.pretrained_model)
-    interrupt_event.clear()
+    interruptable.clear_interrupt()
+    interruptable.terminate()
     logger.info('Finish imagenet train. model_id: {0}'.format(db_model.id))
 
 
@@ -680,8 +678,7 @@ def do_train_by_tensorflow(
         val_image_num,
         avoid_flipping,
         resume,
-        interrupt_event,
-        interruptable_event,
+        interruptable,
 ):
     logger.info('Start imagenet train. model_id: {}, pretrained_model: {}'
                 .format(db_model.id, pretrained_model))
@@ -763,7 +760,7 @@ def do_train_by_tensorflow(
                 train_cur_accuracy = resume_data.get('train_cur_accuracy', 0)
 
                 while not coord.should_stop():
-                    if interrupt_event.is_set():
+                    if interruptable.is_interrupting():
                         os.mkdir(resume_path)
                         data = {
                             'pretrained_model': pretrained_model,
@@ -777,7 +774,7 @@ def do_train_by_tensorflow(
                         saved_path = saver.save(sess, os.path.join(resume_path, 'resume.ckpt'))
                         data['saved_path'] = saved_path
                         json.dump(data, open(os.path.join(resume_path, 'resume.json'), 'w'))
-                        interruptable_event.set()
+                        interruptable.set_interruptable()
                         while True:
                             time.sleep(0.5)
 
@@ -871,5 +868,6 @@ def do_train_by_tensorflow(
 
     # post-processing
     _post_process(db_model, pretrained_model)
-    interrupt_event.clear()
+    interruptable.clear_interrupt()
+    interruptable.terminate()
     logger.info('Finish imagenet train. model_id: {0}'.format(db_model.id))

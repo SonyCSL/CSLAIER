@@ -591,10 +591,10 @@ def api_terminate_trained():
     model = Model.query.get(id)
     interruptable = runner.INTERRUPTABLE_PROCESSES.get(model.pid)
     if interruptable:
-        interruptable.interrupt()
-        while not interruptable.interruptable():
-            if not interruptable.interrupting():
-                interruptable.terminate()
+        interruptable.set_interrupt()
+        while not interruptable.is_interruptable():
+            # 待機中に中断ではなく完了した場合↓でreturnする。
+            if not interruptable.is_interrupting():
                 return jsonify({'status': 'success'})
             sleep(1)
     model.terminate_train()

@@ -96,8 +96,7 @@ def do_train(
         seq_length=50,
         batchsize=50,  # minibatch size
         grad_clip=5,  # gradient norm threshold to clip
-        interrupt_event=None,
-        interruptable_event=None
+        interruptable=None
 ):
     logger.info('Start LSTM training. model_id: {0}, use_mecab: {1}, initmodel: {2}, gpu: {3}'
                 .format(db_model.id, use_mecab, initmodel, db_model.gpu))
@@ -239,7 +238,7 @@ def do_train(
 
     for i in six.moves.range(iteration_from, jump * n_epoch):
         # 1バッチが終わったタイミングを意図している。
-        if interrupt_event.is_set() and isinstance(accum_loss, int):
+        if interruptable.is_interrupting() and isinstance(accum_loss, int):
             os.mkdir(resume_path)
             serializers.save_npz(os.path.join(resume_path, 'resume.state'), optimizer)
             serializers.save_npz(os.path.join(resume_path, 'resume.model'), model)
@@ -250,7 +249,7 @@ def do_train(
                 'loss_for_graph': float(loss_for_graph),
                 'epoch': epoch
             }, open(os.path.join(resume_path, 'resume.json'), 'w'))
-            interruptable_event.set()
+            interruptable.set_interruptable()
             while True:
                 time.sleep(1)
         x = chainer.Variable(
@@ -325,5 +324,6 @@ def do_train(
     db_model.pid = None
     db_model.gpu = None
     db_model.update_and_commit()
-    interrupt_event.clear()
+    interruptable.clear_interrupt()
+    interruptable.terminate()
     logger.info('Finish LSTM train. model_id: {0}'.format(db_model.id))
