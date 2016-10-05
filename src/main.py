@@ -614,12 +614,9 @@ def get_system_info():
 
 
 if __name__ == '__main__':
-    app.debug = True
-    server = WSGIServer(("", 8080), app)
+    app.debug = app.config['DEBUG']
+    server = WSGIServer((app.config['HOST'], app.config['PORT']), app)
     server.serve_forever()
-    # app.debug = app.config['DEBUG']
-    # server = WSGIServer((app.config['HOST'], app.config['PORT']), app)
-    # server.serve_forever()
     # app.run(
     #     host=app.config['HOST'],
     #     port=app.config['PORT'],
