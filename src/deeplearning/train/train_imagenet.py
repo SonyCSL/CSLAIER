@@ -199,7 +199,7 @@ def feed_data(train_list, val_list, mean_image, batchsize, val_batchsize,
             perm = resume_perm
         else:
             perm = np.random.permutation(len(train_list))
-        data_q.put(TrainingEpoch(epoch - 1, batchsize, perm, avoid_flipping))
+        data_q.put(TrainingEpoch(epoch, batchsize, perm, avoid_flipping))
         for idx in perm:
             path, label = train_list[idx]
             batch_pool[i] = pool.apply_async(read_image, (path, model.insize, mean_image,
@@ -238,11 +238,8 @@ def feed_data(train_list, val_list, mean_image, batchsize, val_batchsize,
     return
 
 
-def log_result(batchsize, val_batchsize, log_file, log_html, train_log, res_q, resume=False):
-    print(log_file)
+def log_result(batchsize, val_batchsize, log_file, train_log, res_q, resume=False):
     if resume:
-        fH = open(log_html, 'a')
-        print(log_file)
         # ログをちゃんと連番にするためにログの最後の行のcountをとる
         with open(log_file) as fp:
             row = '0'
@@ -254,10 +251,8 @@ def log_result(batchsize, val_batchsize, log_file, log_html, train_log, res_q, r
             train_count = int(row.split('\t')[0])
         f = open(log_file, 'a')
     else:
-        fH = open(log_html, 'w')
         f = open(log_file, 'w')
         f.write("count\tepoch\taccuracy\tloss\taccuracy(val)\tloss(val)\n")
-        fH.flush()
         f.flush()
         train_count = 0
     train_cur_loss = 0
@@ -284,69 +279,66 @@ def log_result(batchsize, val_batchsize, log_file, log_html, train_log, res_q, r
             train_count += 1
             duration = time.time() - begin_at
             throughput = train_count * batchsize / duration
+            train_cur_loss += loss
+            train_cur_accuracy += accuracy
             with open(train_log, 'a') as fp:
+                text = 'epoch: {}, train: {}, updates ({} samples) time: {} ({} images/sec)' \
+                    .format(epoch, train_count, train_count * batchsize,
+                            datetime.timedelta(seconds=duration), throughput)
                 fp.write(
-                    json.dumps({'train': train_count,
-                                'updates': train_count * batchsize,
-                                'time': '{} ({} images/sec)'.format(datetime.timedelta(seconds=duration), throughput),
-                                '[TIME]': '{},{}'.format(epoch, datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S'))
-                                })
+                    json.dumps({
+                        'type': 'log',
+                        'description': text,
+                        'time_stamp': datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+                    }) + '\n'
                 )
-                fp.write('\n')
-            fH.write(
-                'train {} updates ({} samples) time: {} ({} images/sec)<br>'
-                    .format(train_count, train_count * batchsize,
-                            datetime.timedelta(seconds=duration), throughput))
-            fH.write("[TIME]{},{}<br>"
-                     .format(epoch, datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')))
-            fH.flush()
+                if train_count % 1000 == 0:
+                    mean_loss = train_cur_loss / 1000
+                    mean_error = 1 - train_cur_accuracy / 10000
+                    fp.write(
+                        json.dumps({
+                            'type': 'train',
+                            'iteration': train_count,
+                            'error': mean_error,
+                            'loss': mean_loss
+                        }) + '\n'
+                    )
+                    train_cur_loss = 0
+                    train_cur_accuracy = 0
             f.write(str(train_count) + "\t" + str(epoch) + "\t" + str(accuracy) + "\t" + str(loss)
                     + "\t\t\n")
             f.flush()
-            train_cur_loss += loss
-            train_cur_accuracy += accuracy
-            if train_count % 1000 == 0:
-                mean_loss = train_cur_loss / 1000
-                mean_error = 1 - train_cur_accuracy / 10000
-                fH.write("<strong>"
-                         + json.dumps({
-                    'type': 'train',
-                    'iteration': train_count,
-                    'error': mean_error,
-                    'loss': mean_loss})
-                         + "</strong><br>")
-                fH.flush()
-                train_cur_loss = 0
-                train_cur_accuracy = 0
         else:
             val_count += val_batchsize
             duration = time.time() - val_begin_at
             throughput = val_count / duration
-            fH.write(
-                'val {} batches ({} samples) time: {} ({} images/sec)'
-                    .format(val_count / val_batchsize, val_count,
-                            datetime.timedelta(seconds=duration), throughput)
-            )
-            fH.flush()
             val_loss += loss
             val_accuracy += accuracy
-            if val_count == VALIDATION_TIMING:
-                mean_loss = val_loss * val_batchsize / VALIDATION_TIMING
-                mean_accuracy = val_accuracy * val_batchsize / VALIDATION_TIMING
-                fH.write("<strong>"
-                         + json.dumps({
-                    'type': 'val',
-                    'iteration': train_count,
-                    'error': (1 - mean_accuracy),
-                    'loss': mean_loss})
-                         + "</strong><br>")
-                fH.flush()
-                f.write(str(train_count) + "\t" + str(epoch) + "\t\t\t"
-                        + str(mean_accuracy) + "\t" + str(mean_loss) + "\n")
-                train_count += 1
-                f.flush()
+            with open(train_log, 'a') as fp:
+                text = 'val {} batches ({} samples) time: {} ({} images/sec)' \
+                    .format(val_count / val_batchsize, val_count,
+                            datetime.timedelta(seconds=duration), throughput)
+                fp.write(
+                    json.dumps({
+                        'type': 'log',
+                        'description': text
+                    }) + '\n')
+                if val_count == VALIDATION_TIMING:
+                    mean_loss = val_loss * val_batchsize / VALIDATION_TIMING
+                    mean_accuracy = val_accuracy * val_batchsize / VALIDATION_TIMING
+                    fp.write(
+                        json.dumps({
+                            'type': 'val',
+                            'iteration': train_count,
+                            'error': (1 - mean_accuracy),
+                            'loss': mean_loss
+                        }) + '\n'
+                    )
+                    f.write(str(train_count) + "\t" + str(epoch) + "\t\t\t"
+                            + str(mean_accuracy) + "\t" + str(mean_loss) + "\n")
+                    train_count += 1
+                    f.flush()
     f.close()
-    fH.close()
 
 
 def train_loop(model, output_dir, xp, optimizer, res_q, data_q, pretrained_model, interruptable):
@@ -495,7 +487,6 @@ def do_train_by_chainer(
             db_model.batchsize,
             val_batchsize,
             os.path.join(db_model.trained_model_path, 'line_graph.tsv'),
-            os.path.join(db_model.trained_model_path, 'log.html'),
             os.path.join(db_model.trained_model_path, 'train.log'),
             res_q
         )
@@ -604,7 +595,6 @@ def resume_train_by_chainer(
             db_model.batchsize,
             val_batchsize,
             os.path.join(db_model.trained_model_path, 'line_graph.tsv'),
-            os.path.join(db_model.trained_model_path, 'log.html'),
             os.path.join(db_model.trained_model_path, 'train.log'),
             res_q,
             True

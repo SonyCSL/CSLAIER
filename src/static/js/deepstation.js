@@ -684,13 +684,16 @@ var subscribe_train_log = function() {
     function LogSubscriber() {};
     LogSubscriber.prototype = {
         connect: function() {
+            this.log = []
             if (this.timer) {
                 clearInterval(this.timer);
             }
             var url = '/api/models/' + model_id + '/get/train_data/log/subscribe';
             var stream = new EventSource(url);
+
+            var self = this;
             stream.addEventListener('message', function(e) {
-                console.log(e.data);
+                self.pushLog(e.data);
             });
             stream.addEventListener('error', function(e) {
                 console.log('stream error');
@@ -700,12 +703,14 @@ var subscribe_train_log = function() {
                 stream.close();
             });
             this.stream = stream;
-            var self = this;
             this.timer = setInterval(function() {
                 if (self.stream.readyState == 2) {
                     self.connect();
                 }
             }, 1000);
+        },
+        pushLog: function(data) {
+            console.log(data);
         }
     };
     var subscriber = new LogSubscriber();

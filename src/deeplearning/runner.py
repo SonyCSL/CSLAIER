@@ -72,7 +72,6 @@ def _cleanup_for_train_terminate(model_id, pid):
     print('_cleanup_for_train_terminate')
     train_logger.terminate_train(model_id)
     del INTERRUPTABLE_PROCESSES[pid]
-    print(INTERRUPTABLE_PROCESSES)
 
 
 def run_imagenet_train(
