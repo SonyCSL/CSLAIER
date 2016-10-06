@@ -12,6 +12,7 @@ import deeplearning.train.train_lstm
 from deeplearning.log_subscriber import train_logger
 from time import sleep
 import gevent
+import re
 
 
 logger = logging.getLogger(__name__)
@@ -99,8 +100,10 @@ def run_imagenet_train(
     model, train_image_num, val_image_num = deeplearning.prepare.prepare_for_imagenet.do(model, prepared_data_root)
 
     (model_dir, model_name) = os.path.split(model.network_path)
+    model_name = re.sub(r"\.py$", "", model_name)
     trained_model_path = _create_trained_model_dir(model.trained_model_path,
                                                    output_dir_root, model_name)
+    model.trained_model_path = trained_model_path
     train_log = os.path.join(trained_model_path, 'train.log')
     open(train_log, 'w').close()
     train_logger.file_subscribe(model_id, train_log)

@@ -37,14 +37,6 @@ VALIDATION_TIMING = 500  # ORIGINAL 50000
 logger = getLogger(__name__)
 
 
-def _create_trained_model_dir(path, root_output_dir, model_name):
-    if path is None:
-        path = os.path.join(root_output_dir, model_name)
-    if not os.path.exists(path):
-        os.mkdir(path)
-    return path
-
-
 def _delete_old_models(db_model, pretrained_model):
     pretrained_models = sorted(os.listdir(db_model.trained_model_path), reverse=True)
     for m in pretrained_models:
@@ -430,10 +422,6 @@ def do_train_by_chainer(
     model_module = load_module(model_dir, model_name)
     model = model_module.Network()
 
-    # create directory for saving trained models
-    db_model.trained_model_path = _create_trained_model_dir(db_model.trained_model_path,
-                                                            root_output_dir, model_name)
-
     # Load pretrained model
     if pretrained_model is not None and pretrained_model.find("model") > -1:
         logger.info("load pretrained model : "
@@ -540,10 +528,6 @@ def resume_train_by_chainer(
     model_name = re.sub(r"\.py$", "", model_name)
     model_module = load_module(model_dir, model_name)
     model = model_module.Network()
-
-    # create directory for saving trained models
-    db_model.trained_model_path = _create_trained_model_dir(db_model.trained_model_path,
-                                                            root_output_dir, model_name)
 
     if db_model.gpu >= 0:
         cuda.get_device(db_model.gpu).use()
@@ -681,9 +665,6 @@ def do_train_by_tensorflow(
     (model_dir, model_name) = os.path.split(db_model.network_path)
     model_name = re.sub(r"\.py$", "", model_name)
     model = load_module(model_dir, model_name)
-
-    db_model.trained_model_path = _create_trained_model_dir(db_model.trained_model_path,
-                                                            output_dir_root, model_name)
 
     db_model.is_trained = 1
     db_model.update_and_commit()
