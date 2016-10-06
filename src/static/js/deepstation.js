@@ -715,7 +715,7 @@ var subscribe_train_log = function() {
             // dataが来たらそれまでのlogを捨てる。
             if (obj.type == 'data') {
                 this.log = _.filter(this.log, function(logJSON) {
-                    return logJSON.type != 'log'
+                    return logJSON.type != 'log';
                 });
             }
             if (this.displayUpdateTimeoutID) {
@@ -727,12 +727,10 @@ var subscribe_train_log = function() {
         displayUpdate: function() {
             var text = _.map(this.log, function(logData) {
                 var body = logData[logData.type];
-                if (logData.type == 'log') {
-                    return body
-                }
                 if (logData.type == 'data') {
-                    return  JSON.stringify(body)
+                    return JSON.stringify(body);
                 }
+                return body;
             });
             $('#training_log').html(text.join('<br>'));
             this.displayUpdateTimeoutID = null;

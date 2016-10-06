@@ -210,17 +210,16 @@ def do_train(
 
     # 再開の場合はログファイルを追記モードで
     if resume:
-        log_file = open(os.path.join(db_model.trained_model_path, 'log.html'), 'a')
         graph_tsv = open(os.path.join(db_model.trained_model_path, 'line_graph.tsv'), 'a')
     else:
-        log_file = open(os.path.join(db_model.trained_model_path, 'log.html'), 'w')
         graph_tsv = open(os.path.join(db_model.trained_model_path, 'line_graph.tsv'), 'w')
         graph_tsv.write('count\tepoch\tperplexity\n')
-        log_file.write("going to train {} iterations<br>".format(jump * n_epoch))
-        log_file.write("[TIME]{},{}<br>"
-                       .format(epoch,
-                               datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')))
-    log_file.flush()
+
+        with open(os.path.join(db_model.trained_model_path, 'train.log'), 'a') as fp:
+            fp.write(json.dumps({
+                'type': 'text',
+                'text': "going to train {} iterations".format(jump * n_epoch)
+            }))
     graph_tsv.flush()
 
     # delete layer visualization cache
@@ -272,12 +271,12 @@ def do_train(
             now = time.time()
             throuput = 10000. / (now - cur_at)
             perp = math.exp(float(cur_log_perp) / 10000)
-            log_file.write('iter {} training perplexity: {:.2f} ({:.2f} iters/sec)<br>'
-                           .format(i + 1, perp, throuput))
-            log_file.write("[TIME]{},{}<br>"
-                           .format(epoch,
-                                   datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')))
-            log_file.flush()
+            with open(os.path.join(db_model.trained_model_path, 'train.log'), 'a') as fp:
+                fp.write(json.dumps({
+                    'type': 'log',
+                    'log': 'iter {} training perplexity: {:.2f} ({:.2f} iters/sec)',
+                    'time_stamp': datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+                }))
             cur_at = now
             cur_log_perp.fill(0)
 
@@ -292,18 +291,20 @@ def do_train(
             now = time.time()
             cur_at += time.time() - now  # skip time of evaluation
 
-            if epoch >= 6:
-                optimizer.lr /= 1.2
-                log_file.write('learning rate = {:.10f}<br>'.format(optimizer.lr))
-                log_file.write("[TIME]{},{}<br>"
-                               .format(epoch,
-                                       datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')))
-                log_file.flush()
+            with open(os.path.join(db_model.trained_model_path, 'train.log'), 'a') as fp:
+                if epoch >= 6:
+                    optimizer.lr /= 1.2
+                    fp.write(json.dumps({
+                        'type': 'text',
+                        'text': 'learning rate = {:.10f}'.format(optimizer.lr),
+                    }))
+                fp.write(json.dumps({
+                    'type': 'text',
+                    'text': '--- epoch: {} ------------------------'.format(epoch),
+                }))
             # Save the model and the optimizer
             serializers.save_npz(os.path.join(db_model.trained_model_path,
                                               'model%04d' % epoch), model)
-            log_file.write('--- epoch: {} ------------------------<br>'.format(epoch))
-            log_file.flush()
             serializers.save_npz(os.path.join(db_model.trained_model_path,
                                               'rnnlm.state'), optimizer)
 
@@ -317,8 +318,11 @@ def do_train(
                              .format(os.path.join(db_model.trained_model_path,
                                                   'previous_' + initmodel), e))
             raise e
-    log_file.write('===== finish train. =====')
-    log_file.close()
+    with open(os.path.join(db_model.trained_model_path, 'train.log'), 'a') as fp:
+        fp.write(json.dumps({
+            'type': 'text',
+            'text': '===== finish train. =====',
+        }))
     graph_tsv.close()
     db_model.is_trained = 2
     db_model.pid = None
