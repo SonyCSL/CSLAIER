@@ -697,11 +697,7 @@ def do_train_by_tensorflow(
         mode = 'a'
     else:
         mode = 'w'
-    with open(os.path.join(db_model.trained_model_path, 'line_graph.tsv'), mode) as line_graph, \
-            open(os.path.join(db_model.trained_model_path, 'log.html'), mode) as log_file:
-        log_file.write('train: {} images, val: {} images, epoch: {}<br>'
-                       .format(train_image_num, val_image_num, db_model.epoch))
-        log_file.flush()
+    with open(os.path.join(db_model.trained_model_path, 'line_graph.tsv'), mode) as line_graph:
         if not resume:
             line_graph.write("count\tepoch\taccuracy\tloss\taccuracy(val)\tloss(val)\n")
         line_graph.flush()
@@ -782,35 +778,28 @@ def do_train_by_tensorflow(
                     if step % 50 == 0 and step != 0:
                         duration = time.time() - begin_at
                         throughput = step * db_model.batchsize / duration
-                        log_file.write('train {} updates ({} samples) time: {} ({} images/sec)<br>'
-                                       .format(step, step * db_model.batchsize,
-                                               datetime.timedelta(seconds=duration), throughput))
-                        log_file.write("[TIME]{},{}<br>"
-                                       .format(current_epoch,
-                                               datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')))
-                        log_file.flush()
                         with open(os.path.join(db_model.train_log_path), 'a') as train_log:
+                            text = 'epoch: {}, train: {}, updates ({} samples) time: {} ({} images/sec)' \
+                                .format(current_epoch, step, step * db_model.batchsize,
+                                        datetime.timedelta(seconds=duration), throughput)
                             train_log.write(json.dumps({
-                                'train': step,
-                                'updates': step * db_model.batchsize,
-                                'time': '{} ({} images/sec)'.format(datetime.timedelta(seconds=duration), throughput),
-                                '[TIME]': '{},{}'.format(current_epoch,
-                                                         datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S'))
-                            }))
-                            train_log.write('/n')
-                        if step % 1000 == 0:
-                            mean_loss = train_cur_loss / 1000
-                            mean_error = 1 - train_cur_accuracy / 1000
-                            log_file.write('<strong>{}</strong><br>'.format(json.dumps({
-                                'type': 'train',
-                                'iteration': step,
-                                'error': mean_error,
-                                'loss': mean_loss
-                            })))
-                            log_file.flush()
-                            train_cur_loss = 0
-                            train_cur_accuracy = 0
-
+                                'type': 'log',
+                                'log': text,
+                                'time_stamp': datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+                            }) + '/n')
+                            if step % 1000 == 0:
+                                mean_loss = train_cur_loss / 1000
+                                mean_error = 1 - train_cur_accuracy / 1000
+                                train_log.write(json.dumps({
+                                    'type': 'data',
+                                    'data': {
+                                        'iteration': step,
+                                        'error': mean_error,
+                                        'loss': mean_loss
+                                    }
+                                }) + '/n')
+                                train_cur_loss = 0
+                                train_cur_accuracy = 0
                     # save trained result
                     if prev_epoch != current_epoch:
                         # epoch updated

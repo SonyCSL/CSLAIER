@@ -68,7 +68,7 @@ def _create_trained_model_dir(path, root_output_dir, model_name):
     return path
 
 
-# 学習の後片付け...
+# 学習の後片付け
 def _cleanup_for_train_terminate(model_id, pid):
     print('_cleanup_for_train_terminate')
     train_logger.terminate_train(model_id)
