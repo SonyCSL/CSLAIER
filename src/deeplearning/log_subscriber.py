@@ -29,7 +29,6 @@ class LogSubscriber(object):
                 for row in fp:
                     gevent.spawn(notify, row)
         self.queues[model_id].append(queue)
-        print(self.queues)
 
     def unsubscribe(self, model_id, queue):
         model_id = int(model_id)
@@ -38,19 +37,12 @@ class LogSubscriber(object):
 
     def terminate_train(self, model_id):
         model_id = int(model_id)
-        print('terminate subscribe', model_id)
-        print('self.tail_processes', self.tail_processes)
-        print('self.subscribing_files', self.subscribing_files)
-        print('self.queues', self.queues)
         if model_id in self.tail_processes:
             for process in self.tail_processes[model_id]:
                 process.kill()
             del self.tail_processes[model_id]
             del self.subscribing_files[model_id]
             del self.queues[model_id]
-        print('self.tail_processes', self.tail_processes)
-        print('self.subscribing_files', self.subscribing_files)
-        print('self.queues', self.queues)
 
     def _tail(self, model_id, file_path):
         def notify(msg):

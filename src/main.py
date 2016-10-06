@@ -589,7 +589,7 @@ def download_trained_files():
 def api_terminate_trained():
     id = request.form['id']
     model = Model.query.get(id)
-    interruptable = runner.INTERRUPTABLE_PROCESSES.get(model.pid)
+    interruptable = runner.INTERRUPTABLE_PROCESSES.get(model.id)
     if interruptable:
         interruptable.set_interrupt()
         while not interruptable.is_interruptable():
@@ -597,8 +597,8 @@ def api_terminate_trained():
             if not interruptable.is_interrupting():
                 return jsonify({'status': 'success'})
             sleep(1)
-    model.terminate_train()
-    interruptable.terminate()
+        model.terminate_train()
+        interruptable.terminate()
     return jsonify({'status': 'success'})
 
 

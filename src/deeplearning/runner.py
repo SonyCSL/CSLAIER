@@ -69,10 +69,10 @@ def _create_trained_model_dir(path, root_output_dir, model_name):
 
 
 # 学習の後片付け
-def _cleanup_for_train_terminate(model_id, pid):
+def _cleanup_for_train_terminate(model_id):
     print('_cleanup_for_train_terminate')
     train_logger.terminate_train(model_id)
-    del INTERRUPTABLE_PROCESSES[pid]
+    del INTERRUPTABLE_PROCESSES[model_id]
 
 
 def run_imagenet_train(
@@ -144,11 +144,11 @@ def run_imagenet_train(
     logging.info('start imagenet training. PID: ', model.pid)
 
     def completion():
-        _cleanup_for_train_terminate(model.id, model.pid)
+        _cleanup_for_train_terminate(model.id)
 
     interruptable.completion = completion
 
-    INTERRUPTABLE_PROCESSES[model.pid] = interruptable
+    INTERRUPTABLE_PROCESSES[model.id] = interruptable
 
 
 # 再現に必要な情報はモデルと、稼働させるGPUだけのはず。
@@ -193,11 +193,11 @@ def resume_imagenet_train(output_dir_root, model, gpu_num):
     logging.info('start imagenet training. PID: ', model.pid)
 
     def completion():
-        _cleanup_for_train_terminate(model.id, model.pid)
+        _cleanup_for_train_terminate(model.id)
 
     interruptable.completion = completion
 
-    INTERRUPTABLE_PROCESSES[model.pid] = interruptable
+    INTERRUPTABLE_PROCESSES[model.id] = interruptable
 
 
 def run_lstm_train(
@@ -249,11 +249,11 @@ def run_lstm_train(
     logging.info('start LSTM training. PID: ', model.pid)
 
     def completion():
-        _cleanup_for_train_terminate(model.id, model.pid)
+        _cleanup_for_train_terminate(model.id)
 
     interruptable.completion = completion
 
-    INTERRUPTABLE_PROCESSES[model.pid] = interruptable
+    INTERRUPTABLE_PROCESSES[model.id] = interruptable
 
 
 def resume_lstm_train(
@@ -294,7 +294,7 @@ def resume_lstm_train(
     logging.info('start LSTM training. PID: ', model.pid)
 
     def completion():
-        _cleanup_for_train_terminate(model.id, model.pid)
+        _cleanup_for_train_terminate(model.id)
 
     interruptable.completion = completion
-    INTERRUPTABLE_PROCESSES[model.pid] = interruptable
+    INTERRUPTABLE_PROCESSES[model.id] = interruptable
