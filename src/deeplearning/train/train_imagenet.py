@@ -288,7 +288,7 @@ def log_result(batchsize, val_batchsize, log_file, train_log, res_q, resume=Fals
                 fp.write(
                     json.dumps({
                         'type': 'log',
-                        'description': text,
+                        'log': text,
                         'time_stamp': datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
                     }) + '\n'
                 )
@@ -297,10 +297,12 @@ def log_result(batchsize, val_batchsize, log_file, train_log, res_q, resume=Fals
                     mean_error = 1 - train_cur_accuracy / 10000
                     fp.write(
                         json.dumps({
-                            'type': 'train',
-                            'iteration': train_count,
-                            'error': mean_error,
-                            'loss': mean_loss
+                            'type': 'data',
+                            'data': {
+                                'iteration': train_count,
+                                'error': mean_error,
+                                'loss': mean_loss
+                            }
                         }) + '\n'
                     )
                     train_cur_loss = 0
@@ -321,17 +323,19 @@ def log_result(batchsize, val_batchsize, log_file, train_log, res_q, resume=Fals
                 fp.write(
                     json.dumps({
                         'type': 'log',
-                        'description': text
+                        'log': text
                     }) + '\n')
                 if val_count == VALIDATION_TIMING:
                     mean_loss = val_loss * val_batchsize / VALIDATION_TIMING
                     mean_accuracy = val_accuracy * val_batchsize / VALIDATION_TIMING
                     fp.write(
                         json.dumps({
-                            'type': 'val',
-                            'iteration': train_count,
-                            'error': (1 - mean_accuracy),
-                            'loss': mean_loss
+                            'type': 'data',
+                            'data': {
+                                'iteration': train_count,
+                                'error': (1 - mean_accuracy),
+                                'loss': mean_loss
+                            }
                         }) + '\n'
                     )
                     f.write(str(train_count) + "\t" + str(epoch) + "\t\t\t"

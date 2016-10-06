@@ -671,7 +671,6 @@ var  update_train_log = function(){
     $.get('/api/models/' + model_id + '/get/train_data/log/', function(ret){
         if(ret.status != 'ready') return;
         update_remain_time(ret.data);
-        $('#training_log').html(ret.data);
         if(ret.is_trained != $('#current_training_status').val()) {
             location.reload();
         }
@@ -691,10 +690,9 @@ var subscribe_train_log = function() {
             var url = '/api/models/' + model_id + '/get/train_data/log/subscribe';
             var stream = new EventSource(url);
 
-            var self = this;
             stream.addEventListener('message', function(e) {
-                self.pushLog(e.data);
-            });
+                this.pushLog(e.data);
+            }.bind(this));
             stream.addEventListener('error', function(e) {
                 console.log('stream error');
             });
@@ -704,13 +702,40 @@ var subscribe_train_log = function() {
             });
             this.stream = stream;
             this.timer = setInterval(function() {
-                if (self.stream.readyState == 2) {
-                    self.connect();
+                if (this.stream.readyState == 2) {
+                    this.connect();
                 }
-            }, 1000);
+            }.bind(this), 1000);
         },
+        // このメソッドはEventStreamで一行追記された時に呼ばれます。
+        // 学習を再開した場合もログが一行ずつ送られてきます。
         pushLog: function(data) {
-            console.log(data);
+            var obj = JSON.parse(data);
+            this.log.push(obj)
+            // dataが来たらそれまでのlogを捨てる。
+            if (obj.type == 'data') {
+                this.log = _.filter(this.log, function(logJSON) {
+                    return logJSON.type != 'log'
+                });
+            }
+            if (this.displayUpdateTimeoutID) {
+                clearTimeout(this.displayUpdateTimeoutID);
+            }
+            // 表示更新は連続でデータが来る場合を考慮して、新しいデータ1.5秒こなかったときにする。
+            this.displayUpdateTimeoutID = setTimeout(this.displayUpdate.bind(this), 1500);
+        },
+        displayUpdate: function() {
+            var text = _.map(this.log, function(logData) {
+                var body = logData[logData.type];
+                if (logData.type == 'log') {
+                    return body
+                }
+                if (logData.type == 'data') {
+                    return  JSON.stringify(body)
+                }
+            });
+            $('#training_log').html(text.join('<br>'));
+            this.displayUpdateTimeoutID = null;
         }
     };
     var subscriber = new LogSubscriber();
