@@ -63,10 +63,14 @@
             if(hash == '#result') {
                 showResultScreen();
             }
-            if($('#current_training_status').val() == 1) {
+            var training_status = $('#current_training_status').val()
+            if(training_status == 1) {
                 subscribe_train_log()
                 setInterval("increase_time_spent()", 1000);
                 setInterval("decrease_time_remain()", 1000);
+            }
+            if(training_status == 0 || training_status == 2) {
+                update_train_log()
             }
             show_gpu_meter();
         });

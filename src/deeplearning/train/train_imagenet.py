@@ -291,11 +291,11 @@ def log_result(batchsize, val_batchsize, log_file, train_log, res_q, resume=Fals
                     fp.write(
                         json.dumps({
                             'type': 'data',
-                            'data': {
+                            'data': json.dumps({
                                 'iteration': train_count,
                                 'error': mean_error,
                                 'loss': mean_loss
-                            }
+                            })
                         }) + '\n'
                     )
                     train_cur_loss = 0
@@ -324,11 +324,11 @@ def log_result(batchsize, val_batchsize, log_file, train_log, res_q, resume=Fals
                     fp.write(
                         json.dumps({
                             'type': 'data',
-                            'data': {
+                            'data': json.dumps({
                                 'iteration': train_count,
                                 'error': (1 - mean_accuracy),
                                 'loss': mean_loss
-                            }
+                            })
                         }) + '\n'
                     )
                     f.write(str(train_count) + "\t" + str(epoch) + "\t\t\t"
@@ -794,11 +794,11 @@ def do_train_by_tensorflow(
                                 mean_error = 1 - train_cur_accuracy / 1000
                                 train_log.write(json.dumps({
                                     'type': 'data',
-                                    'data': {
+                                    'data': json.dumps({
                                         'iteration': step,
                                         'error': mean_error,
                                         'loss': mean_loss
-                                    }
+                                    })
                                 }) + '/n')
                                 train_cur_loss = 0
                                 train_cur_accuracy = 0

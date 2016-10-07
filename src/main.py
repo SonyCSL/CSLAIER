@@ -489,10 +489,18 @@ def api_resume_train():
 @app.route('/api/models/<int:id>/get/train_data/log/')
 def api_get_training_log(id):
     model = Model.query.get(id)
-    if model.train_log is None or not os.path.exists(model.train_log):
-        return jsonify({'status': 'log file not ready'})
-    log = open(model.train_log).read()
-    return jsonify({'status': 'ready', 'data': log, 'is_trained': model.is_trained})
+    if model.train_log and os.path.exists(model.train_log):
+        log = open(model.tprain_log).read()
+        return jsonify({'status': 'ready', 'data': log, 'is_trained': model.is_trained})
+    if model.train_log_path and os.path.exists(model.train_log_path):
+        def data(row):
+            obj = json.loads(row)
+            data_type = obj['type']
+            return obj[data_type] if data_type in obj else ""
+        log = map(data, open(model.train_log_path))
+        return jsonify({'status': 'ready', 'data': '<br>'.join(log), 'is_trained': model.is_trained})
+
+    return jsonify({'status': 'log file not ready'})
 
 
 # SSE "protocol" is described here: http://mzl.la/UPFyxY

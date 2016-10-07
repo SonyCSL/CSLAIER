@@ -662,20 +662,14 @@ $('#log_tab').on('click', function(e){
     $('#graph_tab').removeClass('active');
     $('#layer_tab').removeClass('active');
     $('#network_tab').removeClass('active');
-//    update_train_log();
 });
 
-var  update_train_log = function(){
+var update_train_log = function(){
     var model_id = $('#model_id').val();
-
     $.get('/api/models/' + model_id + '/get/train_data/log/', function(ret){
         if(ret.status != 'ready') return;
-        update_remain_time(ret.data);
-        if(ret.is_trained != $('#current_training_status').val()) {
-            location.reload();
-        }
+        $('#training_log').html(ret.data)
     });
-    draw_train_graph();
 }
 
 var subscribe_train_log = function() {
@@ -753,9 +747,6 @@ var subscribe_train_log = function() {
         displayUpdate: function() {
             var text = _.map(this.log, function(logData) {
                 var body = logData[logData.type];
-                if (logData.type == 'data') {
-                    return JSON.stringify(body);
-                }
                 return body;
             });
             console.log(this);
