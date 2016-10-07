@@ -1,3 +1,4 @@
+import json
 from collections import defaultdict
 from gevent.subprocess import Popen, PIPE
 import gevent
@@ -40,6 +41,14 @@ class LogSubscriber(object):
         if model_id in self.tail_processes:
             for process in self.tail_processes[model_id]:
                 process.kill()
+
+            def notify():
+                for queue in self.queues[model_id][:]:
+                    queue.put(json.dumps({
+                        'type': 'end'
+                    }))
+
+            gevent.spawn(notify)
             del self.tail_processes[model_id]
             del self.subscribing_files[model_id]
             del self.queues[model_id]
