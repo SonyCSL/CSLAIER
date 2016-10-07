@@ -693,13 +693,6 @@ var subscribe_train_log = function() {
             stream.addEventListener('message', function(e) {
                 this.pushLog(e.data);
             }.bind(this));
-            stream.addEventListener('error', function(e) {
-                console.log('stream error');
-            });
-            stream.addEventListener('close', function(e) {
-                console.log('close')
-                stream.close();
-            });
             this.stream = stream;
             this.timer = setInterval(function() {
                 if (this.stream.readyState == 2) {
@@ -749,7 +742,6 @@ var subscribe_train_log = function() {
                 var body = logData[logData.type];
                 return body;
             });
-            console.log(this);
             $('#training_log').html(text.join('<br>'));
             this.displayUpdateTimeoutID = null;
             if (this.startTime) {

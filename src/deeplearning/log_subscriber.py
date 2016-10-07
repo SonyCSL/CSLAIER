@@ -13,7 +13,6 @@ class LogSubscriber(object):
 
     def file_subscribe(self, model_id, file_path):
         model_id = int(model_id)
-        print('subscribe', model_id, file_path)
         self.subscribing_files[model_id] = file_path
         tail = gevent.spawn(self._tail, model_id, file_path)
         avoid_timeout = gevent.spawn(self._avoid_timeout, model_id)
@@ -21,7 +20,6 @@ class LogSubscriber(object):
 
     def subscribe(self, model_id, queue):
         model_id = int(model_id)
-        print('subscribe', self.subscribing_files)
         if model_id in self.subscribing_files:
             with open(self.subscribing_files[model_id]) as fp:
                 def notify(msg):
@@ -34,7 +32,6 @@ class LogSubscriber(object):
     def unsubscribe(self, model_id, queue):
         model_id = int(model_id)
         self.queues[model_id].remove(queue)
-        print('unsubscribe', self.queues)
 
     def terminate_train(self, model_id):
         model_id = int(model_id)

@@ -267,7 +267,7 @@ def do_train(
             accum_loss = 0
             optimizer.update()
 
-        if (i + 1) % 10000 == 0:
+        if (i + 1) % 100 == 0:
             now = time.time()
             throuput = 10000. / (now - cur_at)
             perp = math.exp(float(cur_log_perp) / 10000)
