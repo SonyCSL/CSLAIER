@@ -779,27 +779,29 @@ def do_train_by_tensorflow(
                     if step % 50 == 0 and step != 0:
                         duration = time.time() - begin_at
                         throughput = step * db_model.batchsize / duration
-                        with open(os.path.join(db_model.train_log_path), 'a') as train_log:
+                        with open(os.path.join(db_model.train_log_path), 'a') as fp:
                             text = 'epoch: {}, train: {}, updates ({} samples) time: {} ({} images/sec)' \
                                 .format(current_epoch, step, step * db_model.batchsize,
                                         datetime.timedelta(seconds=duration), throughput)
-                            train_log.write(json.dumps({
-                                'type': 'log',
-                                'log': text,
-                                'time_stamp': datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
-                                'epoch': current_epoch
-                            }) + '/n')
+                            fp.write(
+                                json.dumps({
+                                    'type': 'log',
+                                    'log': text,
+                                    'time_stamp': datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+                                    'epoch': current_epoch
+                                }) + '\n'
+                            )
                             if step % 1000 == 0:
                                 mean_loss = train_cur_loss / 1000
                                 mean_error = 1 - train_cur_accuracy / 1000
-                                train_log.write(json.dumps({
+                                fp.write(json.dumps({
                                     'type': 'data',
                                     'data': json.dumps({
                                         'iteration': step,
                                         'error': mean_error,
                                         'loss': mean_loss
                                     })
-                                }) + '/n')
+                                }) + '\n')
                                 train_cur_loss = 0
                                 train_cur_accuracy = 0
                     # save trained result

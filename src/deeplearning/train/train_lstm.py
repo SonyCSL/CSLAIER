@@ -219,7 +219,7 @@ def do_train(
             fp.write(json.dumps({
                 'type': 'text',
                 'text': "going to train {} iterations".format(jump * n_epoch)
-            }))
+            }) + '\n')
     graph_tsv.flush()
 
     # delete layer visualization cache
@@ -277,7 +277,7 @@ def do_train(
                     'log': 'iter {} training perplexity: {:.2f} ({:.2f} iters/sec)'.format(i + 1, perp, throuput),
                     'time_stamp': datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
                     'epoch': epoch
-                }))
+                }) + '\n')
             cur_at = now
             cur_log_perp.fill(0)
 
@@ -298,11 +298,11 @@ def do_train(
                     fp.write(json.dumps({
                         'type': 'text',
                         'text': 'learning rate = {:.10f}'.format(optimizer.lr),
-                    }))
+                    }) + '\n')
                 fp.write(json.dumps({
                     'type': 'text',
                     'text': '--- epoch: {} ------------------------'.format(epoch),
-                }))
+                }) + '\n')
             # Save the model and the optimizer
             serializers.save_npz(os.path.join(db_model.trained_model_path,
                                               'model%04d' % epoch), model)
@@ -323,7 +323,7 @@ def do_train(
         fp.write(json.dumps({
             'type': 'text',
             'text': '===== finish train. =====',
-        }))
+        }) + '\n')
     graph_tsv.close()
     db_model.is_trained = 2
     db_model.pid = None
