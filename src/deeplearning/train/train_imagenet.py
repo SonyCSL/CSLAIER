@@ -282,6 +282,7 @@ def log_result(batchsize, val_batchsize, log_file, train_log, res_q, resume=Fals
                         'type': 'log',
                         'log': text,
                         'time_stamp': datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+                        'epoch': epoch
                     }) + '\n'
                 )
                 if train_count % 1000 == 0:
@@ -786,6 +787,7 @@ def do_train_by_tensorflow(
                                 'type': 'log',
                                 'log': text,
                                 'time_stamp': datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+                                'epoch': current_epoch
                             }) + '/n')
                             if step % 1000 == 0:
                                 mean_loss = train_cur_loss / 1000

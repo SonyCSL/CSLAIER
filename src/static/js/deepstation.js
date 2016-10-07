@@ -662,7 +662,7 @@ $('#log_tab').on('click', function(e){
     $('#graph_tab').removeClass('active');
     $('#layer_tab').removeClass('active');
     $('#network_tab').removeClass('active');
-    update_train_log();
+//    update_train_log();
 });
 
 var  update_train_log = function(){
@@ -683,7 +683,13 @@ var subscribe_train_log = function() {
     function LogSubscriber() {};
     LogSubscriber.prototype = {
         connect: function() {
-            this.log = []
+            this.log = [];
+            this.timeStamps = [];
+            this.startTime = null;
+            this.currentEpoch = 1;
+            this.trainCount = 0;
+            // おおよそ何回の更新でエポックが終わるか
+            this.numberOfUpdateCountPerEpoch = 0
             if (this.timer) {
                 clearInterval(this.timer);
             }
@@ -721,6 +727,21 @@ var subscribe_train_log = function() {
             if (this.displayUpdateTimeoutID) {
                 clearTimeout(this.displayUpdateTimeoutID);
             }
+            if (obj.time_stamp && obj.epoch) {
+                this.trainCount += 1;
+                var momentTime = moment(obj.time_stamp, 'YYYY-MM-DD HH:mm:ss');
+                this.startTime = this.startTime || momentTime;
+                if (this.currentEpoch < obj.epoch) {
+                    this.numberOfUpdateCountPerEpoch = this.trainCount;
+                    this.trainCount = 0
+                }
+                this.currentEpoch = obj.epoch;
+
+                this.timeStamps.push(momentTime);
+                if (this.timeStamps.length > 10) {
+                    this.timeStamps.shift()
+                }
+            }
             // 表示更新は連続でデータが来る場合を考慮して、新しいデータ1.5秒こなかったときにする。
             this.displayUpdateTimeoutID = setTimeout(this.displayUpdate.bind(this), 1500);
         },
@@ -732,8 +753,24 @@ var subscribe_train_log = function() {
                 }
                 return body;
             });
+            console.log(this);
             $('#training_log').html(text.join('<br>'));
             this.displayUpdateTimeoutID = null;
+            if (this.startTime) {
+                var latest = this.timeStamps[this.timeStamps.length - 1];
+                $('#time_spent').text(millisec_to_readable_time(latest.diff(this.startTime)));
+            }
+            if(this.startTime && this.epochStartTime || this.currentEpoch > 1){
+                var target_epoch = parseInt($('#epoch_info').text(), 10);
+                var first = this.timeStamps[0];
+                var last = this.timeStamps[this.timeStamps.length - 1];
+                // 吐き出されるtime stampの最近10回の平均
+                var timeSpan = last.diff(first) / (this.timeStamps.length - 1);
+
+                // 一回あたりのupdate時間　* (エポック毎のupdate回数 * (目的のエポック数 - 既に終わったエポック数) - 学習中のエポックのupdate回数)
+                var remain_time = timeSpan * (this.numberOfUpdateCountPerEpoch * (target_epoch - (this.currentEpoch - 1)) - this.trainCount)
+                $('#remain_time').text(millisec_to_readable_time(remain_time));
+            }
         }
     };
     var subscriber = new LogSubscriber();

@@ -274,8 +274,9 @@ def do_train(
             with open(os.path.join(db_model.trained_model_path, 'train.log'), 'a') as fp:
                 fp.write(json.dumps({
                     'type': 'log',
-                    'log': 'iter {} training perplexity: {:.2f} ({:.2f} iters/sec)',
-                    'time_stamp': datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+                    'log': 'iter {} training perplexity: {:.2f} ({:.2f} iters/sec)'.format(i + 1, perp, throuput),
+                    'time_stamp': datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+                    'epoch': epoch
                 }))
             cur_at = now
             cur_log_perp.fill(0)
