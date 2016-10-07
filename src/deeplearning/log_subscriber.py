@@ -59,6 +59,7 @@ class LogSubscriber(object):
                 queue.put(msg)
 
         p = Popen(['tail', '-n', '0', '-f', file_path], stdout=PIPE)
+        self.tail_processes[model_id].append(p)
         while True:
             gevent.spawn(notify, p.stdout.readline().strip())
 
