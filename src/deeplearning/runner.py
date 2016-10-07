@@ -70,7 +70,6 @@ def _create_trained_model_dir(path, root_output_dir, model_name):
 
 # 学習の後片付け
 def _cleanup_for_train_terminate(model_id):
-    print('_cleanup_for_train_terminate')
     train_logger.terminate_train(model_id)
     del INTERRUPTABLE_PROCESSES[model_id]
 
@@ -220,6 +219,16 @@ def run_lstm_train(
     model.batchsize = batchsize
     (input_data_path, pretrained_vocab, model) = deeplearning.prepare.prepare_for_lstm.do(
         model, prepared_data_root, pretrained_model, use_wakatigaki)
+
+    (model_dir, model_name) = os.path.split(model.network_path)
+    model_name = re.sub(r"\.py$", "", model_name)
+    trained_model_path = _create_trained_model_dir(model.trained_model_path,
+                                                   output_dir_root, model_name)
+    model.trained_model_path = trained_model_path
+    train_log = os.path.join(trained_model_path, 'train.log')
+    open(train_log, 'w').close()
+    train_logger.file_subscribe(model_id, train_log)
+
     interruptable = Interruptable()
     train_process = Process(
         target=deeplearning.train.train_lstm.do_train,
@@ -265,6 +274,9 @@ def resume_lstm_train(
     model.gpu = gpu_num
     (input_data_path, pretrained_vocab, model) = deeplearning.prepare.prepare_for_lstm.do(
         model, prepared_data_root, None, model.use_wakatigaki)
+
+    train_logger.file_subscribe(model.id, model.train_log_path)
+
     interruptable = Interruptable()
     train_process = Process(
         target=deeplearning.train.train_lstm.do_train,
