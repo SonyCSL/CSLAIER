@@ -7,3 +7,5 @@ numpy>=1.11.0
 scipy>=0.15.1
 cv2>=1.0
 chardet==2.3.0
+gevent==1.1.2
+greenlet==0.4.10
