@@ -536,7 +536,6 @@ def api_training_log_subscribe(model_id):
                 yield ev.encode()
         # 通信が切断されるとこの例外が上がる。
         except GeneratorExit:
-            print('unsubscribe')
             train_logger.unsubscribe(model_id, queue)
 
     return Response(gen(), mimetype="text/event-stream")
@@ -626,9 +625,3 @@ if __name__ == '__main__':
     app.debug = app.config['DEBUG']
     server = WSGIServer((app.config['HOST'], app.config['PORT']), app)
     server.serve_forever()
-    # app.run(
-    #     host=app.config['HOST'],
-    #     port=app.config['PORT'],
-    #     debug=app.config['DEBUG'],
-    #     use_evalex=False,
-    #     threaded=True)
