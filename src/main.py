@@ -489,6 +489,7 @@ def api_resume_train():
 @app.route('/api/models/<int:id>/get/train_data/log/')
 def api_get_training_log(id):
     model = Model.query.get(id)
+    # for backward compatibility.
     if model.train_log and os.path.exists(model.train_log):
         log = open(model.train_log).read()
         return jsonify({'status': 'ready', 'data': log, 'is_trained': model.is_trained})

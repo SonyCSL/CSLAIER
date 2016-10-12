@@ -62,6 +62,8 @@ class Model(db.Model):
     def line_graph(self):
         return self.__get_file_path(self.trained_model_path, 'line_graph.tsv')
 
+    # for backward compatibility
+    # log.htmlは使われていません。ログの書き出しにはtrain.logを使っています。
     @property
     def train_log(self):
         return self.__get_file_path(self.trained_model_path, 'log.html')
