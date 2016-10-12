@@ -598,7 +598,7 @@ def api_terminate_trained():
     id = request.form['id']
     model = Model.query.get(id)
     interruptable = runner.INTERRUPTABLE_PROCESSES.get(model.id)
-    if interruptable:
+    if model.is_running_train_process and interruptable:
         interruptable.set_interrupt()
         while not interruptable.is_interruptable():
             # 待機中に中断ではなく完了した場合↓でreturnする。
@@ -607,6 +607,10 @@ def api_terminate_trained():
             sleep(1)
         model.terminate_train()
         interruptable.terminate()
+    else:
+        if interruptable:
+            interruptable.terminate()
+        model.terminate_train()
     return jsonify({'status': 'success'})
 
 
