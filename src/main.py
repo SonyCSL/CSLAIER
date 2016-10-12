@@ -490,7 +490,7 @@ def api_resume_train():
 def api_get_training_log(id):
     model = Model.query.get(id)
     if model.train_log and os.path.exists(model.train_log):
-        log = open(model.tprain_log).read()
+        log = open(model.train_log).read()
         return jsonify({'status': 'ready', 'data': log, 'is_trained': model.is_trained})
     if model.train_log_path and os.path.exists(model.train_log_path):
         def data(row):
