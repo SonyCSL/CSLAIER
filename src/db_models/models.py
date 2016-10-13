@@ -94,6 +94,16 @@ class Model(db.Model):
             return 'GPU: ' + str(self.gpu)
 
     @property
+    def is_running_train_process(self):
+        if not self.pid:
+            return False
+        try:
+            os.kill(self.pid, 0)
+            return True
+        except OSError:
+            return False
+
+    @property
     def batchsize_str(self):
         if self.batchsize is None:
             return '---'
