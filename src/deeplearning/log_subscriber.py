@@ -62,7 +62,7 @@ class TailFDispatcher(object):
         p = Popen(['tail', '-n', '0', '-f', file_path], stdout=PIPE)
         self.processes.append(p)
         while True:
-            row = p.stdout.readline().strip()
+            row = p.stdout.readline()
             gevent.spawn(notify, wrap_log_type(row, log_type))
 
     def _avoid_timeout(self):

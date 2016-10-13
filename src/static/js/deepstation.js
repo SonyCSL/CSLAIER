@@ -683,7 +683,9 @@ var subscribe_train_log = function() {
             this.currentEpoch = 1;
             this.trainCount = 0;
             // おおよそ何回の更新でエポックが終わるか
-            this.numberOfUpdateCountPerEpoch = 0
+            this.numberOfUpdateCountPerEpoch = 0;
+            this.graphTSV = "";
+
             if (this.timer) {
                 clearInterval(this.timer);
             }
@@ -695,7 +697,7 @@ var subscribe_train_log = function() {
                 if (obj.type == 'log') {
                     this.pushLog(obj.data);
                 } else if (obj.type == 'graph') {
-                    console.log(obj.data)
+                    this.pushGraph(obj.data);
                 }
             }.bind(this));
             this.stream = stream;
@@ -721,8 +723,8 @@ var subscribe_train_log = function() {
                     return logJSON.type != 'log';
                 });
             }
-            if (this.displayUpdateTimeoutID) {
-                clearTimeout(this.displayUpdateTimeoutID);
+            if (this.logDisplayUpdateTimeoutID) {
+                clearTimeout(this.logDisplayUpdateTimeoutID);
             }
             if (obj.time_stamp && obj.epoch) {
                 this.trainCount += 1;
@@ -740,7 +742,21 @@ var subscribe_train_log = function() {
                 }
             }
             // 表示更新は連続でデータが来る場合を考慮して、新しいデータ1.5秒こなかったときにする。
-            this.displayUpdateTimeoutID = setTimeout(this.displayUpdate.bind(this), 1500);
+            this.logDisplayUpdateTimeoutID = setTimeout(this.displayUpdate.bind(this), 1500);
+        },
+        pushGraph: function(data) {
+            this.graphTSV += data;
+            if (this.graphDisplayUpdateTimeoutID) {
+                clearTimeout(this.graphDisplayUpdateTimeoutID);
+            }
+            this.graphDisplayUpdateTimeoutID = setTimeout(this.graphDisplayUpdate.bind(this), 1500);
+        },
+        graphDisplayUpdate: function() {
+            if(this.graphTSV.indexOf('perplexity') > -1) {
+                drawLSTMResultGraph(this.graphTSV);
+            } else {
+                drawImagenetResultGraph(this.graphTSV);
+            }
         },
         displayUpdate: function() {
             var text = _.map(this.log, function(logData) {
@@ -827,26 +843,6 @@ var decrease_time_remain = function(){
     } else {
         $('#remain_time').text(millisec_to_readable_time(sec*1000));
     }
-};
-
-$('#graph_tab').on('click', function(e){
-    last_draw_time=0;
-    draw_train_graph();
-});
-
-var last_draw_time = 0;
-var draw_train_graph = function(){
-    if( ($.now() - last_draw_time) < 30000) return;
-    last_draw_time = $.now()
-    var model_id = $('#model_id').val();
-    $.get('/api/models/' + model_id + '/get/train_data/graph/', function(ret){
-        if(ret.status != 'ready') return;
-        if(ret.data.indexOf('perplexity') > -1) {
-            drawLSTMResultGraph(ret.data);
-        } else {
-            drawImagenetResultGraph(ret.data);
-        }
-    });
 };
 
 var drawLSTMResultGraph = function(data){
@@ -951,7 +947,7 @@ var drawImagenetResultGraph = function(data){
 
     var svg = d3.select("#training_graph").append('svg')
         .attr('width', 630).attr('height', 460)
-        .append('g').attr("transform", "translate(0,0)");;
+        .append('g').attr("transform", "translate(0,0)");
     var parsedData = d3.tsv.parse(data, function(){
         var count = -1;
         return function(data){
@@ -1110,8 +1106,6 @@ var showResultScreen = function(){
             $('#model_detail_log').addClass('hidden');
             $('#model_detail_layers').addClass('hidden');
             $('#model_detail_graph').removeClass('hidden');
-            draw_train_graph();
-            setInterval("draw_train_graph()", 30000);
         } else {
             $('#network_tab').removeClass('active');
             $('#log_tab').addClass('active');
