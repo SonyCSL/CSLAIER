@@ -1,6 +1,8 @@
 from werkzeug.contrib.profiler import ProfilerMiddleware
 from main import app
 import os
+from gevent.wsgi import WSGIServer
+
 
 app.config.from_envvar('DEEPSTATION_CONFIG')
 deepstation_config_params = ('DATABASE_PATH', 'UPLOADED_RAW_FILE', 'UPLOADED_FILE', 'PREPARED_DATA',
@@ -18,10 +20,6 @@ normalize_config_path()
 
 app.config['PROFILE'] = True
 app.wsgi_app = ProfilerMiddleware(app.wsgi_app)
-app.run(
-    host=app.config['HOST'],
-    port=app.config['PORT'],
-    debug=app.config['DEBUG'],
-    use_evalex=False,
-    threaded=True
-)
+app.debug = app.config['DEBUG']
+server = WSGIServer((app.config['HOST'], app.config['PORT']), app)
+server.serve_forever()
