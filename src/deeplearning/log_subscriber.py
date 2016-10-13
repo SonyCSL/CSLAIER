@@ -3,26 +3,40 @@ from collections import defaultdict
 from gevent.subprocess import Popen, PIPE
 import gevent
 
+TRAIN_LOG = 'log'
+LINE_GRAPH = 'graph'
+
+
+def wrap_log_type(row, log_type):
+    return json.dumps({'type': log_type, 'data': row})
+
 
 class TailFDispatcher(object):
-    def __init__(self, subscribe_files):
+    def __init__(self, train_log, line_graph):
         super(TailFDispatcher, self).__init__()
-        self.subscribing_files = subscribe_files
+        self.train_log = train_log
+        self.line_graph = line_graph
         self.processes = []
         self.queues = []
 
-        for file_path in subscribe_files:
-            self.processes.append(gevent.spawn(self._tail, file_path))
+        if train_log:
+            self.processes.append(gevent.spawn(self._tail, train_log, TRAIN_LOG))
+        if line_graph:
+            self.processes.append(gevent.spawn(self._tail, line_graph, LINE_GRAPH))
+
         self.processes.append(gevent.spawn(self._avoid_timeout))
 
     def subscribe(self, queue):
-        for file_path in self.subscribing_files:
-            with open(file_path) as fp:
-                def notify(msg):
-                    queue.put(msg)
+        def notify(msg):
+            queue.put(msg)
 
-                for row in fp:
-                    gevent.spawn(notify, row)
+        with open(self.train_log) as fp:
+            for row in fp:
+                gevent.spawn(notify, wrap_log_type(row, TRAIN_LOG))
+        with open(self.line_graph) as fp:
+            for row in fp:
+                gevent.spawn(notify, wrap_log_type(row, LINE_GRAPH))
+
         self.queues.append(queue)
 
     def unsubscribe(self, queue):
@@ -40,7 +54,7 @@ class TailFDispatcher(object):
 
         gevent.spawn(notify)
 
-    def _tail(self, file_path):
+    def _tail(self, file_path, log_type):
         def notify(msg):
             for queue in self.queues[:]:
                 queue.put(msg)
@@ -48,7 +62,8 @@ class TailFDispatcher(object):
         p = Popen(['tail', '-n', '0', '-f', file_path], stdout=PIPE)
         self.processes.append(p)
         while True:
-            gevent.spawn(notify, p.stdout.readline().strip())
+            row = p.stdout.readline().strip()
+            gevent.spawn(notify, wrap_log_type(row, log_type))
 
     def _avoid_timeout(self):
         def notify():
@@ -65,9 +80,9 @@ class LogSubscriber(object):
         super(LogSubscriber, self).__init__()
         self.tail_processes = {}
 
-    def file_subscribe(self, model_id, subscribe_files):
+    def file_subscribe(self, model_id, train_log, line_graph):
         model_id = int(model_id)
-        self.tail_processes[model_id] = TailFDispatcher(subscribe_files)
+        self.tail_processes[model_id] = TailFDispatcher(train_log, line_graph)
 
     def subscribe(self, model_id, queue):
         model_id = int(model_id)

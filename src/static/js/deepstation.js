@@ -691,7 +691,12 @@ var subscribe_train_log = function() {
             var stream = new EventSource(url);
 
             stream.addEventListener('message', function(e) {
-                this.pushLog(e.data);
+                var obj = JSON.parse(e.data);
+                if (obj.type == 'log') {
+                    this.pushLog(obj.data);
+                } else if (obj.type == 'graph') {
+                    console.log(obj.data)
+                }
             }.bind(this));
             this.stream = stream;
             this.timer = setInterval(function() {

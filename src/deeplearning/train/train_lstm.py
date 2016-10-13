@@ -23,6 +23,7 @@ import chainer.links as L
 from chainer import optimizers
 from chainer import serializers
 from chainer import link
+
 # from .utils import remove_resume_file
 
 
@@ -208,19 +209,17 @@ def do_train(
     accum_loss = 0
     batch_idxs = list(range(batchsize))
 
-    # 再開の場合はログファイルを追記モードで
-    if resume:
-        graph_tsv = open(os.path.join(db_model.trained_model_path, 'line_graph.tsv'), 'a')
-    else:
-        graph_tsv = open(os.path.join(db_model.trained_model_path, 'line_graph.tsv'), 'w')
-        graph_tsv.write('count\tepoch\tperplexity\n')
+    graph_tsv_path = os.path.join(db_model.trained_model_path, 'line_graph.tsv')
+    train_log_path = os.path.join(db_model.trained_model_path, 'train.log')
+    if not resume:
+        with open(graph_tsv_path, 'a') as fp:
+            fp.write('count\tepoch\tperplexity\n')
 
-        with open(os.path.join(db_model.trained_model_path, 'train.log'), 'a') as fp:
+        with open(train_log_path, 'a') as fp:
             fp.write(json.dumps({
                 'type': 'text',
                 'text': "going to train {} iterations".format(jump * n_epoch)
             }) + '\n')
-    graph_tsv.flush()
 
     # delete layer visualization cache
     # trained_model_pathに存在する全てのディレクトリを削除している。
@@ -271,7 +270,7 @@ def do_train(
             now = time.time()
             throuput = 10000. / (now - cur_at)
             perp = math.exp(float(cur_log_perp) / 10000)
-            with open(os.path.join(db_model.trained_model_path, 'train.log'), 'a') as fp:
+            with open(train_log_path, 'a') as fp:
                 fp.write(json.dumps({
                     'type': 'log',
                     'log': 'iter {} training perplexity: {:.2f} ({:.2f} iters/sec)'.format(i + 1, perp, throuput),
@@ -283,8 +282,8 @@ def do_train(
 
         if (i + 1) % 100 == 0:
             perp_for_graph = math.exp(float(loss_for_graph) / 100)
-            graph_tsv.write('{}\t{}\t{:.2f}\n'.format(i + 1, epoch, perp_for_graph))
-            graph_tsv.flush()
+            with open(graph_tsv_path, 'a') as fp:
+                fp.write('{}\t{}\t{:.2f}\n'.format(i + 1, epoch, perp_for_graph))
             loss_for_graph.fill(0)
 
         if (i + 1) % jump == 0:
@@ -292,7 +291,7 @@ def do_train(
             now = time.time()
             cur_at += time.time() - now  # skip time of evaluation
 
-            with open(os.path.join(db_model.trained_model_path, 'train.log'), 'a') as fp:
+            with open(train_log_path, 'a') as fp:
                 if epoch >= 6:
                     optimizer.lr /= 1.2
                     fp.write(json.dumps({
@@ -319,12 +318,11 @@ def do_train(
                              .format(os.path.join(db_model.trained_model_path,
                                                   'previous_' + initmodel), e))
             raise e
-    with open(os.path.join(db_model.trained_model_path, 'train.log'), 'a') as fp:
+    with open(train_log_path, 'a') as fp:
         fp.write(json.dumps({
             'type': 'text',
             'text': '===== finish train. =====',
         }) + '\n')
-    graph_tsv.close()
     db_model.is_trained = 2
     db_model.pid = None
     db_model.gpu = None
