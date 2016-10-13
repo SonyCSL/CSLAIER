@@ -105,7 +105,7 @@ def run_imagenet_train(
     model.trained_model_path = trained_model_path
     train_log = os.path.join(trained_model_path, 'train.log')
     open(train_log, 'w').close()
-    train_logger.file_subscribe(model_id, train_log)
+    train_logger.file_subscribe(model_id, [train_log])
     interruptable = Interruptable()
     if model.framework == 'chainer':
         train_process = Process(
@@ -154,7 +154,7 @@ def run_imagenet_train(
 def resume_imagenet_train(output_dir_root, model, gpu_num):
     model.gpu = gpu_num
     model.update_and_commit()
-    train_logger.file_subscribe(model.id, model.train_log_path)
+    train_logger.file_subscribe(model.id, [model.train_log_path])
     interruptable = Interruptable()
     if model.framework == 'chainer':
         train_process = Process(
@@ -227,7 +227,7 @@ def run_lstm_train(
     model.trained_model_path = trained_model_path
     train_log = os.path.join(trained_model_path, 'train.log')
     open(train_log, 'w').close()
-    train_logger.file_subscribe(model_id, train_log)
+    train_logger.file_subscribe(model_id, [train_log])
 
     interruptable = Interruptable()
     train_process = Process(
@@ -275,7 +275,7 @@ def resume_lstm_train(
     (input_data_path, pretrained_vocab, model) = deeplearning.prepare.prepare_for_lstm.do(
         model, prepared_data_root, None, model.use_wakatigaki)
 
-    train_logger.file_subscribe(model.id, model.train_log_path)
+    train_logger.file_subscribe(model.id, [model.train_log_path])
 
     interruptable = Interruptable()
     train_process = Process(
