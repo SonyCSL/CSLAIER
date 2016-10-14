@@ -296,7 +296,7 @@ def do_train(
                 if epoch >= 6:
                     optimizer.lr /= 1.2
                     fp.write(json.dumps({
-                        'type': 'text',
+                        'type': 'data',
                         'text': 'learning rate = {:.10f}'.format(optimizer.lr),
                     }) + '\n')
                 fp.write(json.dumps({
