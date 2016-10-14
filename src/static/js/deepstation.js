@@ -846,15 +846,56 @@ var decrease_time_remain = function(){
 };
 
 var drawLSTMResultGraph = function(data){
-    $('#training_graph').empty();
     var margin = {top: 20, right: 20, bottom: 30, left: 50};
+
+    var path = xAxisGroup = yAxisGroup = null;
+    if (!document.getElementById('graph_svg')) {
+        $('#training_graph').empty();
+        svg = d3.select("#training_graph")
+            .append('svg')
+            .attr('width', 630)
+            .attr('height', 460)
+            .append('g')
+            .attr('id', 'graph_svg')
+            .attr("transform", "translate(0,0)");
+
+        path = svg.append("path")
+            .attr("id", "path")
+
+        // x axis(epoch)
+        xAxisGroup = svg.append("g")
+            .attr("id", "x-axis")
+            .attr("class", "x axis")
+            .attr("fill", "white")
+            .attr("transform", "translate(" + margin.left + ",410)")
+        // y axis right side(perplexity)
+        yAxisGroup = svg.append("g")
+            .attr("id", "y-axis")
+            .attr("class", "y axis")
+            .attr("transform", "translate(" + margin.left + ",0)")
+            .attr("fill", "white")
+        // legend
+        var legend_data = [
+            {title: "Perplexity", color:"steelblue"},
+        ];
+        _.each(legend_data, function(d, i){
+            addLegend(svg, d.title, d.color, i);
+        });
+    } else {
+        path = d3.select('#path')
+        xAxisGroup = d3.select('#x-axis')
+        yAxisGroup = d3.select('#y-axis')
+    }
     var width = 550 - margin.left - margin.right;
     var height = 450 - margin.top - margin.bottom;
 
     var xEpoch      = d3.scale.linear().range([0, width]);
     var xCount      = d3.scale.linear().range([0, width]);
     var yPerplexity = d3.scale.linear().range([height, 0]);
-
+    var parsedData = d3.tsv.parse(data);
+    xEpoch.domain(d3.extent(parsedData, function(d) { return d.epoch }));
+    xCount.domain(d3.extent(parsedData, function(d) { return d.count }));
+    yPerplexity.domain([0, d3.max(parsedData).perplexity]);
     // 軸の定義
     var xAxis          = d3.svg.axis()
                          .scale(xEpoch)
@@ -869,41 +910,17 @@ var drawLSTMResultGraph = function(data){
             .x(function(d) { return xCount(d.count); })
             .y(function(d) { return yPerplexity(d.perplexity); });
 
-    var svg = d3.select("#training_graph").append('svg')
-        .attr('width', 630).attr('height', 460)
-        .append('g').attr("transform", "translate(0,0)");
-
-    var parsedData = d3.tsv.parse(data);
-
-    xEpoch.domain(d3.extent(parsedData, function(d) { return d.epoch; }));
-    xCount.domain(d3.extent(parsedData, function(d) { return d.count}));
-    yPerplexity.domain([0, d3.max(parsedData).perplexity]);
-
     // loss
-    svg.append("path")
-        .datum(parsedData)
+    path.datum(parsedData)
         .attr("class", "line-loss")
         .attr("transform", "translate(" + margin.left + ",0)")
         .attr("d", linePerplexity);
     // x axis(epoch)
-    svg.append("g")
-        .attr("class", "x axis")
-        .attr("fill", "white")
-        .attr("transform", "translate(" + margin.left + ",410)")
-        .call(xAxis);
+    xAxisGroup.selectAll("*").remove()
+    xAxisGroup.call(xAxis);
     // y axis right side(perplexity)
-    svg.append("g")
-        .attr("class", "y axis")
-        .attr("transform", "translate(" + margin.left + ",0)")
-        .attr("fill", "white")
-        .call(yAxisPerplexity)
-    // legend
-    var legend_data = [
-        {title: "Perplexity", color:"steelblue"},
-    ];
-    _.each(legend_data, function(d, i){
-        addLegend(svg, d.title, d.color, i);
-    });
+    yAxisGroup.selectAll("*").remove()
+    yAxisGroup.call(yAxisPerplexity)
 };
 
 var drawImagenetResultGraph = function(data){
