@@ -851,7 +851,7 @@ var drawLSTMResultGraph = function(data){
     var path = xAxisGroup = yAxisGroup = null;
     if (!document.getElementById('graph_svg')) {
         $('#training_graph').empty();
-        svg = d3.select("#training_graph")
+        var svg = d3.select("#training_graph")
             .append('svg')
             .attr('width', 630)
             .attr('height', 460)
@@ -916,15 +916,12 @@ var drawLSTMResultGraph = function(data){
         .attr("transform", "translate(" + margin.left + ",0)")
         .attr("d", linePerplexity);
     // x axis(epoch)
-    xAxisGroup.selectAll("*").remove()
     xAxisGroup.call(xAxis);
     // y axis right side(perplexity)
-    yAxisGroup.selectAll("*").remove()
     yAxisGroup.call(yAxisPerplexity)
 };
 
 var drawImagenetResultGraph = function(data){
-    $('#training_graph').empty();
     // スケールと出力レンジの定義
     var margin = {top: 20, right: 20, bottom: 30, left: 50};
     var width = 550 - margin.left - margin.right;
@@ -937,6 +934,83 @@ var drawImagenetResultGraph = function(data){
     var yAccuracy    = d3.scale.linear().range([height, 0]);
     var yValAccuracy = d3.scale.linear().range([height, 0]);
 
+    var lossPath = accuracyPath = lossValPath = accuracyValPath = xAxisGroup = yAxisLeftSide = yAxisRightSide = null;
+    if (!document.getElementById('graph_svg')) {
+        $('#training_graph').empty();
+        var svg = d3.select("#training_graph")
+            .append('svg')
+            .attr('width', 630)
+            .attr('height', 460)
+            .append('g')
+            .attr('id', 'graph_svg')
+            .attr("transform", "translate(0,0)");
+        // loss
+        lossPath = svg.append("path")
+            .attr("class", "line-loss")
+            .attr("transform", "translate(" + margin.left + ",0)")
+        // accuracy
+        accuracyPath = svg.append("path")
+            .attr("class", "line-accuracy")
+            .attr("transform", "translate(" + margin.left + ",0)")
+        // loss(val)
+        lossValPath = svg.append("path")
+            .attr("class", "line-val-loss")
+            .attr("transform", "translate(" + margin.left + ",0)")
+        // accuracy(val)
+        accuracyValPath = svg.append("path")
+            .attr("class", "line-val-accuracy")
+            .attr("transform", "translate(" + margin.left + ",0)")
+        // x axis(epoch)
+        xAxisGroup = svg.append("g")
+            .attr("id", "x-axis")
+            .attr("class", "x axis")
+            .attr("fill", "white")
+            .attr("transform", "translate(" + margin.left + ",410)")
+        // y axis left side(loss)
+        yAxisLeftSide = svg.append("g")
+            .attr("id", "y-axis-left")
+            .attr("class", "y axis")
+            .attr("transform", "translate(" + margin.left + ",0)")
+            .attr("fill", "white")
+        yAxisLeftSide.append("text")
+            .attr("y", 6)
+            .attr("x", 5)
+            .attr("dy", ".71em")
+            .attr("fill", "white")
+            .style("text-anchor", "start")
+            .text("loss");
+        // y axis right side(accuracy)
+        yAxisRightSide = svg.append("g")
+            .attr("id", "y-axis-right")
+            .attr("class", "y axis")
+            .attr("transform", "translate(" + (width + margin.left + 10)+",0)")
+            .attr("fill", "white")
+        yAxisRightSide.append("text")
+            .attr("y", 6)
+            .attr("x", -5)
+            .attr("dy", ".71em")
+            .attr("fill", "white")
+            .style("text-anchor", "end")
+            .text("accuracy")
+        // legend
+        var legend_data = [
+            {title: "loss", color:"steelblue"},
+            {title: "accuracy", color:"orange"},
+            {title: "loss(val)", color:"#0c0"},
+            {title: "accuracy(val)", color:"red"}
+        ];
+        _.each(legend_data, function(d, i){
+            addLegend(svg, d.title, d.color, i);
+        });
+    } else {
+        lossPath = d3.select('.line-loss')
+        accuracyPath = d3.select('.line-accuracy')
+        lossValPath = d3.select('.line-val-loss')
+        accuracyValPath = d3.select('.line-val-accuracy')
+        xAxisGroup = d3.select('#x-axis')
+        yAxisLeftSide = d3.select('#y-axis-left')
+        yAxisRightSide = d3.select('#y-axis-right')
+    }
 
     // 軸の定義
     var xAxis         = d3.svg.axis()
@@ -962,9 +1036,6 @@ var drawImagenetResultGraph = function(data){
             .x(function(d) { return xCount(d.count); })
             .y(function(d) { return yValAccuracy(d.val_accuracy); });
 
-    var svg = d3.select("#training_graph").append('svg')
-        .attr('width', 630).attr('height', 460)
-        .append('g').attr("transform", "translate(0,0)");
     var parsedData = d3.tsv.parse(data, function(){
         var count = -1;
         return function(data){
@@ -994,80 +1065,21 @@ var drawImagenetResultGraph = function(data){
         if(obj.val_loss) return true;
     });
 
-    xEpoch.domain(d3.extent(parsedData, function(d) { return d.epoch; }));
-    xCount.domain(d3.extent(parsedData, function(d) { return d.count}));
+    xEpoch.domain(d3.extent(parsedData, function(d) { return d.epoch }));
+    xCount.domain(d3.extent(parsedData, function(d) { return d.count }));
     var loss_max = d3.max(train_loss_data.concat(val_loss_data), function(d){ return d.loss || d.val_loss});
     yLoss.domain([0, loss_max]);
     yAccuracy.domain([0, 1]);
     yValLoss.domain([0, loss_max]);
     yValAccuracy.domain([0, 1]);
 
-    // loss
-    svg.append("path")
-        .datum(train_loss_data)
-        .attr("class", "line-loss")
-        .attr("transform", "translate(" + margin.left + ",0)")
-        .attr("d", lineLoss);
-    // accuracy
-    svg.append("path")
-        .datum(train_accuracy_data)
-        .attr("class", "line-accuracy")
-        .attr("transform", "translate(" + margin.left + ",0)")
-        .attr("d", lineAccuracy);
-    // loss(val)
-    svg.append("path")
-        .datum(val_loss_data)
-        .attr("class", "line-val-loss")
-        .attr("transform", "translate(" + margin.left + ",0)")
-        .attr("d", lineValLoss);
-    // accuracy(val)
-    svg.append("path")
-        .datum(val_accuracy_data)
-        .attr("class", "line-val-accuracy")
-        .attr("transform", "translate(" + margin.left + ",0)")
-        .attr("d", lineValAccuracy);
-    // x axis(epoch)
-    svg.append("g")
-        .attr("class", "x axis")
-        .attr("fill", "white")
-        .attr("transform", "translate(" + margin.left + ",410)")
-        .call(xAxis);
-    // y axis left side(loss)
-    svg.append("g")
-        .attr("class", "y axis")
-        .attr("transform", "translate(" + margin.left + ",0)")
-        .attr("fill", "white")
-        .call(yAxisLoss)
-        .append("text")
-        .attr("y", 6)
-        .attr("x", 5)
-        .attr("dy", ".71em")
-        .attr("fill", "white")
-        .style("text-anchor", "start")
-        .text("loss");
-    // y axis right side(accuracy)
-    svg.append("g")
-        .attr("class", "y axis")
-        .attr("transform", "translate(" + (width + margin.left + 10)+",0)")
-        .attr("fill", "white")
-        .call(yAxisAccuracy)
-        .append("text")
-        .attr("y", 6)
-        .attr("x", -5)
-        .attr("dy", ".71em")
-        .attr("fill", "white")
-        .style("text-anchor", "end")
-        .text("accuracy")
-    // legend
-    var legend_data = [
-        {title: "loss", color:"steelblue"},
-        {title: "accuracy", color:"orange"},
-        {title: "loss(val)", color:"#0c0"},
-        {title: "accuracy(val)", color:"red"}
-    ];
-    _.each(legend_data, function(d, i){
-        addLegend(svg, d.title, d.color, i);
-    });
+    lossPath.datum(train_loss_data).attr("d", lineLoss);
+    accuracyPath.datum(train_accuracy_data).attr("d", lineAccuracy);
+    lossValPath.datum(val_loss_data).attr("d", lineValLoss);
+    accuracyValPath.datum(val_accuracy_data).attr("d", lineValAccuracy);
+    xAxisGroup.call(xAxis);
+    yAxisLeftSide.call(yAxisLoss)
+    yAxisRightSide.call(yAxisAccuracy)
 };
 
 var addLegend = function(svg, title, color, i){
