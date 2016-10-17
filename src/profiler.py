@@ -6,7 +6,7 @@ from gevent.wsgi import WSGIServer
 
 app.config.from_envvar('CSLAIER_CONFIG')
 cslaier_config_params = ('DATABASE_PATH', 'UPLOADED_RAW_FILE', 'UPLOADED_FILE', 'PREPARED_DATA',
-                             'TRAINED_DATA', 'INSPECTION_TEMP', 'LOG_DIR')
+                         'TRAINED_DATA', 'INSPECTION_TEMP', 'LOG_DIR')
 # WebApp settings
 app.config['CSLAIER_ROOT'] = os.getcwd()
 
