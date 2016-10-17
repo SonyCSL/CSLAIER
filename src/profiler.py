@@ -4,17 +4,17 @@ import os
 from gevent.wsgi import WSGIServer
 
 
-app.config.from_envvar('DEEPSTATION_CONFIG')
-deepstation_config_params = ('DATABASE_PATH', 'UPLOADED_RAW_FILE', 'UPLOADED_FILE', 'PREPARED_DATA',
+app.config.from_envvar('CSLAIER_CONFIG')
+cslaier_config_params = ('DATABASE_PATH', 'UPLOADED_RAW_FILE', 'UPLOADED_FILE', 'PREPARED_DATA',
                              'TRAINED_DATA', 'INSPECTION_TEMP', 'LOG_DIR')
 # WebApp settings
-app.config['DEEPSTATION_ROOT'] = os.getcwd()
+app.config['CSLAIER_ROOT'] = os.getcwd()
 
 
 def normalize_config_path():
-    for param in deepstation_config_params:
+    for param in cslaier_config_params:
         if not app.config[param].startswith('/'):
-            app.config[param] = os.path.abspath(app.config['DEEPSTATION_ROOT'] + os.sep + app.config[param])
+            app.config[param] = os.path.abspath(app.config['CSLAIER_ROOT'] + os.sep + app.config[param])
 
 normalize_config_path()
 
