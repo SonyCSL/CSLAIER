@@ -873,6 +873,8 @@ var drawLSTMResultGraph = function(data){
 
         path = svg.append("path")
             .attr("id", "path")
+            .attr("class", "line-loss")
+            .attr("transform", "translate(" + margin.left + ",0)")
 
         // x axis(epoch)
         xAxisGroup = svg.append("g")
@@ -904,7 +906,11 @@ var drawLSTMResultGraph = function(data){
     var xEpoch      = d3.scale.linear().range([0, width]);
     var xCount      = d3.scale.linear().range([0, width]);
     var yPerplexity = d3.scale.linear().range([height, 0]);
-    var parsedData = d3.tsv.parse(data);
+    var parsedData = d3.tsv.parse(data, function(row) {
+        row.epoch = parseInt(row.epoch, 10) + 1;
+        row.count = parseInt(row.count, 10);
+        return row;
+    });
     xEpoch.domain(d3.extent(parsedData, function(d) { return d.epoch }));
     xCount.domain(d3.extent(parsedData, function(d) { return d.count }));
     yPerplexity.domain([0, d3.max(parsedData).perplexity]);
@@ -923,10 +929,7 @@ var drawLSTMResultGraph = function(data){
             .y(function(d) { return yPerplexity(d.perplexity); });
 
     // loss
-    path.datum(parsedData)
-        .attr("class", "line-loss")
-        .attr("transform", "translate(" + margin.left + ",0)")
-        .attr("d", linePerplexity);
+    path.datum(parsedData).attr("d", linePerplexity);
     // x axis(epoch)
     xAxisGroup.call(xAxis);
     // y axis right side(perplexity)
