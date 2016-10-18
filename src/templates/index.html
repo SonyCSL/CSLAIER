@@ -1,0 +1,28 @@
+{% extends 'common/base.html' %}
+{% block title %} index {% endblock %}
+{% block main_content %}
+<div class="container" id="main">
+    <div class="row">
+        <div class="col-md-9">
+            {% include 'index_partial/datasets.html' %}
+            {% include 'index_partial/models.html' %}
+        </div>
+        <div class="col-md-3">
+            {% include 'common/version_info.html' %}
+            {% include 'common/gpu_info.html' %}
+            {% include 'common/resource_info.html' %}
+        </div>
+    </div>
+</div>
+{% include 'index_partial/modals.html' %}
+{% endblock %}
+
+{% block scripts %}
+    {% include 'common/gpu_script.html' %}
+    <script type="text/javascript">
+        $(function(){
+            setInterval(check_train_progress, 60000);
+            show_gpu_meter();
+        });
+    </script>
+{% endblock %}

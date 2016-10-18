@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>CSLAILER - GPU Usage</title>
+    <style type="text/css">
+        body {
+            background-colro: #020;
+            margin: 0;
+            padding: 0;
+        };
+    </style>
+</head>
+<body>
+    <script src="/static/js/enchant.js"></script>
+    <script src="/static/js/gpu_meter.js"></script>
+    <script>
+        window.onload = function(){
+            var gpu_info = {};
+            var params = location.search.substring(1).split('&');
+            for(var i = 0, len = params.length; i < len; i++){
+                var a_param = params[i].split('=');
+                gpu_info[decodeURIComponent(a_param[0])] = decodeURIComponent(a_param[1]);
+            }
+            create_gpu_meter(
+                gpu_info['fan'],
+                gpu_info['power_draw'],
+                gpu_info['power_limit'],
+                gpu_info['memory_used'],
+                gpu_info['memory_total'],
+                gpu_info['temperature']
+            );
+        };
+    </script>
+</body>
+</html>

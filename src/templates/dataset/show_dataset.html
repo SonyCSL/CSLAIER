@@ -1,0 +1,104 @@
+{% extends 'common/base.html' %}
+{% block title %} {{ dataset.name }} {% endblock %}
+{% block main_content %}
+    <input type="hidden" id="dataset_id" value="{{ dataset.id }}">
+    <div class="container">
+        <h2>Dataset</h2>
+        <div class="dataset_detail">
+            <div class="subtitle">
+                <h3>{{ dataset.name }}</h3>
+                <div class="button_div right">
+                    <button class="btn btn-cyber" id="btn_delete_dataset">Delete Dataset</button>
+                    <button class="btn btn-cyber" data-toggle="modal" data-target="#modal_new_category"><span class="glyphicon glyphicon-plus"></span>New</button>
+                </div>
+            </div>
+            {% for category in dataset.categories %}
+                <div class="category" data-path='{% if category["path"] == "" %}-{% else %}{{ category["path"] }}{% endif %}' data-id='{{ dataset.id }}'>
+                    <h4>{{ category["category"] }} ({{ category["file_num"] }})</h4>
+                    {% if category["dataset_type"] == "image" %}
+                        {% for thumb in category["thumbnails"] %}
+                            <img src="{{ thumb }}" class="img-responsive img-rounded thumbnail-30">
+                        {% endfor %}
+                    {% elif category["dataset_type"] == "text" %}
+                        <div class="sample_text">
+                            {% for t in category["sample_text"] %}
+                                {{t}}
+                            {% endfor %}
+                        </div>
+                    {% endif %}
+                </div>
+            {% endfor %}
+        </div>
+        {% if dataset.pages > 1 %}
+            <nav class="pagination center">
+                <ul class="pagination">
+                    {% if current_page == 1 %}
+                        <li class="disabled">
+                            <span aria-hidden="true">&laquo;</span>
+                        </li>
+                    {% else %}
+                        <li>
+                            <a href="{{url_for('show_dataset', id=dataset.id, page=current_page - 1)}}" aria-label="Previous">
+                                <span aria-hidden="true">&laquo;</span>
+                            </a>
+                        </li>
+                    {% endif %}
+                    {% for p in range(dataset.pages) %}
+                        <li class="{% if p + 1 == current_page %}active{% endif %}"><a href="{{url_for('show_dataset', id=dataset.id, page=p+1)}}">{{p+1}}</a></li>
+                    {% endfor %}
+                    {% if current_page == dataset.pages %}
+                        <li class="disabled">
+                            <span aria-hidden="true">&raquo;</span>
+                        </li>
+                    {% else %}
+                        <li>
+                            <a href="{{url_for('show_dataset', id=dataset.id, page=current_page + 1)}}" aria-label="Next">
+                                <span aria-hidden="true">&raquo;</span>
+                            </a>
+                        </li>
+                    {% endif %}
+                </ul>
+            </nav>
+        {% endif %}
+    </div>
+
+    <div class="modal fade" id="modal_new_category" tabindex="-1" role="dialog" aria-labelledby="modal_new_category">
+        <div class="modal-dialog" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h4 class="modal-title" id="modal_new_category_title">
+                        {% if dataset.type == 'image' %}
+                            Create New Category
+                        {% elif dataset.type == 'text' %}
+                            Create New Folder
+                        {% endif %}
+                    </h4>
+                </div>
+                <div class="modal-body">
+                    <div class="form-group">
+                        <label for="" class="">
+                            {% if dataset_type == 'image' %}
+                                Input category name.
+                            {% elif dataset_type == 'text' %}
+                                Input folder name.
+                            {% endif %}
+                        </label>
+                        <input type="text" class="form-control" id="input_category_name" name="category_name" placeholder="input category name">
+                    </div>
+                    <button type="button" id="create_category_submit" class="btn btn-cyber disabled">Create</button>
+                    <button type="cancel" class="btn btn-cyber" data-dismiss="modal">Cancel</button>
+                </div>
+            </div>
+        </div>
+    </div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    var categories = [
+        {% for category in dataset.categories %}
+            "{{ category['category'] }}",
+        {% endfor %}
+    ]
+</script>
+{% endblock %}

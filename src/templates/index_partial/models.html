@@ -1,0 +1,64 @@
+<div class="subtitle">
+    <h2>Models</h2>
+    <div class="button_div right">
+        <a href="/models/new">
+            <button class="btn btn-cyber"><span class="glyphicon glyphicon-plus"></span>New</button>
+        </a>
+    </div>
+</div>
+<div class="models">
+    {% for model in models %}
+        {% if loop.first or loop.index0 % 3 == 0 %}
+            <div class="models_row">
+        {% endif %}
+        {% if model.is_trained == 1 %}
+            <div class="model model-progress" id="model_{{model.id}}" data-modelid="{{model.id}}">
+        {% elif model.is_trained == 2 %}
+            <div class="model" id="model_{{model.id}}" data-modelid="{{model.id}}">
+        {% else %}
+            <div class="model model-nottrained" id="model_{{model.id}}" data-modelid="{{model.id}}">
+        {% endif %}
+            <h3>{{model.name}}
+                <div class="progress-info">
+                    {% if model.is_trained == 1 %}
+                        <span class="label label-progress">In Progress</span>
+                    {% elif model.is_trained == 2 %}
+                        <span class="label label-trained">Trained</span>
+                    {% else %}
+                        <span class="label label-nottrained">Not Trained</span>
+                    {% endif %}
+                </div>
+            </h3>
+            <ul>
+                <li>Date: {{model.created_at.strftime('%Y-%m-%d %H:%M:%S')}}</li>
+                <li>Epoch: {{model.epoch}}</li>
+                <li>Processing Unit: {{model.gpu_str}}</li>
+                <li>
+                    {% if model.type == 'image' %}
+                        Image Classification
+                    {% elif model.type == 'text' %}
+                        Natural Language Processing
+                    {% endif %}
+                </li>
+                <li>Dataset:
+                    {% if model.dataset %}
+                        {{model.dataset.name}}
+                    {% else %}
+                        ---
+                    {% endif %}
+                </li>
+                <li>Network:
+                    {% if model.network_name %}
+                        {{model.network_name}}
+                    {% else %}
+                        ---
+                    {% endif %}
+                </li>
+                <li>Framework:{{model.framework}}</li>
+            </ul>
+        </div>
+        {% if loop.index0 % 3 == 2 or loop.last %}
+            </div>
+        {% endif %}
+    {% endfor %}
+</div>

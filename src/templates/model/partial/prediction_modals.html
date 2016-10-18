@@ -1,0 +1,65 @@
+
+{% if model.type == 'image' %}
+    <div class="modal fade" id="inspection_modal" tabindex="-1" role="dialog" aria-labelledby="inspection_modal">
+        <div class="modal-dialog" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h4 class="modal-title" id="inspection_modal_title">Inspection <small><span id="epoch_on_modal_title">{{usable_epochs[0]}}</span></small></h4>
+                </div>
+                <div class="modal-body">
+                    <form action="/models/inspect/" method="POST" enctype="multipart/form-data">
+                        <div class="form-group">
+                            <input type="file" id="inspection_fileInput" name="fileInput">
+                            <p class="help-block">Select image(.jpg, .gif, .png) which you want to inspect.</p>
+                        </div>
+                        <input type="hidden" name="epoch" id="epoch_on_modal" value="{{usable_epochs[0]}}">
+                        <input type="hidden" name="model_id" value="{{model.id}}">
+                        <button type="submit" class="btn btn-cyber">Submit</button>
+                        <button type="cancel" class="btn btn-cyber" data-dismiss="modal">Cancel</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+{% endif %}
+
+{% if model.type == 'text' %}
+    <div class="modal fade" id="prediction_modal" tabindex="-1" role="dialog" aria-labelledby="inspection_modal">
+        <div class="modal-dialog" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h4 class="modal-title" id="inspection_modal_title">Prediction<small><span id="epoch_on_modal_title">{{usable_epochs[0]}}</span></small></h4>
+                </div>
+                <div class="modal-body">
+                    <div id="prediction_div">
+                        <div class="form-group">
+                            <label for="prediction_epoch" describedby="epoch_select">Epoch</label>
+                            <select name="prediction_epoch" id="prediction_epoch" class="form-control">
+                                {% for epoch in usable_epochs %}
+                                    <option value="{{epoch}}" {% if loop.first %}selected{% endif %}>{{epoch}}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="prediction_result_length">Prediction Result Length</label>
+                            <input id="prediction_result_length" type="number" min="1" value="200" class="form-control">
+                        </div>
+                        <div class="form-group">
+                            <label for="prediction_primetext">Prime Text</label>
+                            <input class="form-control" type="text" name="prediction_primetext" id="prediction_primetext">
+                        </div>
+                        <button class="btn btn-cyber disabled" id="do_predict">Predict</button>
+                        <hr class="cyber">
+                        <div class="form-group">
+                            <label for="prediction_result">Prediction Result</label>
+                            <textarea class="form-control" name="prediction_result" id="prediction_result" cols="30" rows="10"></textarea>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-cyber" data-dismiss="modal">Close</button>
+                </div>
+            </div>
+        </div>
+    </div>
+{% endif %}

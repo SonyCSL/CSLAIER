@@ -1,0 +1,38 @@
+{% extends 'common/base.html' %}
+{% block title %} Inspection Result {% endblock %}
+{% block main_content %}
+<div class="container" id="main">
+    <h2>{{model.name}} <small>Epoch:{{epoch}}</small></h2>
+    {% if error %}
+
+    <p>{{ error }}</p>
+
+    {% else %}
+    <div class="model-sub-header">
+        <div class="model-control-div">
+            <a href="{{url_for('show_model', id=model.id)}}">
+                <button class="btn btn-cyber">Back</button>
+            </a>
+        </div>
+    </div>
+    <div class="row">
+        <div class="col-md-6">
+            <img class="img-responsive" src="{{url_for('show_inspection_uploaded_file', filename=image)}}">
+        </div>
+        <div class="col-md-6">
+            <h4>Inspection Result</h4>
+            <table class="table">
+                <tr><th>rank</th><th>name</th><th>score</th></tr>
+                {% for result in results %}
+                <tr>
+                    <td>{{result["rank"]}}</td>
+                    <td>{{result["name"].decode('utf-8')}}</td>
+                    <td>{{result["score"]}}</td>
+                </tr>
+                {% endfor %}
+            </table>
+        </div>
+    </div>
+    {% endif %}
+</p>
+{% endblock %}

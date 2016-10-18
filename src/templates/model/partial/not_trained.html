@@ -1,0 +1,87 @@
+<div class="model-sub-header">
+    <div id="progress-label">
+        <span class="label label-nottrained"> Not Trained</span>
+    </div>
+    <div class="model-control-div">
+        <button class="btn btn-cyber hidden" id="terminate_train_button">Terminate</button>
+        <button class="btn btn-cyber" id="delete_model_button">Delete</button>
+    </div>
+</div>
+<div style="clear:both;height:5px;"></div>
+<div class="row full-height">
+    <div class="col-md-4">
+        <div>
+            <ul>
+                <li>Created: {{model.created_at.strftime('%Y-%m-%d %H:%M:%S')}}</li>
+                <li>Updated: {{model.updated_at.strftime('%Y-%m-%d %H:%M:%S')}}</li>
+                <li>Framework: {{model.framework}}</li>
+                <li>Epoch: <span id="epoch_info">---</span></li>
+                {% if model.dataset %}
+                    <li data-datasetid="{{model.dataset.id}}">Dataset: <span id="dataset_name_info">{{model.dataset.name}}</span></li>
+                {% endif %}
+                <li>
+                    Train Type:
+                    {% if model.type == 'image' %}
+                        Image Classification
+                    {% elif model.type == 'text' %}
+                        Natural Language Processing
+                    {% else %}
+                        ---
+                    {% endif %}
+                </li>
+                <li>Network:
+                    {% if model.network_name %}
+                        {{model.network_name}}
+                    {% else %}
+                        ---
+                    {% endif %}
+                </li>
+                {% if model.type == 'image' %}
+                    <li>Resize mode: ---</li>
+                    <li>Color mode: ---</li>
+                {% endif %}
+                {% if resumable %}
+                    <li>Trained epoch: {{ trained_epoch }}</li>
+                {% endif %}
+            </ul>
+        </div>
+        <div>
+            {% if resumable %}
+            <div id="resume_train_div">
+                <button class="btn btn-cyber btn-block" data-toggle="modal" data-target="#resume_train_modal">Resume Last Train</button>
+            </div>
+            {% endif %}
+            <div id="start_train_div">
+                <button class="btn btn-cyber btn-block" data-toggle="modal" data-target="#start_train_modal">Start Train</button>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-8 full-height">
+        <ul class="nav nav-tabs">
+            <li role="presentation" class="disabled" id="log_tab"><a href="#">Log</a></li>
+            <li role="presentation" class="disabled" id="graph_tab"><a href="#">Result</a></li>
+            <li role="presentation" class="active" id="network_tab"><a href="#">Network</a></li>
+            {% if model.framework != 'tensorflow' %}
+            <li role="presentation" class="disabled" id="layer_tab"><a href="#">Layers</a></li>
+            {% endif %}
+        </ul>
+        <div id="model_detail_log" class="hidden full-height">
+            <div class="form-group has-textarea" >
+                <pre id="training_log"></pre>
+            </div>
+        </div>
+        <div id="model_detail_graph" class="hidden">
+            <p id="training_graph">Graph Not Ready</p>
+        </div>
+        <div id="model_detail_network" class="full-height">
+            <div class="form-group has-textarea">
+                <textarea class="form-control" id="network_edit_area">{{model.code}}</textarea>
+            </div>
+            <div class="form-group hidden" id="create_network_buttons">
+                <button class="btn btn-cyber" data-toggle="modal" data-target="#create_new_network_modal">Create</button>
+                <button class="btn btn-cyber" id="model_edit_cancel">Cancel</button>
+            </div>
+        </div>
+        <div id="model_detail_layers" class="hidden"></div>
+    </div>
+</div>

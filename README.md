@@ -1,7 +1,7 @@
-DEEPstation
+CSLAIER
 ============
 
-DEEPstation version 0.5.0
+CSLAIER version 0.7.0
 
 Browser based GUI deep learning tool.
 
@@ -9,13 +9,9 @@ Screenshots
 -------------
 
 ### Top page
-#### Datasets
-![dataset top](./docs/img/ss/top_datasets.png)
+![dataset top](./docs/img/ss/top_view.png)
 
-#### Modes
-![models top](./docs/img/ss/top_models.png)
-
-### Model detail page 
+### Model detail page
 #### Train result
 ![train result](./docs/img/ss/train_result.png)
 
@@ -28,7 +24,7 @@ Screenshots
 Requirement
 ------------
 
-DEEPstation is tested on Ubuntu 14.04. We recommend them to use DEEPstation, though it may run on other systems as well.
+CSLAIER is tested on Ubuntu 14.04. We recommend them to use CSLAIER, though it may run on other systems as well.
 
 ### Supported Browsers
 
@@ -37,7 +33,7 @@ DEEPstation is tested on Ubuntu 14.04. We recommend them to use DEEPstation, tho
 * Firefox
 
 ### System
-* NVIDIA CUDA Technology GPU and drivers 
+* NVIDIA CUDA Technology GPU and drivers / CUDA 7.5
 * Python 2.7
   * python-opencv
   * python-scipy
@@ -45,66 +41,54 @@ DEEPstation is tested on Ubuntu 14.04. We recommend them to use DEEPstation, tho
 * nkf
 
 ### Python Libraries
-* Chainer 1.5 http://chainer.org
-* bottle
-* bottle_sqlite
-* cv2
-* PyYAML
-* matplotlib
-* python-nkf
+* TensorFlow 0.9.0 or higher https://www.tensorflow.org/ (if needed)
+* Other dependenceis, see [requirements.txt](./requirements.txt)
 
 Setup
 ------
 
-* Edit `settings.yaml` to set paths for saving files.
+* Edit `cslaier.cfg` to set paths for saving files.
   * Begin with `/` stands for abosolute path.
-  * Begin without `/` or begin with `./` stands for absolute path from DEEPstation's `main.py`. 
-* Setup database. Try command below on root directory of DEEPstation.  
-`sqlite3 deepstation.db < ./scheme/deepstation.sql`
-* Startup server. `python main.py`
-* Access `http://localhost:8080` on your browser.   
-If you have changed hostname and port on `settings.yaml`, use that one.
+  * Begin without `/` or begin with `./` stands for absolute path from CSLAIER's root directory.
+  * Parameters are below
+
+|Parameter|Description|
+|---|---|
+|HOST|name or IP address of your host|
+|PORT|Port number|
+|DEBUG|Debug flag (True or False)|
+|UPLOADED_FILE|Path for uploaded files will save.|
+|UPLOADED_RAW_FILE|Path for uploaded zip files will save.|
+|INSPECTION_TEMP|Path for uploaded images for inspection will save.|
+|PREPARED_DATA|Path for preprocessed data for train will save.|
+|TRAINED_DATA|Path for trained data will save.|
+|DATABASE_PATH|Path of cslaier.db|
+|LOG_DIR|Path for log file|
+
+* Setup database. Try command below on root directory of CSLAIER.
+`./setup.sh`
+* Run `pip install -r requirements.txt`
+* Startup server. `./run.sh`
+* Access `http://localhost:8080` on your browser.
+If you have changed hostname and port on `cslaier.cfg`, use that one.
 
 ### How to update
 
-* Make backup `settings.yaml` and `deepstation.db`.
+* Make backup `cslaier.cfg` and `cslaier.db`.
 * Get newest code by `git pull` or something.
-* Restore `settings.yaml` and `deepstation.db` from backup.
+* Restore `cslaier.cfg` and `cslaier.db` from backup.
 * Follow the instructions below as required.
-
-#### Migration v0.2.1 to v0.3.0
-
-* Stop DEEPstation by `ctrl + c`
-* Run command below on root directory of DEEPstation  
-`sqlite3 deepstation.db < ./scheme/migration_20160208.sql`
-* Start DEEPstation.
-
-#### Migration v0.3.0 to v0.4.0
-
-* Stop DEEPstation by `ctrl + c`
-* Run command below on root directory of DEEPstation  
-`sqlite3 deepstation.db < ./scheme/migration_20160209.sql`
-* Start DEEPstation.
-
-#### Migration v0.4.x to v0.5.0
-
-* Stop DEEPstation by `ctrl + c`
-* Install `nkf` if you don't have yet.
-* Install `python-nkf`. Using `pip intall nkf` is easy.
-* Run command below on root directory of DEEPstation  
-`sqlite3 deepstation.db < ./scheme/migration_20160314.sql`
-* Start DEEPstation.
 
 Usage
 ------
 
-### Start up DEEPstation
-* Move to DEEPstation's directory.
-* Run `python main.py`.
+### Start up CSLAIER
+* Move to CSLAIER's directory.
+* Run `./run.sh`.
 * Access `http://localhost:8080` by web browser.
 
 ### Creating Dataset
-* Upload dataset from '+new' button on Dataset section on top page. 
+* Upload dataset from '+new' button on Dataset section on top page.
 * Dataset is a zip file which contains classifeid images by directory like [Caltech 101](http://www.vision.caltech.edu/Image_Datasets/Caltech101/) dataset.
 
 ### Creating Model
@@ -126,20 +110,14 @@ Usage
 * Select image(.jpg) for inspection.
 * Press 'Submit'. Then you will see the result of inspection.
 
+Known issues
+------------
+
+* Train result graph's epoch is not correctly shown.
+
+
 Tips
 -----
-
-### Cleaning up temporary files
-
-Training makes a lot of temporary images on your `prepared_data` directory.  
-If you want to remove these images, access `http://localhost:8080/cleanup` on your browser.  
-It removes temporary images **IMMEDIATELY**.
-
-### Changing server backend
-
-You can change server backend (default is wsgiref). If you want to change, edit `settings.yaml`.  
-You can chose server backend from [here](http://bottlepy.org/docs/dev/deployment.html#switching-the-server-backend)  
-Use this functionality at your own risk.
 
 License
 --------
@@ -147,7 +125,7 @@ License
 * MIT License
 
 
-DEEPstation
+CSLAIER
 ============
 
 ブラウザベースのGUI深層学習ツール
@@ -155,7 +133,7 @@ DEEPstation
 Requirement
 ------------
 
-DEEPstationはUbuntu14.04でテストしています。 Ubuntu上で動かすことをおすすめしますが、他のプラットフォームでも動作します。
+CSLAIERはUbuntu14.04でテストしています。
 
 ### Supported Browsers
 
@@ -164,7 +142,7 @@ DEEPstationはUbuntu14.04でテストしています。 Ubuntu上で動かすこ
 * Firefox
 
 ### System
-* NVIDIA CUDA Technology GPU and drivers 
+* NVIDIA CUDA Technology GPU and drivers / CUDA 7.5
 * Python 2.7
   * python-opencv
   * python-scipy
@@ -172,13 +150,8 @@ DEEPstationはUbuntu14.04でテストしています。 Ubuntu上で動かすこ
 * nkf
 
 ### Python Libraries
-* Chainer 1.5 http://chainer.org
-* bottle
-* bottle_sqlite
-* cv2
-* PyYAML
-* matplotlib
-* python-nkf
+* TensorFlow 0.9.0 or higher https://www.tensorflow.org/ (なくても動きます)
+* その他の依存ライブラリは[requirements.txt](./requirements.txt)をご参照ください。
 
 ### LSTMで分かち書きを利用したい場合
 
@@ -192,44 +165,37 @@ DEEPstationはUbuntu14.04でテストしています。 Ubuntu上で動かすこ
 Setup
 ------
 
-* 各種ファイルの保存場所を`settings.yaml`に定義します。
+* 各種ファイルの保存場所を`cslaier.cfg`に定義します。
   * `/` で始まるパスは絶対パスとして処理されます。
-  * `/` で始まらないパス、`./`で始まるパスはDEEPstationの`main.py`が配置されているディレクトリ直下の相対パスとして処理されます。
-* データベースのセットアップを行います。DEEPstationをダウンロードしたディレクトリで下記のコマンドを実行してください。  
-`sqlite3 deepstation.db < ./scheme/deepstation.sql`
-* サーバを起動します。DEEPstationをダウンロードしたディレクトリで `python main.py`を実行します
-* ブラウザで `http://localhost:8080` にアクセスします。  
-`settings.yaml`でhostnameとportを変更している場合はそちらを利用してください。
+  * `/` で始まらないパス、`./`で始まるパスはCSLAIERのルートディレクトリ直下の相対パスとして処理されます。
+  * 設定ファイルのパラメタの意味は下記の通りです
+
+|パラメタ|説明|
+|---|---|
+|HOST|ホスト名|
+|PORT|ポート番号|
+|DEBUG|デバグフラグ|
+|UPLOADED_FILE|アップロードされたデータ・セットの格納場所|
+|UPLOADED_RAW_FILE|アップロードされたzipファイルの格納場所|
+|INSPECTION_TEMP|inspection用の画像のアップロード先|
+|PREPARED_DATA|学習用の前処理済データの格納場所|
+|TRAINED_DATA|学習済データの格納場所|
+|DATABASE_PATH|cslaier.dbの場所|
+|LOG_DIR|ログファイルの出力場所|
+
+* `./setup.sh` を実行します
+* `pip install -r requirements.txt` を実行します。
+* サーバを起動します。CSLAIERをダウンロードしたディレクトリで `./run.sh`を実行します
+* ブラウザで `http://localhost:8080` にアクセスします。
+`cslaier.cfg`でhostnameとportを変更している場合はそちらを利用してください。
 
 ### Update時の注意点
 
-* `settings.yaml`と`deepstation.db`のバックアップをとってください。
+* `cslaier.cfg`(旧`settings.yaml`)と`cslaier.db`のバックアップをとってください。
 * `git pull`などで新しいソースコードを取得します。
-* `settings.yaml`と`deepstation.db`をバックアップから復元します。
+* `cslaier.cfg`と`cslaier.db`をバックアップから復元します。
 * 必要に応じて、以下のアップデート手順を実行します。
 
-#### v0.2.1 から v0.3.0 へのアップデート方法
-
-* DEEPstationを止めてください。DEEPstation実行中のターミナルで`ctrl + c`で止まります。 
-* DEEPstationのルートディレクトリで下記のコマンドを実行してください。  
-`sqlite3 deepstation.db < ./scheme/migration_20160208.sql`
-* DEEPstationを起動してください。
-
-#### v0.3.0 から v 0.4.0 へのアップデート方法
-
-* DEEPstationを止めてください。DEEPstation実行中のターミナルで`ctrl + c`で止まります。 
-* DEEPstationのルートディレクトリで下記のコマンドを実行してください。  
-`sqlite3 deepstation.db < ./scheme/migration_20160209.sql`
-* DEEPstationを起動してください。
-
-#### v0.4.x から v 0.5.0 へのアップデート方法
-
-* DEEPstationを止めてください。DEEPstation実行中のターミナルで`ctrl + c`で止まります。 
-* `nkf`コマンドがインストールされていなければ、`nkf`コマンドをインストールしてください。
-* `python-nkf`をインストールしてください。`pip install nkf`でインストールするのが簡単です。
-* DEEPstationのルートディレクトリで下記のコマンドを実行してください。  
-`sqlite3 deepstation.db < ./scheme/migration_20160314.sql`
-* DEEPstationを起動してください。
 
 使い方
 ------
@@ -240,9 +206,9 @@ Setup
 3. Modelの学習
 4. Modelによる画像の予測結果の取得
 
-### DEEPstationの起動
-* DEEPstationをcloneしてきた場所に移動
-* `python main.py` を実行
+### CSLAIERの起動
+* CSLAIERをcloneしてきた場所に移動
+* `./run.sh` を実行
 * ブラウザで`http://localhost:8080` にアクセスする
 
 ### Datasetの作成
@@ -259,7 +225,7 @@ Setup
   * 必要であればModel名やNetwork名を変更します。
   * 中央に表示されるエディタでModelの編集が可能です。編集しないでも動作します。
 * 下段の'Create'ボタンを押すとModelが作成され、Modelの詳細画面に遷移します。
-  * 左上に表示されている'DEEPstation'ロゴを押すと、トップページに遷移します。
+  * 左上に表示されている'CSLAIER'ロゴを押すと、トップページに遷移します。
 * トップページのModelsセクションに作成したModelが追加されていれば、無事Modelの作成は完了です。
 
 ### 作成したModelからの学習
@@ -305,13 +271,13 @@ Tips
 * 'Create'ボタンを押して、Model名やNetwork名を指定し、編集を終了します。
    * 注:編集したModelは別のModelとして新規作成されます。
 
-####　Modelの削除  
+####　Modelの削除
  * トップページのModelsセクションから削除したいModelを選択し、Modelの詳細画面に移動します。
  * 'Delete'ボタンを押すと選択されたModelが削除されます。
    * 注: 学習済のモデルも一緒に削除されます。
 
 ### 経過グラフについて
-Modelの詳細画面内の'Result'タブを押すと学習の経過グラフが表示され、学習の経過を確認することができます。  
+Modelの詳細画面内の'Result'タブを押すと学習の経過グラフが表示され、学習の経過を確認することができます。
 学習中のModel('In Progress'となっているModel)の場合は経過グラフが随時更新されていきます。
 
 #### 経過グラフの各線分
@@ -326,32 +292,57 @@ Modelの詳細画面内の'Result'タブを押すと学習の経過グラフが�
 横軸はEpoch数です。
 
 ### 学習が完了したModelの利用
-Modelの詳細画面内の'Downlord Model'ボタン、'Downlord Label'ボタン、'Downlord Mean File'ボタンからそれぞれ学習済みModel、Label(カテゴリの一覧)、Mean Fileをダウンロードすることができます。  
+Modelの詳細画面内の'Download Trained Files'ボタンを押下すると、学習済みModel、Label(カテゴリの一覧)、Mean File、ネットワークファイルをzip圧縮されたものをダウンロードすることができます。
 他のプログラムからの利用方法は[サンプル](./examples/inspection/)を参照ください。
 
-### setting.yamlの編集について
+### cslaier.cfg の編集について
 
 #### 各種ファイルの保存場所を変更する
-* setting.yamlを編集し、保存場所のパスを変更します。
+* cslaier.cfgを編集し、保存場所のパスを変更します。
 * サーバーを再起動します。
 
 #### 外部のマシーンからアクセスする
-* settings.yamlを編集し、ホストとポートを指定します。
+* cslaier.cfgを編集し、ホストとポートを指定します。
 * サーバーを再起動します。
-* DEEPstationが動いている以外のマシンでブラウザより、settings.yamlに指定したURLにアクセスし、DEEPstationの画面が開いたら成功です。
+* CSLAIERが動いている以外のマシンでブラウザより、cslaier.cfgに指定したURLにアクセスし、CSLAIERの画面が開いたら成功です。
 
-### 一時ファイルの削除
+#### Dockerの利用
 
-学習ではたくさんの一時ファイルを`prepared_data`ディレクトリに作成します。  
-もし、これらの画像を削除したい場合は `http://localhost:8080/cleanup` にブラウザでアクセスします。 
-すると、作成された一時ファイルが **ただちに** 削除されます。
+* Ubuntu14.04、GPU無しでchainerとtensorflowを利用するDockerfileが用意されています。利用するときは`docker build`する必要があります。
+* dockerを利用する場合、cslaier.cfgは `docker_config/cslaier.cfg`を利用してください。ただし、`HOST='0.0.0.0'`はそのままにしておく必要があります。
 
-### サーバのバックエンドの変更
+##### Dockerイメージのビルド
 
-実行するサーババックエンドを変更することができます(デフォルトではwsgirefが選択されています)。  
-`settings.yaml` に使用するサーババックエンドを指定することで変更することができます。  
-使用できるバックエンドは [このリスト](http://bottlepy.org/docs/dev/deployment.html#switching-the-server-backend) の中から選択することができます。  
-サーバのバックエンドを変更する場合は自己責任で行ってください。
+末尾の`.`を忘れないように
+
+```
+$ cd (cslaierのルート・ディレクトリ)
+$ docker build -t cslaier/ubuntu14_cpu_ds .
+```
+
+##### CSLAIER用Dockerイメージの起動
+
+```
+$ docker run -d -p 8080:8080 cslaier/ubuntu14_cpu_ds
+```
+
+上記コマンド実行後、ブラウザで `http://localhost:8080` にアクセスする
+
+##### CSLAIER用Dockerイメージの終了
+
+```
+$ docker ps
+CONTAINER ID        IMAGE                               COMMAND                  CREATED             STATUS              PORTS                     NAMES
+7803235d494c        cslaier/ubuntu14_cpu            "/bin/sh -c 'sh -c 'l"   5 seconds ago       Up 3 seconds        0.0.0.0:32769->8080/tcp   desperate_hawking
+# docker ps 出力のCONTAINER IDを指定する
+$ docker stop 7803235d494c
+```
+
+既知の不具合
+----------
+
+* TensorFlowを用いて学習した場合、学習結果のグラフに表示されるepoch数が指定したepochの半分くらいの値になります。
+
 
 License
 --------

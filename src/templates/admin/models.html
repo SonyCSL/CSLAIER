@@ -1,0 +1,62 @@
+{% extends 'common/base.html' %}
+{% block title %} Admin - Models {% endblock%}
+{% block main_content %}
+<div class="container">
+    <h1>CSLAIER Admin - Models</h1>
+    <table class="table">
+        <tr>
+            <th>ID</th>
+            <th>name</th>
+            <th>type</th>
+            <th>framework</th>
+            <th>epoch</th>
+            <th>network_name</th>
+            <th>trained_model_path</th>
+            <th>prepared_file_path</th>
+            <th>is_trained</th>
+            <th>pid</th>
+            <th>resize_mode</th>
+            <th>channels</th>
+            <th>use_wakatigaki</th>
+            <th>gpu</th>
+            <th>batchsize</th>
+            <th>dataset_id</th>
+            <th>updated_at</th>
+            <th>created_at</th>
+            <th></th>
+            <th></th>
+        </tr>
+        {% for m in models %}
+            <tr>
+                <form action="/admin/models/remove/" method="POST">
+                    <td>
+                        {{m.id}}
+                        <input type="hidden" name="model_id" value="{{m.id}}">
+                    </td>
+                    <td>{{m.name}}</td>
+                    <td>{{m.type}}</td>
+                    <td>{{m.framework}}</td>
+                    <td>{{m.epoch}}</td>
+                    <td>{{m.network_name}}</td>
+                    <td>{{m.trained_model_path}}</td>
+                    <td>{{m.prepared_file_path}}</td>
+                    <td>{{m.is_trained}}</td>
+                    <td>{{m.pid}}</td>
+                    <td>{{m.resize_mode}}</td>
+                    <td>{{m.channels}}</td>
+                    <td>{{m.use_wakatigaki}}</td>
+                    <td>{{m.gpu}}</td>
+                    <td>{{m.batchsize}}</td>
+                    <td>{{m.dataset_id}}</td>
+                    <td>{{m.updated_at}}</td>
+                    <td>{{m.created_at}}</td>
+                    <td></td>
+                    <td>
+                        <button class="btn btn-danger" type="submit">Delete</button>
+                    </td>
+                </form>
+            </tr>
+        {% endfor %}
+    </table>
+</div>
+{% endblock %}

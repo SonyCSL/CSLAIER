@@ -1,0 +1,22 @@
+<script type="text/javascript">
+    var gpus = [
+        {% if system_info['gpu_info'] %}
+            {% for g in system_info['gpu_info']['gpus'] %}
+                {
+                    "minor_number": "{{g['minor_number']}}",
+                    "product_name": "{{g['product_name']}}",
+                    "uuid": "{{g['uuid']}}",
+                    "fan": "{{g['fan']}}",
+                    "temperature": "{{g['temperature']}}",
+                    "power_draw": "{{g['power_draw']}}",
+                    "power_limit": "{{g['power_limit']}}",
+                    "memory_used": "{{g['memory_used']}}",
+                    "memory_total": "{{g['memory_total']}}"
+                }
+                {% if not loop.last %}
+                ,
+                {% endif %}
+            {% endfor %}
+        {% endif %}
+    ];
+</script>

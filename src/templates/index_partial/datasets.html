@@ -1,0 +1,60 @@
+<div class="subtitle">
+    <h2>Dataset</h2>
+    <div class="button_div right">
+        <a href="#">
+            <button class="btn btn-cyber" data-toggle="modal" data-target="#upload_modal">
+                <span class="glyphicon glyphicon-plus"></span>New
+            </button>
+        </a>
+    </div>
+</div>
+<div class="datasets">
+    <div class="datasets_row">
+        {% for dataset in datasets %}
+            {% if dataset.type == 'image' %}
+                <div class="dataset image" id="dataset_{{ dataset.id }}" data-id="{{ dataset.id }}">
+                    <h3>{{ dataset.name }}</h3>
+                    <span class="desc">Total {{ dataset.category_num }} Classes, {{ dataset.file_num }} Images</span>
+                    {% for img in dataset.thumbnails %}
+                        <img src="{{img}}" class="img-responsive img-rounded thumbnail-30">
+                    {% endfor %}
+                </div>
+            {% elif dataset.type == 'text' %}
+                <div class="dataset text" id="dataset_{{ dataset.id }}" data-id="{{ dataset.id }}">
+                    <h3>{{ dataset.name }}</h3>
+                    <span class="desc">Text File size : {{ dataset.filesize }}</span>
+                    <div class="sample_text">
+                        {% for t in dataset.sample_text %}
+                            {{t}}
+                        {% endfor %}
+                    </div>
+                </div>
+            {% endif %}
+        {% endfor %}
+    </div>
+    {% if dataset_count > 3 %}
+        <button class="btn btn-cyber btn-block" id="dataset_more" data-offset='3'>more</button>
+    {% endif %}
+</div>
+
+<script id="image_dataset_template" type="text/template" class="hidden">
+    <div class="dataset image" id="dataset_<%- id %>" data-id="<%- id %>">
+        <h3><%- name %></h3>
+        <span class="desc">Total <%- category_num %> Classes, <%- file_num %> Images</span>
+        <% _.each(thumbnails, function(img){ %>
+            <img src="<%- img %>" class="img-responsive img-rounded thumbnail-30">
+        <% }); %>
+    </div>
+</script>
+<script id="text_dataset_template" type="text/template" class="hidden">
+    <div class="dataset text" id="dataset_<%- id %>" data-id="<%- id %>">
+        <h3><%- name %></h3>
+        <span class="desc">Text File size : <%- filesize %></span>
+        <div class="sample_text">
+            <% _.each(sample_text, function(t){ %>
+                <%- t %>
+            <% }); %>
+        </div>
+    </div>
+</script>
+

@@ -1,4 +1,4 @@
-Copyright (c) 2015 - 2016 UEI Corporation
+Copyright 2015-2016 Sony Computer Science Laboratories, Inc.
 
 
 

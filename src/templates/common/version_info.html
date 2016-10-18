@@ -1,0 +1,28 @@
+<table border="0">
+    <tr>
+        <th>CSLAIER Version:</th>
+        <td>{{ system_info['cslaire_version'] }}</td>
+    </tr>
+    <tr>
+        <th>Graphic Board Driver Version:</th>
+        <td>
+            {% if system_info['gpu_info']['driver_version'] %}
+                {{system_info['gpu_info']['driver_version']}}
+            {% else %}
+                ---
+            {% endif %}
+        </td>
+    </tr>
+    <tr>
+        <th>Chainer Version:</th>
+        <td>{{ system_info['chainer_version'] }}</td>
+    </tr>
+    <tr>
+        <th>TensorFlow Version:</th>
+        <td>{{ system_info['tensorflow_version' ]}}</td>
+    </tr>
+    <tr>
+        <th>Python Version:</th>
+        <td>{{ system_info['python_version'] }}</td>
+    </tr>
+</table>

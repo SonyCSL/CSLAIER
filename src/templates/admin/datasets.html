@@ -1,0 +1,60 @@
+{% extends 'common/base.html' %}
+{% block title %} Admin - Datasets {% endblock %}
+{% block main_content %}
+<div class="container">
+    <h1>CSLAIER Admin - Datasets</h1>
+    <table class="table">
+        <tr>
+            <th>ID</th>
+            <th>name</th>
+            <th>dataset_path</th>
+            <th>type</th>
+            <th>category_num</th>
+            <th>file_num</th>
+            <th>created_at</th>
+            <th>updated_at</th>
+            <th></th>
+            <th></th>
+        </tr>
+        {% for d in datasets %}
+            <tr>
+                <form action="/admin/datasets/update/" method="POST">
+                    <td>
+                        {{d.id}}
+                        <input type="hidden" name="dataset_id" value="{{d.id}}">
+                    </td>
+                    <td>{{d.name}}</td>
+                    <td width="400">
+                        <input type="text" class="form-control" name="new_path" value="{{d.dataset_path}}">
+                    </td>
+                    <td>{{d.type}}</td>
+                    <td>{{d.category_num}}</td>
+                    <td>{{d.file_num}}</td>
+                    <td class="created_at">{{d.created_at}}</td>
+                    <td class="updated_at">{{d.updated_at}}</td>
+                    <td>
+                        <button class="btn btn-default" type="submit">Update</button>
+                    </td>
+                    <td>
+                        <button class="btn btn-danger admin_dataset_delete" data-datasetid="{{d.id}}">Delete</button>
+                    </td>
+                </form>
+            </tr>
+        {% endfor %}
+    </table>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+    <script type="text/javascript">
+        $(function(){
+            var time_divs = $('.created_at, .updated_at');
+            _.each(time_divs, function(time_div){
+                var time_str = $(time_div).html();
+                var time = moment(time_str);
+                $(time_div).html(time.format('YYYY-MM-DD<br>HH:mm:ss'));
+            });
+        });
+    </script>
+{% endblock %}
