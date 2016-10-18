@@ -1,7 +1,7 @@
 CSLAIER
 ============
 
-CSLAIER version 0.6.1
+CSLAIER version 0.7.0
 
 Browser based GUI deep learning tool.
 
@@ -45,13 +45,8 @@ CSLAIER is tested on Ubuntu 14.04. We recommend them to use CSLAIER, though it m
 * nkf
 
 ### Python Libraries
-* Chainer 1.5 or higher http://chainer.org
-* TensorFlow 0.9.0 or higher https://www.tensorflow.org/
-* Flask
-* Flask-SQLAlchemy
-* cv2
-* matplotlib
-* python-nkf
+* TensorFlow 0.9.0 or higher https://www.tensorflow.org/ (if needed)
+* Other dependenceis, see [requirements.txt](./requirements.txt)
 
 Setup
 ------
@@ -71,12 +66,12 @@ Setup
 |INSPECTION_TEMP|Path for uploaded images for inspection will save.|
 |PREPARED_DATA|Path for preprocessed data for train will save.|
 |TRAINED_DATA|Path for trained data will save.|
-||Path of nvidia-smi command|
 |DATABASE_PATH|Path of cslaier.db|
 |LOG_DIR|Path for log file|
 
 * Setup database. Try command below on root directory of CSLAIER.
 `./setup.sh`
+* Run `pip install -r requirements.txt`
 * Startup server. `./run.sh`
 * Access `http://localhost:8080` on your browser.
 If you have changed hostname and port on `cslaier.cfg`, use that one.
@@ -87,51 +82,6 @@ If you have changed hostname and port on `cslaier.cfg`, use that one.
 * Get newest code by `git pull` or something.
 * Restore `cslaier.cfg` and `cslaier.db` from backup.
 * Follow the instructions below as required.
-
-#### Migration v0.2.1 to v0.3.0
-
-* Stop CSLAIER by `ctrl + c`
-* Run command below on root directory of CSLAIER
-`sqlite3 cslaier.db < ./scheme/migration_20160208.sql`
-* Start CSLAIER.
-
-#### Migration v0.3.0 to v0.4.0
-
-* Stop CSLAIER by `ctrl + c`
-* Run command below on root directory of CSLAIER
-`sqlite3 cslaier.db < ./scheme/migration_20160209.sql`
-* Start CSLAIER.
-
-#### Migration v0.4.x to v0.5.0
-
-* Stop CSLAIER by `ctrl + c`
-* Install `nkf` if you don't have yet.
-* Install `python-nkf`. Using `pip intall nkf` is easy.
-* Run command below on root directory of CSLAIER
-`sqlite3 cslaier.db < ./scheme/migration_20160314.sql`
-* Start CSLAIER.
-
-#### Migration v0.5.x to v0.6.0
-
-In v0.6.0, we use Flask instead of bottle. So, we have changed **setting file** and **how to run**.
-
-* Changes of setting files
-  * Setting file has changed `settings.yaml` to `cslaier.cfg`.
-* Update cslaier.db
-  * `sqlite3 cslaier.db < ./scheme/migration_20160513.sql`
-* Run CSLAIER
- * `./run.sh`
-
-#### Migration v0.6.0 to v0.6.1
-
-In v0.6.1 we support [TensorFlow](https://www.tensorflow.org). You need to install latest TensorFlow.
-
-* Stop CSLAIER by `ctfl + c`
-* Instal TensorFlow. See TensorFlow's official installation instruction.
-* Update cslaier.db
-  * `sqlite3 cslaier.db < ./scheme/migration_20160617.sql`
-* Run CSLAIER
- * `./run.sh`
 
 Usage
 ------
@@ -163,6 +113,12 @@ Usage
 * Press 'inspect' button.
 * Select image(.jpg) for inspection.
 * Press 'Submit'. Then you will see the result of inspection.
+
+Known issues
+------------
+
+* Train result graph's epoch is not correctly shown.
+
 
 Tips
 -----
@@ -198,13 +154,8 @@ CSLAIERはUbuntu14.04でテストしています。
 * nkf
 
 ### Python Libraries
-* Chainer 1.5 or higher http://chainer.org
-* TensorFlow 0.9.0 or higher https://www.tensorflow.org/
-* Flask
-* Flask-SQLAlchemy
-* cv2
-* matplotlib
-* python-nkf
+* TensorFlow 0.9.0 or higher https://www.tensorflow.org/ (なくても動きます)
+* その他の依存ライブラリは[requirements.txt](./requirements.txt)をご参照ください。
 
 ### LSTMで分かち書きを利用したい場合
 
@@ -233,11 +184,11 @@ Setup
 |INSPECTION_TEMP|inspection用の画像のアップロード先|
 |PREPARED_DATA|学習用の前処理済データの格納場所|
 |TRAINED_DATA|学習済データの格納場所|
-||nvidia_smiコマンドのパス|
 |DATABASE_PATH|cslaier.dbの場所|
 |LOG_DIR|ログファイルの出力場所|
 
 * `./setup.sh` を実行します
+* `pip install -r requirements.txt` を実行します。
 * サーバを起動します。CSLAIERをダウンロードしたディレクトリで `./run.sh`を実行します
 * ブラウザで `http://localhost:8080` にアクセスします。
 `cslaier.cfg`でhostnameとportを変更している場合はそちらを利用してください。
@@ -249,74 +200,6 @@ Setup
 * `cslaier.cfg`と`cslaier.db`をバックアップから復元します。
 * 必要に応じて、以下のアップデート手順を実行します。
 
-#### v0.2.1 から v0.3.0 へのアップデート方法
-
-* CSLAIERを止めてください。CSLAIER実行中のターミナルで`ctrl + c`で止まります。
-* CSLAIERのルートディレクトリで下記のコマンドを実行してください。
-`sqlite3 cslaier.db < ./scheme/migration_20160208.sql`
-* CSLAIERを起動してください。
-
-#### v0.3.0 から v 0.4.0 へのアップデート方法
-
-* CSLAIERを止めてください。CSLAIER実行中のターミナルで`ctrl + c`で止まります。
-* CSLAIERのルートディレクトリで下記のコマンドを実行してください。
-`sqlite3 cslaier.db < ./scheme/migration_20160209.sql`
-* CSLAIERを起動してください。
-
-#### v0.4.x から v 0.5.0 へのアップデート方法
-
-* CSLAIERを止めてください。CSLAIER実行中のターミナルで`ctrl + c`で止まります。
-* `nkf`コマンドがインストールされていなければ、`nkf`コマンドをインストールしてください。
-* `python-nkf`をインストールしてください。`pip install nkf`でインストールするのが簡単です。
-* CSLAIERのルートディレクトリで下記のコマンドを実行してください。
-`sqlite3 cslaier.db < ./scheme/migration_20160314.sql`
-* CSLAIERを起動してください。
-
-#### v0.5.x から v0.6.0 へのアップデート方法
-
-v0.6.0よりフレームワークがbottleからFlaskに変更になりました。
-これに伴い、**設定ファイル** と **起動方法** が変更されています。
-
-* 設定ファイルの変更
-  * 設定ファイルが `settings.yaml`から`cslaier.cfg`に変更になりました。
-  * 設定ファイルの書き方は、`cslaier.cfg`のデフォルト値を参照してください
-    * 文字列の場合は`''`で囲む必要があります
-    * 数値(PORT)やBoolean値(DEBUG)は`''`で囲んではいけません。
-  * 新たに`DATABASE_PATH`パラメタが追加されました。`cslaier.db`へのpathを記述してください。
-  * 新旧設定内容の比較は以下のとおり
-
-|説明|旧|新|
-|---|---|---|
-|ホスト名|host|HOST|
-|ポート番号|port|PORT|
-|デバグフラグ|debug|DEBUG|
-|サーバエンジン|server_engine|(廃止)|
-|アップロードされたデータ・セットの格納場所|uploaded_images|UPLOADED_FILE|
-|アップロードされたzipファイルの格納場所|uploaded_raw_files|UPLOADED_RAW_FILE|
-|inspection用のアップロードされた未加工画像の格納場所|inspection_raw_image|(廃止)|
-|inspection用の画像のアップロード先|inspection_temp_image|INSPECTION_TEMP|
-|学習用の前処理済データの格納場所|prepared_data|PREPARED_DATA|
-|学習済データの格納場所|trained_data|TRAINED_DATA|
-|nvidia_smiコマンドのパス|nvidia_smi||
-|cslaier.dbの場所|(無し)|DATABASE_PATH|
-|ログファイルの出力先|(無し)|LOG_DIR|
-
-* データベースのアップデート
-  * cslaier.dbのあるディレクトリ(通常はCSLAIERのルートディレクトリ) で下記コマンドを実行
-  `sqlite3 cslaier.db < ./scheme/migration_20160513.sql`
-* CSLAIERの起動
-  * CSLAIERのルートディレクトリで`./run.sh`を実行
-
-#### v0.6.0 から v0.6.1 へのアップデート方法
-
-v0.6.1 では [TensorFlow](https://www.tensorflow.org)に対応しました。 最新のTensorFlowをインストールする必要があります。
-
-* `ctfl + c`でCSLAIERを停止してください。
-* TensorFlowをインストールしてください。インストール方法は公式ドキュメントをご参照ください。
-* データベースのアップデート
-  * `sqlite3 cslaier.db < ./scheme/migration_20160617.sql`
-* CSLAIERを再起動してください。
- * `./run.sh`
 
 使い方
 ------
@@ -459,6 +342,10 @@ CONTAINER ID        IMAGE                               COMMAND                 
 $ docker stop 7803235d494c
 ```
 
+既知の不具合
+----------
+
+* TensorFlowを用いて学習した場合、学習結果のグラフに表示されるepoch数が指定したepochの半分くらいの値になります。
 
 
 License
