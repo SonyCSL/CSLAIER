@@ -1,8 +1,14 @@
+# coding=utf-8
 import json
-from collections import defaultdict
 from gevent.subprocess import Popen, PIPE
 import gevent
 
+
+'''
+TODO: ただのDispatcherなのでログの種類に関心を持たないほうが良さげ。
+もしログの種類が増える場合はこの定数やTailFDispatcherの初期化引数を増やして対応するのではなく
+呼び出し側がDictionaryを渡すようにするなどの方法を検討してください。
+'''
 TRAIN_LOG = 'log'
 LINE_GRAPH = 'graph'
 
@@ -18,7 +24,6 @@ class TailFDispatcher(object):
         self.line_graph = line_graph
         self.processes = []
         self.queues = []
-
         if train_log:
             self.processes.append(gevent.spawn(self._tail, train_log, TRAIN_LOG))
         if line_graph:
