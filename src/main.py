@@ -25,7 +25,7 @@ import common.utils as ds_util
 from common import strings
 from gevent.wsgi import WSGIServer
 
-__version__ = '0.6.1'
+__version__ = '0.7.0'
 
 app = Flask(__name__)
 app.config.from_envvar('CSLAIER_CONFIG')
