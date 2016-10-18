@@ -706,6 +706,11 @@ var subscribe_train_log = function() {
 
             stream.addEventListener('message', function(e) {
                 var obj = JSON.parse(e.data);
+                if (obj.type == 'end') {
+                    console.log(obj);
+                    location.reload();
+                    return;
+                }
                 if (obj.type == 'log') {
                     this.pushLog(obj.data);
                 } else if (obj.type == 'graph') {
@@ -723,11 +728,6 @@ var subscribe_train_log = function() {
         // 学習を再開した場合もログが一行ずつ送られてきます。
         pushLog: function(data) {
             var obj = JSON.parse(data);
-            if (obj.type == 'end') {
-                console.log(obj);
-                location.reload();
-                return;
-            }
             this.log.push(obj)
             // dataが来たらそれまでのlogを捨てる。
             if (obj.type == 'data') {
