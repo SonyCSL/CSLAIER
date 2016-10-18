@@ -664,6 +664,18 @@ $('#log_tab').on('click', function(e){
     $('#network_tab').removeClass('active');
 });
 
+var update_graph = function() {
+     var model_id = $('#model_id').val();
+     $.get('/api/models/' + model_id + '/get/train_data/graph/', function(ret){
+         if(ret.status != 'ready') return;
+         if(ret.data.indexOf('perplexity') > -1) {
+             drawLSTMResultGraph(ret.data);
+         } else {
+             drawImagenetResultGraph(ret.data);
+         }
+     });
+}
+
 var update_train_log = function(){
     var model_id = $('#model_id').val();
     $.get('/api/models/' + model_id + '/get/train_data/log/', function(ret){
@@ -683,7 +695,9 @@ var subscribe_train_log = function() {
             this.currentEpoch = 1;
             this.trainCount = 0;
             // おおよそ何回の更新でエポックが終わるか
-            this.numberOfUpdateCountPerEpoch = 0
+            this.numberOfUpdateCountPerEpoch = 0;
+            this.graphTSV = "";
+
             if (this.timer) {
                 clearInterval(this.timer);
             }
@@ -691,7 +705,17 @@ var subscribe_train_log = function() {
             var stream = new EventSource(url);
 
             stream.addEventListener('message', function(e) {
-                this.pushLog(e.data);
+                var obj = JSON.parse(e.data);
+                if (obj.type == 'end') {
+                    console.log(obj);
+                    location.reload();
+                    return;
+                }
+                if (obj.type == 'log') {
+                    this.pushLog(obj.data);
+                } else if (obj.type == 'graph') {
+                    this.pushGraph(obj.data);
+                }
             }.bind(this));
             this.stream = stream;
             this.timer = setInterval(function() {
@@ -704,11 +728,6 @@ var subscribe_train_log = function() {
         // 学習を再開した場合もログが一行ずつ送られてきます。
         pushLog: function(data) {
             var obj = JSON.parse(data);
-            if (obj.type == 'end') {
-                console.log(obj);
-                location.reload();
-                return;
-            }
             this.log.push(obj)
             // dataが来たらそれまでのlogを捨てる。
             if (obj.type == 'data') {
@@ -716,8 +735,8 @@ var subscribe_train_log = function() {
                     return logJSON.type != 'log';
                 });
             }
-            if (this.displayUpdateTimeoutID) {
-                clearTimeout(this.displayUpdateTimeoutID);
+            if (this.logDisplayUpdateTimeoutID) {
+                clearTimeout(this.logDisplayUpdateTimeoutID);
             }
             if (obj.time_stamp && obj.epoch) {
                 this.trainCount += 1;
@@ -735,7 +754,21 @@ var subscribe_train_log = function() {
                 }
             }
             // 表示更新は連続でデータが来る場合を考慮して、新しいデータ1.5秒こなかったときにする。
-            this.displayUpdateTimeoutID = setTimeout(this.displayUpdate.bind(this), 1500);
+            this.logDisplayUpdateTimeoutID = setTimeout(this.displayUpdate.bind(this), 1500);
+        },
+        pushGraph: function(data) {
+            this.graphTSV += data;
+            if (this.graphDisplayUpdateTimeoutID) {
+                clearTimeout(this.graphDisplayUpdateTimeoutID);
+            }
+            this.graphDisplayUpdateTimeoutID = setTimeout(this.graphDisplayUpdate.bind(this), 1500);
+        },
+        graphDisplayUpdate: function() {
+            if(this.graphTSV.indexOf('perplexity') > -1) {
+                drawLSTMResultGraph(this.graphTSV);
+            } else {
+                drawImagenetResultGraph(this.graphTSV);
+            }
         },
         displayUpdate: function() {
             var text = _.map(this.log, function(logData) {
@@ -824,36 +857,57 @@ var decrease_time_remain = function(){
     }
 };
 
-$('#graph_tab').on('click', function(e){
-    last_draw_time=0;
-    draw_train_graph();
-});
-
-var last_draw_time = 0;
-var draw_train_graph = function(){
-    if( ($.now() - last_draw_time) < 30000) return;
-    last_draw_time = $.now()
-    var model_id = $('#model_id').val();
-    $.get('/api/models/' + model_id + '/get/train_data/graph/', function(ret){
-        if(ret.status != 'ready') return;
-        if(ret.data.indexOf('perplexity') > -1) {
-            drawLSTMResultGraph(ret.data);
-        } else {
-            drawImagenetResultGraph(ret.data);
-        }
-    });
-};
-
 var drawLSTMResultGraph = function(data){
-    $('#training_graph').empty();
     var margin = {top: 20, right: 20, bottom: 30, left: 50};
+
+    var path = xAxisGroup = yAxisGroup = null;
+    if (!document.getElementById('graph_svg')) {
+        $('#training_graph').empty();
+        var svg = d3.select("#training_graph")
+            .append('svg')
+            .attr('width', 630)
+            .attr('height', 460)
+            .append('g')
+            .attr('id', 'graph_svg')
+            .attr("transform", "translate(0,0)");
+
+        path = svg.append("path")
+            .attr("id", "path")
+
+        // x axis(epoch)
+        xAxisGroup = svg.append("g")
+            .attr("id", "x-axis")
+            .attr("class", "x axis")
+            .attr("fill", "white")
+            .attr("transform", "translate(" + margin.left + ",410)")
+        // y axis right side(perplexity)
+        yAxisGroup = svg.append("g")
+            .attr("id", "y-axis")
+            .attr("class", "y axis")
+            .attr("transform", "translate(" + margin.left + ",0)")
+            .attr("fill", "white")
+        // legend
+        var legend_data = [
+            {title: "Perplexity", color:"steelblue"},
+        ];
+        _.each(legend_data, function(d, i){
+            addLegend(svg, d.title, d.color, i);
+        });
+    } else {
+        path = d3.select('#path')
+        xAxisGroup = d3.select('#x-axis')
+        yAxisGroup = d3.select('#y-axis')
+    }
     var width = 550 - margin.left - margin.right;
     var height = 450 - margin.top - margin.bottom;
 
     var xEpoch      = d3.scale.linear().range([0, width]);
     var xCount      = d3.scale.linear().range([0, width]);
     var yPerplexity = d3.scale.linear().range([height, 0]);
-
+    var parsedData = d3.tsv.parse(data);
+    xEpoch.domain(d3.extent(parsedData, function(d) { return d.epoch }));
+    xCount.domain(d3.extent(parsedData, function(d) { return d.count }));
+    yPerplexity.domain([0, d3.max(parsedData).perplexity]);
     // 軸の定義
     var xAxis          = d3.svg.axis()
                          .scale(xEpoch)
@@ -868,45 +922,18 @@ var drawLSTMResultGraph = function(data){
             .x(function(d) { return xCount(d.count); })
             .y(function(d) { return yPerplexity(d.perplexity); });
 
-    var svg = d3.select("#training_graph").append('svg')
-        .attr('width', 630).attr('height', 460)
-        .append('g').attr("transform", "translate(0,0)");
-
-    var parsedData = d3.tsv.parse(data);
-
-    xEpoch.domain(d3.extent(parsedData, function(d) { return d.epoch; }));
-    xCount.domain(d3.extent(parsedData, function(d) { return d.count}));
-    yPerplexity.domain([0, d3.max(parsedData).perplexity]);
-
     // loss
-    svg.append("path")
-        .datum(parsedData)
+    path.datum(parsedData)
         .attr("class", "line-loss")
         .attr("transform", "translate(" + margin.left + ",0)")
         .attr("d", linePerplexity);
     // x axis(epoch)
-    svg.append("g")
-        .attr("class", "x axis")
-        .attr("fill", "white")
-        .attr("transform", "translate(" + margin.left + ",410)")
-        .call(xAxis);
+    xAxisGroup.call(xAxis);
     // y axis right side(perplexity)
-    svg.append("g")
-        .attr("class", "y axis")
-        .attr("transform", "translate(" + margin.left + ",0)")
-        .attr("fill", "white")
-        .call(yAxisPerplexity)
-    // legend
-    var legend_data = [
-        {title: "Perplexity", color:"steelblue"},
-    ];
-    _.each(legend_data, function(d, i){
-        addLegend(svg, d.title, d.color, i);
-    });
+    yAxisGroup.call(yAxisPerplexity)
 };
 
 var drawImagenetResultGraph = function(data){
-    $('#training_graph').empty();
     // スケールと出力レンジの定義
     var margin = {top: 20, right: 20, bottom: 30, left: 50};
     var width = 550 - margin.left - margin.right;
@@ -919,6 +946,83 @@ var drawImagenetResultGraph = function(data){
     var yAccuracy    = d3.scale.linear().range([height, 0]);
     var yValAccuracy = d3.scale.linear().range([height, 0]);
 
+    var lossPath = accuracyPath = lossValPath = accuracyValPath = xAxisGroup = yAxisLeftSide = yAxisRightSide = null;
+    if (!document.getElementById('graph_svg')) {
+        $('#training_graph').empty();
+        var svg = d3.select("#training_graph")
+            .append('svg')
+            .attr('width', 630)
+            .attr('height', 460)
+            .append('g')
+            .attr('id', 'graph_svg')
+            .attr("transform", "translate(0,0)");
+        // loss
+        lossPath = svg.append("path")
+            .attr("class", "line-loss")
+            .attr("transform", "translate(" + margin.left + ",0)")
+        // accuracy
+        accuracyPath = svg.append("path")
+            .attr("class", "line-accuracy")
+            .attr("transform", "translate(" + margin.left + ",0)")
+        // loss(val)
+        lossValPath = svg.append("path")
+            .attr("class", "line-val-loss")
+            .attr("transform", "translate(" + margin.left + ",0)")
+        // accuracy(val)
+        accuracyValPath = svg.append("path")
+            .attr("class", "line-val-accuracy")
+            .attr("transform", "translate(" + margin.left + ",0)")
+        // x axis(epoch)
+        xAxisGroup = svg.append("g")
+            .attr("id", "x-axis")
+            .attr("class", "x axis")
+            .attr("fill", "white")
+            .attr("transform", "translate(" + margin.left + ",410)")
+        // y axis left side(loss)
+        yAxisLeftSide = svg.append("g")
+            .attr("id", "y-axis-left")
+            .attr("class", "y axis")
+            .attr("transform", "translate(" + margin.left + ",0)")
+            .attr("fill", "white")
+        yAxisLeftSide.append("text")
+            .attr("y", 6)
+            .attr("x", 5)
+            .attr("dy", ".71em")
+            .attr("fill", "white")
+            .style("text-anchor", "start")
+            .text("loss");
+        // y axis right side(accuracy)
+        yAxisRightSide = svg.append("g")
+            .attr("id", "y-axis-right")
+            .attr("class", "y axis")
+            .attr("transform", "translate(" + (width + margin.left + 10)+",0)")
+            .attr("fill", "white")
+        yAxisRightSide.append("text")
+            .attr("y", 6)
+            .attr("x", -5)
+            .attr("dy", ".71em")
+            .attr("fill", "white")
+            .style("text-anchor", "end")
+            .text("accuracy")
+        // legend
+        var legend_data = [
+            {title: "loss", color:"steelblue"},
+            {title: "accuracy", color:"orange"},
+            {title: "loss(val)", color:"#0c0"},
+            {title: "accuracy(val)", color:"red"}
+        ];
+        _.each(legend_data, function(d, i){
+            addLegend(svg, d.title, d.color, i);
+        });
+    } else {
+        lossPath = d3.select('.line-loss')
+        accuracyPath = d3.select('.line-accuracy')
+        lossValPath = d3.select('.line-val-loss')
+        accuracyValPath = d3.select('.line-val-accuracy')
+        xAxisGroup = d3.select('#x-axis')
+        yAxisLeftSide = d3.select('#y-axis-left')
+        yAxisRightSide = d3.select('#y-axis-right')
+    }
 
     // 軸の定義
     var xAxis         = d3.svg.axis()
@@ -944,9 +1048,6 @@ var drawImagenetResultGraph = function(data){
             .x(function(d) { return xCount(d.count); })
             .y(function(d) { return yValAccuracy(d.val_accuracy); });
 
-    var svg = d3.select("#training_graph").append('svg')
-        .attr('width', 630).attr('height', 460)
-        .append('g').attr("transform", "translate(0,0)");;
     var parsedData = d3.tsv.parse(data, function(){
         var count = -1;
         return function(data){
@@ -976,80 +1077,21 @@ var drawImagenetResultGraph = function(data){
         if(obj.val_loss) return true;
     });
 
-    xEpoch.domain(d3.extent(parsedData, function(d) { return d.epoch; }));
-    xCount.domain(d3.extent(parsedData, function(d) { return d.count}));
+    xEpoch.domain(d3.extent(parsedData, function(d) { return d.epoch }));
+    xCount.domain(d3.extent(parsedData, function(d) { return d.count }));
     var loss_max = d3.max(train_loss_data.concat(val_loss_data), function(d){ return d.loss || d.val_loss});
     yLoss.domain([0, loss_max]);
     yAccuracy.domain([0, 1]);
     yValLoss.domain([0, loss_max]);
     yValAccuracy.domain([0, 1]);
 
-    // loss
-    svg.append("path")
-        .datum(train_loss_data)
-        .attr("class", "line-loss")
-        .attr("transform", "translate(" + margin.left + ",0)")
-        .attr("d", lineLoss);
-    // accuracy
-    svg.append("path")
-        .datum(train_accuracy_data)
-        .attr("class", "line-accuracy")
-        .attr("transform", "translate(" + margin.left + ",0)")
-        .attr("d", lineAccuracy);
-    // loss(val)
-    svg.append("path")
-        .datum(val_loss_data)
-        .attr("class", "line-val-loss")
-        .attr("transform", "translate(" + margin.left + ",0)")
-        .attr("d", lineValLoss);
-    // accuracy(val)
-    svg.append("path")
-        .datum(val_accuracy_data)
-        .attr("class", "line-val-accuracy")
-        .attr("transform", "translate(" + margin.left + ",0)")
-        .attr("d", lineValAccuracy);
-    // x axis(epoch)
-    svg.append("g")
-        .attr("class", "x axis")
-        .attr("fill", "white")
-        .attr("transform", "translate(" + margin.left + ",410)")
-        .call(xAxis);
-    // y axis left side(loss)
-    svg.append("g")
-        .attr("class", "y axis")
-        .attr("transform", "translate(" + margin.left + ",0)")
-        .attr("fill", "white")
-        .call(yAxisLoss)
-        .append("text")
-        .attr("y", 6)
-        .attr("x", 5)
-        .attr("dy", ".71em")
-        .attr("fill", "white")
-        .style("text-anchor", "start")
-        .text("loss");
-    // y axis right side(accuracy)
-    svg.append("g")
-        .attr("class", "y axis")
-        .attr("transform", "translate(" + (width + margin.left + 10)+",0)")
-        .attr("fill", "white")
-        .call(yAxisAccuracy)
-        .append("text")
-        .attr("y", 6)
-        .attr("x", -5)
-        .attr("dy", ".71em")
-        .attr("fill", "white")
-        .style("text-anchor", "end")
-        .text("accuracy")
-    // legend
-    var legend_data = [
-        {title: "loss", color:"steelblue"},
-        {title: "accuracy", color:"orange"},
-        {title: "loss(val)", color:"#0c0"},
-        {title: "accuracy(val)", color:"red"}
-    ];
-    _.each(legend_data, function(d, i){
-        addLegend(svg, d.title, d.color, i);
-    });
+    lossPath.datum(train_loss_data).attr("d", lineLoss);
+    accuracyPath.datum(train_accuracy_data).attr("d", lineAccuracy);
+    lossValPath.datum(val_loss_data).attr("d", lineValLoss);
+    accuracyValPath.datum(val_accuracy_data).attr("d", lineValAccuracy);
+    xAxisGroup.call(xAxis);
+    yAxisLeftSide.call(yAxisLoss)
+    yAxisRightSide.call(yAxisAccuracy)
 };
 
 var addLegend = function(svg, title, color, i){
@@ -1105,8 +1147,6 @@ var showResultScreen = function(){
             $('#model_detail_log').addClass('hidden');
             $('#model_detail_layers').addClass('hidden');
             $('#model_detail_graph').removeClass('hidden');
-            draw_train_graph();
-            setInterval("draw_train_graph()", 30000);
         } else {
             $('#network_tab').removeClass('active');
             $('#log_tab').addClass('active');
