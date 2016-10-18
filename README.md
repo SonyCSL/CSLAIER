@@ -9,11 +9,7 @@ Screenshots
 -------------
 
 ### Top page
-#### Datasets
-![dataset top](./docs/img/ss/top_datasets.png)
-
-#### Modes
-![models top](./docs/img/ss/top_models.png)
+![dataset top](./docs/img/ss/top_view.png)
 
 ### Model detail page
 #### Train result
