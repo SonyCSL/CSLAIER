@@ -3,8 +3,8 @@ FROM ubuntu:14.04
 MAINTAINER UEI Corporation
 
 ENV TF_BINARY_URL https://storage.googleapis.com/tensorflow/linux/cpu/tensorflow-0.10.0rc0-cp27-none-linux_x86_64.whl
-ENV APPROOT /deepstation
-ENV DEEPSTATION_CONFIG $APPROOT/docker_config/deepstation.cfg
+ENV APPROOT /cslaier
+ENV CSLAIER_CONFIG $APPROOT/docker_config/cslaier.cfg
 
 RUN apt-get -y update && \
     apt-get -y install \

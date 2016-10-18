@@ -25,21 +25,21 @@ import common.utils as ds_util
 from common import strings
 from gevent.wsgi import WSGIServer
 
-__version__ = '0.6.1'
+__version__ = '0.7.0'
 
 app = Flask(__name__)
-app.config.from_envvar('DEEPSTATION_CONFIG')
-deepstation_config_params = ('DATABASE_PATH', 'UPLOADED_RAW_FILE',
-                             'UPLOADED_FILE', 'PREPARED_DATA', 'TRAINED_DATA',
-                             'INSPECTION_TEMP', 'LOG_DIR')
+app.config.from_envvar('CSLAIER_CONFIG')
+cslaier_config_params = ('DATABASE_PATH', 'UPLOADED_RAW_FILE',
+                         'UPLOADED_FILE', 'PREPARED_DATA', 'TRAINED_DATA',
+                         'INSPECTION_TEMP', 'LOG_DIR')
 # WebApp settings
-app.config['DEEPSTATION_ROOT'] = os.getcwd()
+app.config['CSLAIER_ROOT'] = os.getcwd()
 
 
 def normalize_config_path():
-    for param in deepstation_config_params:
+    for param in cslaier_config_params:
         if not app.config[param].startswith('/'):
-            app.config[param] = os.path.abspath(app.config['DEEPSTATION_ROOT']
+            app.config[param] = os.path.abspath(app.config['CSLAIER_ROOT']
                                                 + os.sep + app.config[param])
 
 
@@ -182,7 +182,7 @@ def remove_file_from_category(id, category_path):
 def create_new_model():
     if request.method == 'GET':
         model_templates = os.listdir(
-            os.path.join(app.config['DEEPSTATION_ROOT'], 'src', 'model_templates')
+            os.path.join(app.config['CSLAIER_ROOT'], 'src', 'model_templates')
         )
         if ds_util.get_tensorflow_version() == '---':
             for t in model_templates:
@@ -199,7 +199,7 @@ def create_new_model():
     model = Model.create_new(
         model_name,
         model_type,
-        os.path.join(app.config['DEEPSTATION_ROOT'], 'src', 'models'),
+        os.path.join(app.config['CSLAIER_ROOT'], 'src', 'models'),
         network_name,
         model_template,
         my_network,
@@ -368,7 +368,7 @@ def api_dataset_register_by_path():
             path = os.path.normpath(given_path)
     else:
         # relative path
-        abs_path = os.path.normpath(os.path.join(app.config['DEEPSTATION_ROOT'],
+        abs_path = os.path.normpath(os.path.join(app.config['CSLAIER_ROOT'],
                                                  given_path))
         if os.path.exists(abs_path) and os.path.isdir(abs_path):
             path = abs_path
@@ -400,7 +400,7 @@ def api_dataset_get_full_text(id, filepath):
 @app.route('/api/models/get/model_template/<string:model_name>')
 def api_get_model_template(model_name):
     model_template = open(
-        os.path.join(app.config['DEEPSTATION_ROOT'], 'src',
+        os.path.join(app.config['CSLAIER_ROOT'], 'src',
                      'model_templates', model_name)).read()
     return jsonify({'model_template': model_template})
 
@@ -584,7 +584,7 @@ def download_trained_files():
     id = request.form['model_id']
     epoch = int(request.form['epoch'])
     model = Model.query.get(id)
-    zip_path = model.get_trained_files(epoch, os.path.join(app.config['DEEPSTATION_ROOT'], 'temp'))
+    zip_path = model.get_trained_files(epoch, os.path.join(app.config['CSLAIER_ROOT'], 'temp'))
     return send_file(
         zip_path,
         mimetype='application/octet-stream',
@@ -621,7 +621,7 @@ def api_terminate_trained():
 
 def get_system_info():
     info = ds_util.get_system_info()
-    info['deepstation_version'] = __version__
+    info['cslaire_version'] = __version__
     return info
 
 
