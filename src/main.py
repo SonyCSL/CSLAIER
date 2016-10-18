@@ -7,8 +7,11 @@ from logging.handlers import RotatingFileHandler
 from logging import getLogger
 from time import sleep
 
-from flask import Flask, url_for, render_template, request, redirect,\
-             jsonify, send_from_directory, send_file
+from flask import Flask, url_for, render_template, request, redirect, \
+    jsonify, send_from_directory, send_file, Response
+import gevent
+from gevent.wsgi import WSGIServer
+from gevent.queue import Queue
 from werkzeug.contrib.cache import SimpleCache
 from sqlalchemy import desc
 from sqlalchemy.orm import eagerload
@@ -17,25 +20,28 @@ from db_models.shared_models import db
 from db_models.datasets import Dataset
 from db_models.models import Model
 import deeplearning.runner as runner
+from deeplearning.log_subscriber import train_logger
 import common.utils as ds_util
 from common import strings
+from gevent.wsgi import WSGIServer
 
-__version__ = '0.6.1'
+__version__ = '0.7.0'
 
 app = Flask(__name__)
-app.config.from_envvar('DEEPSTATION_CONFIG')
-deepstation_config_params = ('DATABASE_PATH', 'UPLOADED_RAW_FILE',
-                             'UPLOADED_FILE', 'PREPARED_DATA', 'TRAINED_DATA',
-                             'INSPECTION_TEMP', 'LOG_DIR')
+app.config.from_envvar('CSLAIER_CONFIG')
+cslaier_config_params = ('DATABASE_PATH', 'UPLOADED_RAW_FILE',
+                         'UPLOADED_FILE', 'PREPARED_DATA', 'TRAINED_DATA',
+                         'INSPECTION_TEMP', 'LOG_DIR')
 # WebApp settings
-app.config['DEEPSTATION_ROOT'] = os.getcwd()
+app.config['CSLAIER_ROOT'] = os.getcwd()
 
 
 def normalize_config_path():
-    for param in deepstation_config_params:
+    for param in cslaier_config_params:
         if not app.config[param].startswith('/'):
-            app.config[param] = os.path.abspath(app.config['DEEPSTATION_ROOT']
+            app.config[param] = os.path.abspath(app.config['CSLAIER_ROOT']
                                                 + os.sep + app.config[param])
+
 
 normalize_config_path()
 
@@ -98,7 +104,7 @@ def show_dataset_image(dataset_id, image_path):
     if ds_path is None:
         dataset = Dataset.query.get(dataset_id)
         ds_path = dataset.dataset_path
-        cache.set('dataset_id_' + str(dataset_id), ds_path, timeout=24*60*60)
+        cache.set('dataset_id_' + str(dataset_id), ds_path, timeout=24 * 60 * 60)
     return send_from_directory(ds_path, image_path)
 
 
@@ -117,7 +123,7 @@ def show_inspection_uploaded_file(filename):
 def show_dataset(id):
     page = request.args.get('page', type=int, default=1)
     ds = Dataset.query.get(id)
-    dataset = ds.get_dataset_with_categories_and_samples(offset=(page-1)*20)
+    dataset = ds.get_dataset_with_categories_and_samples(offset=(page - 1) * 20)
     return render_template('dataset/show_dataset.html',
                            dataset=dataset, current_page=page)
 
@@ -128,7 +134,7 @@ def show_dataset_category(id, category):
     if category == '-':
         category = ''
     ds = Dataset.query.get(id)
-    dataset = ds.get_dataset_with_category_detail(category, offset=(page-1)*100)
+    dataset = ds.get_dataset_with_category_detail(category, offset=(page - 1) * 100)
     return render_template('dataset/show_category_detail.html',
                            dataset=dataset, current_page=page)
 
@@ -176,7 +182,7 @@ def remove_file_from_category(id, category_path):
 def create_new_model():
     if request.method == 'GET':
         model_templates = os.listdir(
-            os.path.join(app.config['DEEPSTATION_ROOT'], 'src', 'model_templates')
+            os.path.join(app.config['CSLAIER_ROOT'], 'src', 'model_templates')
         )
         if ds_util.get_tensorflow_version() == '---':
             for t in model_templates:
@@ -193,7 +199,7 @@ def create_new_model():
     model = Model.create_new(
         model_name,
         model_type,
-        os.path.join(app.config['DEEPSTATION_ROOT'], 'src', 'models'),
+        os.path.join(app.config['CSLAIER_ROOT'], 'src', 'models'),
         network_name,
         model_template,
         my_network,
@@ -362,8 +368,8 @@ def api_dataset_register_by_path():
             path = os.path.normpath(given_path)
     else:
         # relative path
-        abs_path = os.path.normpath(os.path.join(app.config['DEEPSTATION_ROOT'],
-                                    given_path))
+        abs_path = os.path.normpath(os.path.join(app.config['CSLAIER_ROOT'],
+                                                 given_path))
         if os.path.exists(abs_path) and os.path.isdir(abs_path):
             path = abs_path
     if path is None:
@@ -394,7 +400,7 @@ def api_dataset_get_full_text(id, filepath):
 @app.route('/api/models/get/model_template/<string:model_name>')
 def api_get_model_template(model_name):
     model_template = open(
-        os.path.join(app.config['DEEPSTATION_ROOT'], 'src',
+        os.path.join(app.config['CSLAIER_ROOT'], 'src',
                      'model_templates', model_name)).read()
     return jsonify({'model_template': model_template})
 
@@ -483,10 +489,56 @@ def api_resume_train():
 @app.route('/api/models/<int:id>/get/train_data/log/')
 def api_get_training_log(id):
     model = Model.query.get(id)
-    if model.train_log is None or not os.path.exists(model.train_log):
-        return jsonify({'status': 'log file not ready'})
-    log = open(model.train_log).read()
-    return jsonify({'status': 'ready', 'data': log, 'is_trained': model.is_trained})
+    # for backward compatibility.
+    if model.train_log and os.path.exists(model.train_log):
+        log = open(model.train_log).read()
+        return jsonify({'status': 'ready', 'data': log, 'is_trained': model.is_trained})
+    if model.train_log_path and os.path.exists(model.train_log_path):
+        def data(row):
+            obj = json.loads(row)
+            data_type = obj['type']
+            return obj[data_type] if data_type in obj else ""
+        log = map(data, open(model.train_log_path))
+        return jsonify({'status': 'ready', 'data': '<br>'.join(log), 'is_trained': model.is_trained})
+
+    return jsonify({'status': 'log file not ready'})
+
+
+# SSE "protocol" is described here: http://mzl.la/UPFyxY
+class ServerSentEvent(object):
+    def __init__(self, data):
+        self.data = data
+        self.event = None
+        self.id = None
+        self.desc_map = {
+            self.data: "data",
+            self.event: "event",
+            self.id: "id"
+        }
+
+    def encode(self):
+        if self.data == 'None':
+            # これはタイムアウト避けのコメントアウト行なのでコンソールには出てこない。
+            return ':\n\n'
+        lines = ["{}: {}".format(v, k) for k, v in self.desc_map.iteritems() if k]
+        return "{}\n\n".format("\n".join(lines))
+
+
+@app.route('/api/models/<int:model_id>/get/train_data/log/subscribe')
+def api_training_log_subscribe(model_id):
+    def gen():
+        queue = Queue()
+        train_logger.subscribe(model_id, queue)
+        try:
+            while True:
+                result = queue.get()
+                ev = ServerSentEvent(str(result))
+                yield ev.encode()
+        # 通信が切断されるとこの例外が上がる。
+        except GeneratorExit:
+            train_logger.unsubscribe(model_id, queue)
+
+    return Response(gen(), mimetype="text/event-stream")
 
 
 @app.route('/api/models/<int:id>/get/train_data/graph/')
@@ -532,7 +584,7 @@ def download_trained_files():
     id = request.form['model_id']
     epoch = int(request.form['epoch'])
     model = Model.query.get(id)
-    zip_path = model.get_trained_files(epoch, os.path.join(app.config['DEEPSTATION_ROOT'], 'temp'))
+    zip_path = model.get_trained_files(epoch, os.path.join(app.config['CSLAIER_ROOT'], 'temp'))
     return send_file(
         zip_path,
         mimetype='application/octet-stream',
@@ -545,17 +597,20 @@ def download_trained_files():
 def api_terminate_trained():
     id = request.form['id']
     model = Model.query.get(id)
-    interruptable = runner.INTERRUPTABLE_PROCESSES.get(model.pid)
-    if interruptable:
-        interruptable.interrupt()
-        while not interruptable.interruptable():
-            if not interruptable.interrupting():
-                del runner.INTERRUPTABLE_PROCESSES[model.pid]
+    interruptable = runner.INTERRUPTABLE_PROCESSES.get(model.id)
+    if model.is_running_train_process and interruptable:
+        interruptable.set_interrupt()
+        while not interruptable.is_interruptable():
+            # 待機中に中断ではなく完了した場合↓でreturnする。
+            if not interruptable.is_interrupting():
                 return jsonify({'status': 'success'})
-            sleep(0.5)
-        del runner.INTERRUPTABLE_PROCESSES[model.pid]
-    model.terminate_train()
-
+            sleep(1)
+        model.terminate_train()
+        interruptable.terminate()
+    else:
+        if interruptable:
+            interruptable.terminate()
+        model.terminate_train()
     return jsonify({'status': 'success'})
 
 
@@ -566,14 +621,11 @@ def api_terminate_trained():
 
 def get_system_info():
     info = ds_util.get_system_info()
-    info['deepstation_version'] = __version__
+    info['cslaire_version'] = __version__
     return info
 
 
 if __name__ == '__main__':
-    app.run(
-        host=app.config['HOST'],
-        port=app.config['PORT'],
-        debug=app.config['DEBUG'],
-        use_evalex=False,
-        threaded=True)
+    app.debug = app.config['DEBUG']
+    server = WSGIServer((app.config['HOST'], app.config['PORT']), app)
+    server.serve_forever()

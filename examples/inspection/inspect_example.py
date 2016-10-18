@@ -220,11 +220,11 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Do inspection by command line')
     parser.add_argument('image_to_inspect', help='Path to the image file which you want to inspect')
     parser.add_argument('network', help='Path to the network model file')
-    parser.add_argument('model', help='Path to the trained model (downloaded from DEEPstation ')
+    parser.add_argument('model', help='Path to the trained model (downloaded from CSLAIER ')
     parser.add_argument('--label', '-l', default='labels.txt',
-                        help='Path to the labels.txt file (downloaded from DEEPstation)')
+                        help='Path to the labels.txt file (downloaded from CSLAIER)')
     parser.add_argument('--mean', '-m', default='mean.npy',
-                        help='Path to the mean file (downloaded from DEEPstation)')
+                        help='Path to the mean file (downloaded from CSLAIER)')
     parser.add_argument('--gpu', '-g', default=-1, type=int,
                         help='GPU ID (negative value indicates CPU)')
     parser.add_argument('--resize_mode', '-r', default='squash',

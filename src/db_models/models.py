@@ -62,9 +62,15 @@ class Model(db.Model):
     def line_graph(self):
         return self.__get_file_path(self.trained_model_path, 'line_graph.tsv')
 
+    # for backward compatibility
+    # log.htmlは使われていません。ログの書き出しにはtrain.logを使っています。
     @property
     def train_log(self):
         return self.__get_file_path(self.trained_model_path, 'log.html')
+
+    @property
+    def train_log_path(self):
+        return self.__get_file_path(self.trained_model_path, 'train.log')
 
     @property
     def mean_file(self):
@@ -86,6 +92,16 @@ class Model(db.Model):
             return '---'
         else:
             return 'GPU: ' + str(self.gpu)
+
+    @property
+    def is_running_train_process(self):
+        if not self.pid:
+            return False
+        try:
+            os.kill(self.pid, 0)
+            return True
+        except OSError:
+            return False
 
     @property
     def batchsize_str(self):

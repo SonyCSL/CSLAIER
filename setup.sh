@@ -1,3 +1,3 @@
 #!/bin/bash
-touch deepstation.db
-sqlite3 deepstation.db < $(pwd)/scheme/deepstation.sql
+touch cslaier.db
+sqlite3 cslaier.db < $(pwd)/scheme/cslaier.sql

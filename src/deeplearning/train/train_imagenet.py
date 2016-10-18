@@ -37,14 +37,6 @@ VALIDATION_TIMING = 500  # ORIGINAL 50000
 logger = getLogger(__name__)
 
 
-def _create_trained_model_dir(path, root_output_dir, model_name):
-    if path is None:
-        path = os.path.join(root_output_dir, model_name)
-    if not os.path.exists(path):
-        os.mkdir(path)
-    return path
-
-
 def _delete_old_models(db_model, pretrained_model):
     pretrained_models = sorted(os.listdir(db_model.trained_model_path), reverse=True)
     for m in pretrained_models:
@@ -199,7 +191,7 @@ def feed_data(train_list, val_list, mean_image, batchsize, val_batchsize,
             perm = resume_perm
         else:
             perm = np.random.permutation(len(train_list))
-        data_q.put(TrainingEpoch(epoch - 1, batchsize, perm, avoid_flipping))
+        data_q.put(TrainingEpoch(epoch, batchsize, perm, avoid_flipping))
         for idx in perm:
             path, label = train_list[idx]
             batch_pool[i] = pool.apply_async(read_image, (path, model.insize, mean_image,
@@ -238,9 +230,8 @@ def feed_data(train_list, val_list, mean_image, batchsize, val_batchsize,
     return
 
 
-def log_result(batchsize, val_batchsize, log_file, log_html, res_q, resume=False):
+def log_result(batchsize, val_batchsize, log_file, train_log, res_q, resume=False):
     if resume:
-        fH = open(log_html, 'a')
         # ログをちゃんと連番にするためにログの最後の行のcountをとる
         with open(log_file) as fp:
             row = '0'
@@ -249,17 +240,11 @@ def log_result(batchsize, val_batchsize, log_file, log_html, res_q, resume=False
             for row in filter(lambda line: line.strip(), fp):
                 pass
             # 最後の行を取得
-            count = int(row.split('\t')[0]) + 1
-        f = open(log_file, 'a')
+            train_count = int(row.split('\t')[0])
     else:
-        fH = open(log_html, 'w')
-        f = open(log_file, 'w')
-        f.write("count\tepoch\taccuracy\tloss\taccuracy(val)\tloss(val)\n")
-        fH.flush()
-        f.flush()
-        count = 0
-
-    train_count = 0
+        with open(log_file, 'a') as fp:
+            fp.write("count\tepoch\taccuracy\tloss\taccuracy(val)\tloss(val)\n")
+        train_count = 0
     train_cur_loss = 0
     train_cur_accuracy = 0
     begin_at = time.time()
@@ -284,75 +269,84 @@ def log_result(batchsize, val_batchsize, log_file, log_html, res_q, resume=False
             train_count += 1
             duration = time.time() - begin_at
             throughput = train_count * batchsize / duration
-            fH.write(
-                'train {} updates ({} samples) time: {} ({} images/sec)<br>'
-                    .format(train_count, train_count * batchsize,
-                            datetime.timedelta(seconds=duration), throughput))
-            fH.write("[TIME]{},{}<br>"
-                     .format(epoch, datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')))
-            fH.flush()
-            f.write(str(count) + "\t" + str(epoch) + "\t" + str(accuracy) + "\t" + str(loss)
-                    + "\t\t\n")
-            f.flush()
-            count += 1
             train_cur_loss += loss
             train_cur_accuracy += accuracy
-            if train_count % 1000 == 0:
-                mean_loss = train_cur_loss / 1000
-                mean_error = 1 - train_cur_accuracy / 10000
-                fH.write("<strong>"
-                         + json.dumps({
-                    'type': 'train',
-                    'iteration': train_count,
-                    'error': mean_error,
-                    'loss': mean_loss})
-                         + "</strong><br>")
-                fH.flush()
-                train_cur_loss = 0
-                train_cur_accuracy = 0
+            with open(train_log, 'a') as fp:
+                text = 'epoch: {}, train: {}, updates ({} samples) time: {} ({} images/sec)' \
+                    .format(epoch, train_count, train_count * batchsize,
+                            datetime.timedelta(seconds=duration), throughput)
+                fp.write(
+                    json.dumps({
+                        'type': 'log',
+                        'log': text,
+                        'time_stamp': datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+                        'epoch': epoch
+                    }) + '\n'
+                )
+                if train_count % 1000 == 0:
+                    mean_loss = train_cur_loss / 1000
+                    mean_error = 1 - train_cur_accuracy / 10000
+                    fp.write(
+                        json.dumps({
+                            'type': 'data',
+                            'data': json.dumps({
+                                'iteration': train_count,
+                                'error': mean_error,
+                                'loss': mean_loss
+                            })
+                        }) + '\n'
+                    )
+                    train_cur_loss = 0
+                    train_cur_accuracy = 0
+            with open(log_file, 'a') as fp:
+                fp.write(str(train_count) + "\t" + str(epoch) + "\t" + str(accuracy) + "\t" + str(loss)
+                         + "\t\t\n")
         else:
             val_count += val_batchsize
             duration = time.time() - val_begin_at
             throughput = val_count / duration
-            fH.write(
-                'val {} batches ({} samples) time: {} ({} images/sec)'
-                    .format(val_count / val_batchsize, val_count,
-                            datetime.timedelta(seconds=duration), throughput)
-            )
-            fH.flush()
             val_loss += loss
             val_accuracy += accuracy
-            if val_count == VALIDATION_TIMING:
-                mean_loss = val_loss * val_batchsize / VALIDATION_TIMING
-                mean_accuracy = val_accuracy * val_batchsize / VALIDATION_TIMING
-                fH.write("<strong>"
-                         + json.dumps({
-                    'type': 'val',
-                    'iteration': train_count,
-                    'error': (1 - mean_accuracy),
-                    'loss': mean_loss})
-                         + "</strong><br>")
-                fH.flush()
-                f.write(str(count) + "\t" + str(epoch) + "\t\t\t"
-                        + str(mean_accuracy) + "\t" + str(mean_loss) + "\n")
-                count += 1
-                f.flush()
-    f.close()
-    fH.close()
+            with open(train_log, 'a') as fp:
+                text = 'val {} batches ({} samples) time: {} ({} images/sec)' \
+                    .format(val_count / val_batchsize, val_count,
+                            datetime.timedelta(seconds=duration), throughput)
+                fp.write(
+                    json.dumps({
+                        'type': 'log',
+                        'log': text
+                    }) + '\n')
+                if val_count == VALIDATION_TIMING:
+                    mean_loss = val_loss * val_batchsize / VALIDATION_TIMING
+                    mean_accuracy = val_accuracy * val_batchsize / VALIDATION_TIMING
+                    fp.write(
+                        json.dumps({
+                            'type': 'data',
+                            'data': json.dumps({
+                                'iteration': train_count,
+                                'error': (1 - mean_accuracy),
+                                'loss': mean_loss
+                            })
+                        }) + '\n'
+                    )
+                    with open(log_file, 'a') as f:
+                        f.write(str(train_count) + "\t" + str(epoch) + "\t\t\t"
+                                + str(mean_accuracy) + "\t" + str(mean_loss) + "\n")
+                    train_count += 1
 
 
-def train_loop(model, output_dir, xp, optimizer, res_q, data_q, pretrained_model, interrupt_event, interruptable_event):
+def train_loop(model, output_dir, xp, optimizer, res_q, data_q, pretrained_model, interruptable):
     graph_generated = False
     training_epoch = None
     while True:
-        if interrupt_event.is_set():
+        if interruptable.is_interrupting():
             resume_path = os.path.join(output_dir, 'resume')
             os.mkdir(resume_path)
             serializers.save_npz(os.path.join(resume_path, 'resume.model'), model)
             serializers.save_npz(os.path.join(resume_path, 'resume.state'), optimizer)
             training_epoch.pretrained_model = pretrained_model
             training_epoch.serialize(open(os.path.join(resume_path, 'resume.json'), 'w'))
-            interruptable_event.set()
+            interruptable.set_interruptable()
             while True:
                 time.sleep(1)
 
@@ -407,8 +401,7 @@ def do_train_by_chainer(
         loaderjob=20,
         pretrained_model="",
         avoid_flipping=False,
-        interrupt_event=None,
-        interruptable_event=None
+        interruptable=None,
 ):
     logger.info('Start imagenet train. model_id: {0} gpu: {1}, pretrained_model: {2}'
                 .format(db_model.id, db_model.gpu, pretrained_model))
@@ -426,10 +419,6 @@ def do_train_by_chainer(
     model_name = re.sub(r"\.py$", "", model_name)
     model_module = load_module(model_dir, model_name)
     model = model_module.Network()
-
-    # create directory for saving trained models
-    db_model.trained_model_path = _create_trained_model_dir(db_model.trained_model_path,
-                                                            root_output_dir, model_name)
 
     # Load pretrained model
     if pretrained_model is not None and pretrained_model.find("model") > -1:
@@ -488,7 +477,7 @@ def do_train_by_chainer(
             db_model.batchsize,
             val_batchsize,
             os.path.join(db_model.trained_model_path, 'line_graph.tsv'),
-            os.path.join(db_model.trained_model_path, 'log.html'),
+            os.path.join(db_model.trained_model_path, 'train.log'),
             res_q
         )
     )
@@ -502,15 +491,15 @@ def do_train_by_chainer(
         res_q,
         data_q,
         pretrained_model,
-        interrupt_event,
-        interruptable_event
+        interruptable
     )
     feeder.join()
     train_logger.join()
 
     # post-processing
     _post_process(db_model, pretrained_model)
-    interrupt_event.clear()
+    interruptable.clear_interrupt()
+    interruptable.terminate()
     logger.info('Finish imagenet train. model_id: {0}'.format(db_model.id))
 
 
@@ -519,8 +508,7 @@ def resume_train_by_chainer(
         root_output_dir,
         val_batchsize=250,
         loaderjob=20,
-        interrupt_event=None,
-        interruptable_event=None
+        interruptable=None,
 ):
     logger.info('resume last imagenet train. model_id: {0} gpu: {1}'
                 .format(db_model.id, db_model.gpu))
@@ -538,10 +526,6 @@ def resume_train_by_chainer(
     model_name = re.sub(r"\.py$", "", model_name)
     model_module = load_module(model_dir, model_name)
     model = model_module.Network()
-
-    # create directory for saving trained models
-    db_model.trained_model_path = _create_trained_model_dir(db_model.trained_model_path,
-                                                            root_output_dir, model_name)
 
     if db_model.gpu >= 0:
         cuda.get_device(db_model.gpu).use()
@@ -597,7 +581,7 @@ def resume_train_by_chainer(
             db_model.batchsize,
             val_batchsize,
             os.path.join(db_model.trained_model_path, 'line_graph.tsv'),
-            os.path.join(db_model.trained_model_path, 'log.html'),
+            os.path.join(db_model.trained_model_path, 'train.log'),
             res_q,
             True
         )
@@ -612,15 +596,15 @@ def resume_train_by_chainer(
         res_q,
         data_q,
         resume_epoch.pretrained_model,
-        interrupt_event,
-        interruptable_event
+        interruptable
     )
     feeder.join()
     train_logger.join()
 
     # post-processing
     _post_process(db_model, resume_epoch.pretrained_model)
-    interrupt_event.clear()
+    interruptable.clear_interrupt()
+    interruptable.terminate()
     logger.info('Finish imagenet train. model_id: {0}'.format(db_model.id))
 
 
@@ -670,8 +654,7 @@ def do_train_by_tensorflow(
         val_image_num,
         avoid_flipping,
         resume,
-        interrupt_event,
-        interruptable_event
+        interruptable,
 ):
     logger.info('Start imagenet train. model_id: {}, pretrained_model: {}'
                 .format(db_model.id, pretrained_model))
@@ -680,9 +663,6 @@ def do_train_by_tensorflow(
     (model_dir, model_name) = os.path.split(db_model.network_path)
     model_name = re.sub(r"\.py$", "", model_name)
     model = load_module(model_dir, model_name)
-
-    db_model.trained_model_path = _create_trained_model_dir(db_model.trained_model_path,
-                                                            output_dir_root, model_name)
 
     db_model.is_trained = 1
     db_model.update_and_commit()
@@ -711,81 +691,72 @@ def do_train_by_tensorflow(
     first_and_last_saver = tf.train.Saver(max_to_keep=2)
     saver = tf.train.Saver(max_to_keep=50)
 
-    if resume:
-        mode = 'a'
-    else:
-        mode = 'w'
-    with open(os.path.join(db_model.trained_model_path, 'line_graph.tsv'), mode) as line_graph, \
-            open(os.path.join(db_model.trained_model_path, 'log.html'), mode) as log_file:
-        log_file.write('train: {} images, val: {} images, epoch: {}<br>'
-                       .format(train_image_num, val_image_num, db_model.epoch))
-        log_file.flush()
-        if not resume:
-            line_graph.write("count\tepoch\taccuracy\tloss\taccuracy(val)\tloss(val)\n")
-        line_graph.flush()
-        with tf.Session() as sess:
-            # Load pretrained model
-            if pretrained_model is not None and pretrained_model.find("model") > -1:
-                logger.info("load pretrained model : "
-                            + os.path.join(db_model.trained_model_path, pretrained_model))
-                saver.restore(sess, os.path.join(db_model.trained_model_path, pretrained_model))
-                _backup_pretrained_model(db_model, pretrained_model)
-                _delete_old_models(db_model, pretrained_model)
-            resume_path = os.path.join(db_model.trained_model_path, 'resume')
-            if resume:
-                resume_data = json.load(open(os.path.join(resume_path, 'resume.json')))
-                pretrained_model = resume_data.get('pretrained_model', '')
-                saver.restore(sess, resume_data['saved_path'])
-            else:
-                resume_data = {}
-                sess.run(tf.initialize_all_variables())
+    if not resume:
+        with open(os.path.join(db_model.trained_model_path, 'line_graph.tsv'), 'a') as fp:
+            fp.write("count\tepoch\taccuracy\tloss\taccuracy(val)\tloss(val)\n")
+    with tf.Session() as sess:
+        # Load pretrained model
+        if pretrained_model is not None and pretrained_model.find("model") > -1:
+            logger.info("load pretrained model : "
+                        + os.path.join(db_model.trained_model_path, pretrained_model))
+            saver.restore(sess, os.path.join(db_model.trained_model_path, pretrained_model))
+            _backup_pretrained_model(db_model, pretrained_model)
+            _delete_old_models(db_model, pretrained_model)
+        resume_path = os.path.join(db_model.trained_model_path, 'resume')
+        if resume:
+            resume_data = json.load(open(os.path.join(resume_path, 'resume.json')))
+            pretrained_model = resume_data.get('pretrained_model', '')
+            saver.restore(sess, resume_data['saved_path'])
+        else:
+            resume_data = {}
+            sess.run(tf.initialize_all_variables())
 
-            remove_resume_file(db_model.trained_model_path)
+        remove_resume_file(db_model.trained_model_path)
 
-            coord = tf.train.Coordinator()
-            threads = tf.train.start_queue_runners(sess=sess, coord=coord)
+        coord = tf.train.Coordinator()
+        threads = tf.train.start_queue_runners(sess=sess, coord=coord)
 
-            try:
-                step = resume_data.get('step', 0)
-                prev_epoch = resume_data.get('prev_epoch', None)
-                begin_at = time.time() - resume_data.get('duration', 0)
-                train_cur_loss = resume_data.get('train_cur_loss', 0)
-                train_cur_accuracy = resume_data.get('train_cur_accuracy', 0)
+        try:
+            step = resume_data.get('step', 0)
+            prev_epoch = resume_data.get('prev_epoch', None)
+            begin_at = time.time() - resume_data.get('duration', 0)
+            train_cur_loss = resume_data.get('train_cur_loss', 0)
+            train_cur_accuracy = resume_data.get('train_cur_accuracy', 0)
 
-                while not coord.should_stop():
-                    if interrupt_event.is_set():
-                        os.mkdir(resume_path)
-                        data = {
-                            'pretrained_model': pretrained_model,
-                            'step': step,
-                            'prev_epoch': prev_epoch,
-                            'duration': time.time() - begin_at,
-                            'train_cur_loss': train_cur_loss,
-                            'train_cur_accuracy': train_cur_accuracy,
-                            'epoch': current_epoch
-                        }
-                        saved_path = saver.save(sess, os.path.join(resume_path, 'resume.ckpt'))
-                        data['saved_path'] = saved_path
-                        json.dump(data, open(os.path.join(resume_path, 'resume.json'), 'w'))
-                        interruptable_event.set()
-                        while True:
-                            time.sleep(0.5)
+            while not coord.should_stop():
+                if interruptable.is_interrupting():
+                    os.mkdir(resume_path)
+                    data = {
+                        'pretrained_model': pretrained_model,
+                        'step': step,
+                        'prev_epoch': prev_epoch,
+                        'duration': time.time() - begin_at,
+                        'train_cur_loss': train_cur_loss,
+                        'train_cur_accuracy': train_cur_accuracy,
+                        'epoch': current_epoch
+                    }
+                    saved_path = saver.save(sess, os.path.join(resume_path, 'resume.ckpt'))
+                    data['saved_path'] = saved_path
+                    json.dump(data, open(os.path.join(resume_path, 'resume.json'), 'w'))
+                    interruptable.set_interruptable()
+                    while True:
+                        time.sleep(0.5)
 
-                    images, sparse_labels = sess.run([train_images, train_sparse_labels])
-                    _, train_loss, train_acc = sess.run([train_op, loss_value, acc],
-                                                        feed_dict={
-                                                            images_placeholder: images,
-                                                            labels_placeholder: sparse_labels,
-                                                            keep_prob: 0.5})
+                images, sparse_labels = sess.run([train_images, train_sparse_labels])
+                _, train_loss, train_acc = sess.run([train_op, loss_value, acc],
+                                                    feed_dict={
+                                                        images_placeholder: images,
+                                                        labels_placeholder: sparse_labels,
+                                                        keep_prob: 0.5})
 
-                    train_cur_loss += train_loss
-                    train_cur_accuracy += train_acc
+                train_cur_loss += train_loss
+                train_cur_accuracy += train_acc
 
-                    current_epoch = int(math.floor(step * db_model.batchsize / train_image_num))
-
-                    line_graph.write('{}\t{}\t{}\t{}\t\t\n'
-                                     .format(step, current_epoch, train_acc, train_loss))
-                    line_graph.flush()
+                current_epoch = int(math.floor(step * db_model.batchsize / train_image_num))
+                with open(os.path.join(db_model.trained_model_path, 'line_graph.tsv'), 'a') as fp:
+                    fp.write('{}\t{}\t{}\t{}\t\t\n'
+                             .format(step, current_epoch, train_acc, train_loss))
+                    fp.flush()
 
                     if step % 100 == 0 and step != 0:
                         images, sparse_labels = sess.run([val_images, val_sparse_labels])
@@ -794,64 +765,69 @@ def do_train_by_tensorflow(
                                                                        images_placeholder: images,
                                                                        labels_placeholder: sparse_labels,
                                                                        keep_prob: 1.0})
-                        line_graph.write('{}\t{}\t\t\t{}\t{}\n'
-                                         .format(step, current_epoch, val_acc_result, val_loss_result))
-                        line_graph.flush()
-                    if step % 50 == 0 and step != 0:
-                        duration = time.time() - begin_at
-                        throughput = step * db_model.batchsize / duration
-                        log_file.write('train {} updates ({} samples) time: {} ({} images/sec)<br>'
-                                       .format(step, step * db_model.batchsize,
-                                               datetime.timedelta(seconds=duration), throughput))
-                        log_file.write("[TIME]{},{}<br>"
-                                       .format(current_epoch,
-                                               datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')))
-                        log_file.flush()
-
+                        fp.write('{}\t{}\t\t\t{}\t{}\n'
+                                 .format(step, current_epoch, val_acc_result, val_loss_result))
+                        fp.flush()
+                if step % 50 == 0 and step != 0:
+                    duration = time.time() - begin_at
+                    throughput = step * db_model.batchsize / duration
+                    with open(os.path.join(db_model.train_log_path), 'a') as fp:
+                        text = 'epoch: {}, train: {}, updates ({} samples) time: {} ({} images/sec)' \
+                            .format(current_epoch, step, step * db_model.batchsize,
+                                    datetime.timedelta(seconds=duration), throughput)
+                        fp.write(
+                            json.dumps({
+                                'type': 'log',
+                                'log': text,
+                                'time_stamp': datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+                                'epoch': current_epoch
+                            }) + '\n'
+                        )
                         if step % 1000 == 0:
                             mean_loss = train_cur_loss / 1000
                             mean_error = 1 - train_cur_accuracy / 1000
-                            log_file.write('<strong>{}</strong><br>'.format(json.dumps({
-                                'type': 'train',
-                                'iteration': step,
-                                'error': mean_error,
-                                'loss': mean_loss
-                            })))
-                            log_file.flush()
+                            fp.write(json.dumps({
+                                'type': 'data',
+                                'data': json.dumps({
+                                    'iteration': step,
+                                    'error': mean_error,
+                                    'loss': mean_loss
+                                })
+                            }) + '\n')
                             train_cur_loss = 0
                             train_cur_accuracy = 0
+                # save trained result
+                if prev_epoch != current_epoch:
+                    # epoch updated
+                    if current_epoch == 1:
+                        first_and_last_saver.save(sess,
+                                                  os.path.join(db_model.trained_model_path, 'model'),
+                                                  global_step=current_epoch)
+                    if current_epoch <= 100:
+                        if current_epoch % 10 == 0:
+                            saver.save(sess,
+                                       os.path.join(db_model.trained_model_path, 'model'),
+                                       global_step=current_epoch)
+                    else:
+                        if current_epoch % 50 == 0:
+                            saver.save(sess,
+                                       os.path.join(db_model.trained_model_path, 'model'),
+                                       global_step=current_epoch)
 
-                    # save trained result
-                    if prev_epoch != current_epoch:
-                        # epoch updated
-                        if current_epoch == 1:
-                            first_and_last_saver.save(sess,
-                                                      os.path.join(db_model.trained_model_path, 'model'),
-                                                      global_step=current_epoch)
-                        if current_epoch <= 100:
-                            if current_epoch % 10 == 0:
-                                saver.save(sess,
-                                           os.path.join(db_model.trained_model_path, 'model'),
-                                           global_step=current_epoch)
-                        else:
-                            if current_epoch % 50 == 0:
-                                saver.save(sess,
-                                           os.path.join(db_model.trained_model_path, 'model'),
-                                           global_step=current_epoch)
+                step += 1
+                prev_epoch = current_epoch
+        except tf.errors.OutOfRangeError as e:
+            logger.info('Epoch limit reached.')
+        finally:
+            first_and_last_saver.save(sess,
+                                      os.path.join(db_model.trained_model_path, 'model'),
+                                      global_step=db_model.epoch)
+            coord.request_stop()
 
-                    step += 1
-                    prev_epoch = current_epoch
-            except tf.errors.OutOfRangeError as e:
-                logger.info('Epoch limit reached.')
-            finally:
-                first_and_last_saver.save(sess,
-                                          os.path.join(db_model.trained_model_path, 'model'),
-                                          global_step=db_model.epoch)
-                coord.request_stop()
-
-            coord.join(threads)
+        coord.join(threads)
 
     # post-processing
     _post_process(db_model, pretrained_model)
-    interrupt_event.clear()
+    interruptable.clear_interrupt()
+    interruptable.terminate()
     logger.info('Finish imagenet train. model_id: {0}'.format(db_model.id))

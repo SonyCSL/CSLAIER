@@ -23,6 +23,7 @@ import chainer.links as L
 from chainer import optimizers
 from chainer import serializers
 from chainer import link
+
 # from .utils import remove_resume_file
 
 
@@ -96,8 +97,7 @@ def do_train(
         seq_length=50,
         batchsize=50,  # minibatch size
         grad_clip=5,  # gradient norm threshold to clip
-        interrupt_event=None,
-        interruptable_event=None
+        interruptable=None
 ):
     logger.info('Start LSTM training. model_id: {0}, use_mecab: {1}, initmodel: {2}, gpu: {3}'
                 .format(db_model.id, use_mecab, initmodel, db_model.gpu))
@@ -209,20 +209,17 @@ def do_train(
     accum_loss = 0
     batch_idxs = list(range(batchsize))
 
-    # 再開の場合はログファイルを追記モードで
-    if resume:
-        log_file = open(os.path.join(db_model.trained_model_path, 'log.html'), 'a')
-        graph_tsv = open(os.path.join(db_model.trained_model_path, 'line_graph.tsv'), 'a')
-    else:
-        log_file = open(os.path.join(db_model.trained_model_path, 'log.html'), 'w')
-        graph_tsv = open(os.path.join(db_model.trained_model_path, 'line_graph.tsv'), 'w')
-        graph_tsv.write('count\tepoch\tperplexity\n')
-        log_file.write("going to train {} iterations<br>".format(jump * n_epoch))
-        log_file.write("[TIME]{},{}<br>"
-                       .format(epoch,
-                               datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')))
-    log_file.flush()
-    graph_tsv.flush()
+    graph_tsv_path = os.path.join(db_model.trained_model_path, 'line_graph.tsv')
+    train_log_path = os.path.join(db_model.trained_model_path, 'train.log')
+    if not resume:
+        with open(graph_tsv_path, 'a') as fp:
+            fp.write('count\tepoch\tperplexity\n')
+
+        with open(train_log_path, 'a') as fp:
+            fp.write(json.dumps({
+                'type': 'text',
+                'text': "going to train {} iterations".format(jump * n_epoch)
+            }) + '\n')
 
     # delete layer visualization cache
     # trained_model_pathに存在する全てのディレクトリを削除している。
@@ -239,7 +236,7 @@ def do_train(
 
     for i in six.moves.range(iteration_from, jump * n_epoch):
         # 1バッチが終わったタイミングを意図している。
-        if interrupt_event.is_set() and isinstance(accum_loss, int):
+        if interruptable.is_interrupting() and isinstance(accum_loss, int):
             os.mkdir(resume_path)
             serializers.save_npz(os.path.join(resume_path, 'resume.state'), optimizer)
             serializers.save_npz(os.path.join(resume_path, 'resume.model'), model)
@@ -250,7 +247,7 @@ def do_train(
                 'loss_for_graph': float(loss_for_graph),
                 'epoch': epoch
             }, open(os.path.join(resume_path, 'resume.json'), 'w'))
-            interruptable_event.set()
+            interruptable.set_interruptable()
             while True:
                 time.sleep(1)
         x = chainer.Variable(
@@ -269,23 +266,24 @@ def do_train(
             accum_loss = 0
             optimizer.update()
 
-        if (i + 1) % 10000 == 0:
+        if (i + 1) % 100 == 0:
             now = time.time()
             throuput = 10000. / (now - cur_at)
             perp = math.exp(float(cur_log_perp) / 10000)
-            log_file.write('iter {} training perplexity: {:.2f} ({:.2f} iters/sec)<br>'
-                           .format(i + 1, perp, throuput))
-            log_file.write("[TIME]{},{}<br>"
-                           .format(epoch,
-                                   datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')))
-            log_file.flush()
+            with open(train_log_path, 'a') as fp:
+                fp.write(json.dumps({
+                    'type': 'log',
+                    'log': 'iter {} training perplexity: {:.2f} ({:.2f} iters/sec)'.format(i + 1, perp, throuput),
+                    'time_stamp': datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+                    'epoch': epoch
+                }) + '\n')
             cur_at = now
             cur_log_perp.fill(0)
 
         if (i + 1) % 100 == 0:
             perp_for_graph = math.exp(float(loss_for_graph) / 100)
-            graph_tsv.write('{}\t{}\t{:.2f}\n'.format(i + 1, epoch, perp_for_graph))
-            graph_tsv.flush()
+            with open(graph_tsv_path, 'a') as fp:
+                fp.write('{}\t{}\t{:.2f}\n'.format(i + 1, epoch, perp_for_graph))
             loss_for_graph.fill(0)
 
         if (i + 1) % jump == 0:
@@ -293,18 +291,20 @@ def do_train(
             now = time.time()
             cur_at += time.time() - now  # skip time of evaluation
 
-            if epoch >= 6:
-                optimizer.lr /= 1.2
-                log_file.write('learning rate = {:.10f}<br>'.format(optimizer.lr))
-                log_file.write("[TIME]{},{}<br>"
-                               .format(epoch,
-                                       datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')))
-                log_file.flush()
+            with open(train_log_path, 'a') as fp:
+                if epoch >= 6:
+                    optimizer.lr /= 1.2
+                    fp.write(json.dumps({
+                        'type': 'data',
+                        'text': 'learning rate = {:.10f}'.format(optimizer.lr),
+                    }) + '\n')
+                fp.write(json.dumps({
+                    'type': 'text',
+                    'text': '--- epoch: {} ------------------------'.format(epoch),
+                }) + '\n')
             # Save the model and the optimizer
             serializers.save_npz(os.path.join(db_model.trained_model_path,
                                               'model%04d' % epoch), model)
-            log_file.write('--- epoch: {} ------------------------<br>'.format(epoch))
-            log_file.flush()
             serializers.save_npz(os.path.join(db_model.trained_model_path,
                                               'rnnlm.state'), optimizer)
 
@@ -318,12 +318,15 @@ def do_train(
                              .format(os.path.join(db_model.trained_model_path,
                                                   'previous_' + initmodel), e))
             raise e
-    log_file.write('===== finish train. =====')
-    log_file.close()
-    graph_tsv.close()
+    with open(train_log_path, 'a') as fp:
+        fp.write(json.dumps({
+            'type': 'text',
+            'text': '===== finish train. =====',
+        }) + '\n')
     db_model.is_trained = 2
     db_model.pid = None
     db_model.gpu = None
     db_model.update_and_commit()
-    interrupt_event.clear()
+    interruptable.clear_interrupt()
+    interruptable.terminate()
     logger.info('Finish LSTM train. model_id: {0}'.format(db_model.id))

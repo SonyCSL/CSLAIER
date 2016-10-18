@@ -1,6 +1,6 @@
 #!/bin/bash
-if [ -z "${DEEPSTATION_CONFIG+x}" ] ; then
-    export DEEPSTATION_CONFIG=$(pwd)/deepstation.cfg
+if [ -z "${CSLAIER_CONFIG+x}" ] ; then
+    export CSLAIER_CONFIG=$(pwd)/cslaier.cfg
 fi
 
 OPT=${1:-0}
