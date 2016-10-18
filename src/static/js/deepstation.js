@@ -664,6 +664,18 @@ $('#log_tab').on('click', function(e){
     $('#network_tab').removeClass('active');
 });
 
+var update_graph = function() {
+     var model_id = $('#model_id').val();
+     $.get('/api/models/' + model_id + '/get/train_data/graph/', function(ret){
+         if(ret.status != 'ready') return;
+         if(ret.data.indexOf('perplexity') > -1) {
+             drawLSTMResultGraph(ret.data);
+         } else {
+             drawImagenetResultGraph(ret.data);
+         }
+     });
+}
+
 var update_train_log = function(){
     var model_id = $('#model_id').val();
     $.get('/api/models/' + model_id + '/get/train_data/log/', function(ret){
