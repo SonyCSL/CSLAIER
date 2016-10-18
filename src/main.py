@@ -621,7 +621,7 @@ def api_terminate_trained():
 
 def get_system_info():
     info = ds_util.get_system_info()
-    info['cslaire_version'] = __version__
+    info['cslaier_version'] = __version__
     return info
 
 
