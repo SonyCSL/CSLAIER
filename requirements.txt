@@ -1,10 +1,12 @@
 Flask==0.10.1
 Flask-SQLAlchemy==2.1
+Cython>=0.24
 chainer>=1.8.1
 nkf>=0.2.0
 pillow>=3.2.0
 numpy>=1.11.0
-scipy>=0.15.1
+scipy>>=0.15.1
+h5py==2.6.0
 chardet==2.3.0
 gevent==1.1.2
 greenlet==0.4.10

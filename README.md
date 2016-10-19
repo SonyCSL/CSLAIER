@@ -33,19 +33,27 @@ CSLAIER is tested on Ubuntu 14.04. We recommend them to use CSLAIER, though it m
 * Firefox
 
 ### System
-* NVIDIA CUDA Technology GPU and drivers / CUDA 7.5
+
+Minimum requirment:
+
 * Python 2.7
-  * python-opencv
-  * python-scipy
+* opencv
+* hdf5
 * SQLite3
 * nkf
-
-### Python Libraries
-* TensorFlow 0.9.0 or higher https://www.tensorflow.org/ (if needed)
+* matplotlib
 * Other dependenceis, see [requirements.txt](./requirements.txt)
+
+Requirements for some features:
+
+* NVIDIA CUDA Technology GPU and drivers / CUDA 7.5
+* TensorFlow 0.9.0 or higher https://www.tensorflow.org/
+
 
 Setup
 ------
+
+### Config
 
 * Edit `cslaier.cfg` to set paths for saving files.
   * Begin with `/` stands for abosolute path.
@@ -66,6 +74,40 @@ Setup
 |LOG_DIR|Path for log file|
 
 
+### Install dependenceis
+
+* CSLAIER requires these libralies. Install these first.
+  * opencv
+  * hdf5
+  * matplotlib
+
+#### Mac
+
+Use Homebrew to intall like instructions below.
+
+```sh
+$ brew tap homebrew/science
+$ brew tap homebrew/python
+$ brew install opencv hdf5 nkf
+$ brew install matplotlib
+```
+
+#### Ubuntu
+
+On Linux system, use package manager to install.
+Instructions below is an example on Ubuntu14.04.
+
+```sh
+$ sudo apt-get install python-pip
+$ sudo apt-get install python-dev
+$ sudo apt-get install libhdf5-dev
+$ sudo apt-get install python-opencv
+$ sudo apt-get install sqlite3
+$ sudo apt-get install python-matplotlib
+$ sudo apt-get install nkf
+```
+
+### Starting up server first time
 
 * Try command below on root directory of CSLAIER.
 
@@ -149,18 +191,23 @@ CSLAIERはUbuntu14.04でテストしています。
 * Firefox
 
 ### System
-* NVIDIA CUDA Technology GPU and drivers / CUDA 7.5
+
+Minimum requirment:
+
 * Python 2.7
-  * python-opencv
-  * python-scipy
+* opencv
+* hdf5
 * SQLite3
 * nkf
+* matplotlib
+* その他の依存ライブラリについては [requirements.txt](./requirements.txt) をご参照ください。
 
-### Python Libraries
-* TensorFlow 0.9.0 or higher https://www.tensorflow.org/ (なくても動きます)
-* その他の依存ライブラリは[requirements.txt](./requirements.txt)をご参照ください。
+Requirements for some features:
 
-### LSTMで分かち書きを利用したい場合
+* NVIDIA CUDA Technology GPU and drivers / CUDA 7.5
+* TensorFlow 0.9.0 or higher https://www.tensorflow.org/
+
+#### LSTMで分かち書きを利用したい場合
 
 * 下記を`apt-get`などでインストールする
   * mecab
@@ -171,6 +218,8 @@ CSLAIERはUbuntu14.04でテストしています。
 
 Setup
 ------
+
+### Config
 
 * 各種ファイルの保存場所を`cslaier.cfg`に定義します。
   * `/` で始まるパスは絶対パスとして処理されます。
@@ -189,6 +238,41 @@ Setup
 |TRAINED_DATA|学習済データの格納場所|
 |DATABASE_PATH|cslaier.dbの場所|
 |LOG_DIR|ログファイルの出力場所|
+
+### 依存ライブラリのインストール
+
+* 下記のライブラリをインストールする必要があります。
+  * opencv
+  * hdf5
+  * matplotlib
+
+#### Macの場合
+
+Homebrewなどを使ってインストールしてください。下記は一例です。
+
+```sh
+$ brew tap homebrew/science
+$ brew tap homebrew/python
+$ brew install opencv hdf5 nkf
+$ brew install matplotlib
+```
+
+#### Ubuntuの場合
+
+Linuxの場合はパッケージマネージャーを利用してインストールしてください。
+下記はUbuntu14.04の例です。
+
+```sh
+$ sudo apt-get install python-pip
+$ sudo apt-get install python-dev
+$ sudo apt-get install libhdf5-dev
+$ sudo apt-get install python-opencv
+$ sudo apt-get install sqlite3
+$ sudo apt-get install python-matplotlib
+$ sudo apt-get install nkf
+```
+
+### 初回起動
 
 * 下記のコマンドを実行する
 
