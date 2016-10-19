@@ -1,5 +1,6 @@
 *.pyc
 deepstation.db
+cslaier.db
 uploaded_files/*
 uploaded_raw_files/*
 train_images/*

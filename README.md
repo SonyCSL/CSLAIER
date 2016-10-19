@@ -65,10 +65,16 @@ Setup
 |DATABASE_PATH|Path of cslaier.db|
 |LOG_DIR|Path for log file|
 
-* Setup database. Try command below on root directory of CSLAIER.
-`./setup.sh`
-* Run `pip install -r requirements.txt`
-* Startup server. `./run.sh`
+
+
+* Try command below on root directory of CSLAIER.
+
+```sh
+$ ./setup.sh # setting up database
+$ pip install -r requirements.txt # install python dependenceis
+$ ./run.sh # run server
+```
+
 * Access `http://localhost:8080` on your browser.
 If you have changed hostname and port on `cslaier.cfg`, use that one.
 
@@ -84,7 +90,8 @@ Usage
 
 ### Start up CSLAIER
 * Move to CSLAIER's directory.
-* Run `./run.sh`.
+* Run
+` $ ./run.sh`.
 * Access `http://localhost:8080` by web browser.
 
 ### Creating Dataset
@@ -183,9 +190,14 @@ Setup
 |DATABASE_PATH|cslaier.dbの場所|
 |LOG_DIR|ログファイルの出力場所|
 
-* `./setup.sh` を実行します
-* `pip install -r requirements.txt` を実行します。
-* サーバを起動します。CSLAIERをダウンロードしたディレクトリで `./run.sh`を実行します
+* 下記のコマンドを実行する
+
+```sh
+$ ./setup.sh # setting up database
+$ pip install -r requirements.txt # install python dependenceis
+$ ./run.sh # run server
+```
+
 * ブラウザで `http://localhost:8080` にアクセスします。
 `cslaier.cfg`でhostnameとportを変更している場合はそちらを利用してください。
 
