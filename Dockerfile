@@ -19,20 +19,14 @@ RUN apt-get -y update && \
         python-scipy && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/* && \
-    pip install \
-        cython \
-        Flask \
-        Flask-SQLAlchemy \
-        chardet nkf \
-        h5py \
-        chainer && \
     pip install --upgrade $TF_BINARY_URL && \
     mkdir -p $APPROOT
 
 EXPOSE 8080
 WORKDIR $APPROOT
 COPY ./ $APPROOT
-RUN sh setup.sh
+RUN pip install -r requirements.txt && \
+    sh setup.sh
 
 # http://stackoverflow.com/questions/31768441/how-to-persist-ln-in-docker-with-ubuntu
 CMD sh -c 'ln -s /dev/null /dev/raw1394'; sh run.sh

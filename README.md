@@ -83,12 +83,16 @@ Setup
 
 #### Mac
 
+Using Mac's default python will fail to run `pip install -r requirements.txt`.
+
+You have to install Python 2.7.11 or higher by using Homebrew or something.
+
 Use Homebrew to intall like instructions below.
 
 ```sh
 $ brew tap homebrew/science
 $ brew tap homebrew/python
-$ brew install opencv hdf5 nkf
+$ brew install opencv hdf5 nkf scipy
 $ brew install matplotlib
 ```
 
@@ -248,9 +252,14 @@ Setup
 
 #### Macの場合
 
-Homebrewなどを使ってインストールしてください。下記は一例です。
+Homebrewなどを使ってインストールしてください。
+
+MacのデフォルトのPythonだと、この後に行うpipでエラーとなります。HomebrewなどでPythonのバージョンを2.7.11以上にしてください。
+
+下記は一例です。
 
 ```sh
+$ brew install python # インストール後、brewで入れたPythonに必ずPathを通すこと
 $ brew tap homebrew/science
 $ brew tap homebrew/python
 $ brew install opencv hdf5 nkf
@@ -405,7 +414,7 @@ Modelの詳細画面内の'Download Trained Files'ボタンを押下すると、
 #### Dockerの利用
 
 * Ubuntu14.04、GPU無しでchainerとtensorflowを利用するDockerfileが用意されています。利用するときは`docker build`する必要があります。
-* dockerを利用する場合、cslaier.cfgは `docker_config/cslaier.cfg`を利用してください。ただし、`HOST='0.0.0.0'`はそのままにしておく必要があります。
+* dockerを利用する場合、cslaier.cfgは `docker_config/cslaier.cfg`をコピーして利用してください。ただし、`HOST='0.0.0.0'`はそのままにしておく必要があります。
 
 ##### Dockerイメージのビルド
 
@@ -413,13 +422,13 @@ Modelの詳細画面内の'Download Trained Files'ボタンを押下すると、
 
 ```
 $ cd (cslaierのルート・ディレクトリ)
-$ docker build -t cslaier/ubuntu14_cpu_ds .
+$ docker build -t cslaier/ubuntu14_cpu .
 ```
 
 ##### CSLAIER用Dockerイメージの起動
 
 ```
-$ docker run -d -p 8080:8080 cslaier/ubuntu14_cpu_ds
+$ docker run -d -p 8080:8080 cslaier/ubuntu14_cpu
 ```
 
 上記コマンド実行後、ブラウザで `http://localhost:8080` にアクセスする
