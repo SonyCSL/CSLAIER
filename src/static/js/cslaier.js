@@ -689,6 +689,7 @@ var subscribe_train_log = function() {
     function LogSubscriber() {};
     LogSubscriber.prototype = {
         connect: function() {
+            this.graphTSV = "";
             this.log = [];
             this.timeStamps = [];
             this.startTime = null;
@@ -696,7 +697,8 @@ var subscribe_train_log = function() {
             this.trainCount = 0;
             // おおよそ何回の更新でエポックが終わるか
             this.numberOfUpdateCountPerEpoch = 0;
-            this.graphTSV = "";
+            this.needUpdateGraph = false;
+            this.needUpdateLog = false;
 
             if (this.timer) {
                 clearInterval(this.timer);
@@ -722,6 +724,7 @@ var subscribe_train_log = function() {
                 if (this.stream.readyState == 2) {
                     this.connect();
                 }
+                this.displayUpdateIfNeeded();
             }.bind(this), 1000);
         },
         // このメソッドはEventStreamで一行追記された時に呼ばれます。
@@ -729,14 +732,12 @@ var subscribe_train_log = function() {
         pushLog: function(data) {
             var obj = JSON.parse(data);
             this.log.push(obj)
+            this.needUpdateLog = true;
             // dataが来たらそれまでのlogを捨てる。
             if (obj.type == 'data') {
                 this.log = _.filter(this.log, function(logJSON) {
                     return logJSON.type != 'log';
                 });
-            }
-            if (this.logDisplayUpdateTimeoutID) {
-                clearTimeout(this.logDisplayUpdateTimeoutID);
             }
             if (obj.time_stamp && obj.epoch) {
                 this.trainCount += 1;
@@ -753,15 +754,20 @@ var subscribe_train_log = function() {
                     this.timeStamps.shift()
                 }
             }
-            // 表示更新は連続でデータが来る場合を考慮して、新しいデータ1.5秒こなかったときにする。
-            this.logDisplayUpdateTimeoutID = setTimeout(this.displayUpdate.bind(this), 1500);
         },
         pushGraph: function(data) {
             this.graphTSV += data;
-            if (this.graphDisplayUpdateTimeoutID) {
-                clearTimeout(this.graphDisplayUpdateTimeoutID);
+            this.needUpdateGraph = true;
+        },
+        displayUpdateIfNeeded: function() {
+            if (this.needUpdateLog) {
+                this.logDisplayUpdate();
+                this.needUpdateLog = false;
             }
-            this.graphDisplayUpdateTimeoutID = setTimeout(this.graphDisplayUpdate.bind(this), 1500);
+            if (this.needUpdateGraph) {
+                this.graphDisplayUpdate();
+                this.needUpdateGraph = false;
+            }
         },
         graphDisplayUpdate: function() {
             if(this.graphTSV.indexOf('perplexity') > -1) {
@@ -770,13 +776,12 @@ var subscribe_train_log = function() {
                 drawImagenetResultGraph(this.graphTSV);
             }
         },
-        displayUpdate: function() {
+        logDisplayUpdate: function() {
             var text = _.map(this.log, function(logData) {
                 var body = logData[logData.type];
                 return body;
             });
             $('#training_log').html(text.join('<br>'));
-            this.displayUpdateTimeoutID = null;
             if (this.startTime) {
                 var latest = this.timeStamps[this.timeStamps.length - 1];
                 $('#time_spent').text(millisec_to_readable_time(latest.diff(this.startTime)));
