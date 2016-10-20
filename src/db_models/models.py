@@ -323,9 +323,12 @@ class Model(db.Model):
                             raise e
             self.update_and_commit()
 
+    def clean_old_models(self):
+        if self.trained_model_path:
+            for model_file in glob.glob1(self.trained_model_path, 'model*'):
+                os.remove(os.path.join(self.trained_model_path, model_file))
+
     def get_usable_epochs(self):
-        if self.is_trained == 0:
-            return []
         ret = glob.glob1(self.trained_model_path, 'model*[!.meta]')
         return sorted([int(filter(lambda x: x not in 'model-', model)) for model in ret], reverse=True)
 

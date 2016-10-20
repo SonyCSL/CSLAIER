@@ -97,7 +97,6 @@ def run_imagenet_train(
     model.batchsize = batchsize
     model.update_and_commit()
     model, train_image_num, val_image_num = deeplearning.prepare.prepare_for_imagenet.do(model, prepared_data_root)
-
     (model_dir, model_name) = os.path.split(model.network_path)
     model_name = re.sub(r"\.py$", "", model_name)
     trained_model_path = _create_trained_model_dir(model.trained_model_path,
@@ -110,6 +109,7 @@ def run_imagenet_train(
     open(graph, 'w').close()
     train_logger.file_subscribe(model_id, train_log, graph)
     interruptable = Interruptable()
+    model.clean_old_models()
     if model.framework == 'chainer':
         train_process = Process(
             target=deeplearning.train.train_imagenet.do_train_by_chainer,
@@ -220,6 +220,7 @@ def run_lstm_train(
     model.gpu = gpu_num
     model.enable_wakatigaki(use_wakatigaki)
     model.batchsize = batchsize
+    model.clean_old_models()
     (input_data_path, pretrained_vocab, model) = deeplearning.prepare.prepare_for_lstm.do(
         model, prepared_data_root, pretrained_model, use_wakatigaki)
 
