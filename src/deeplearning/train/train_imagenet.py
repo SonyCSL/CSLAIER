@@ -709,7 +709,8 @@ def do_train_by_tensorflow(
             saver.restore(sess, resume_data['saved_path'])
         else:
             resume_data = {}
-            sess.run(tf.initialize_all_variables())
+            init_op = tf.group(tf.initialize_all_variables(), tf.initialize_local_variables())
+            sess.run(init_op)
 
         remove_resume_file(db_model.trained_model_path)
 
