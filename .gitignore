@@ -10,5 +10,6 @@ prepared_data/*
 temp/*
 logs/*
 src/models/*.py
+.python-version
 !models/__init__.py
 !.gitkeep

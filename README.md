@@ -1,6 +1,8 @@
 CSLAIER
 ============
 
+CSLAIER is Artificial Intelligence Entangled RealWorld
+
 CSLAIER version 0.7.0
 
 Browser based GUI deep learning tool.

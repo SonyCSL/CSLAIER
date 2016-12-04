@@ -628,4 +628,5 @@ def get_system_info():
 if __name__ == '__main__':
     app.debug = app.config['DEBUG']
     server = WSGIServer((app.config['HOST'], app.config['PORT']), app)
+    print '[INFO] Starting CSLAIER server on {}:{}'.format(app.config['HOST'], app.config['PORT'])
     server.serve_forever()
