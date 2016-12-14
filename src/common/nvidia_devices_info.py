@@ -3,6 +3,7 @@ import ctypes
 import platform
 from logging import getLogger
 
+
 logger = getLogger(__name__)
 
 
@@ -304,6 +305,36 @@ def get_nvml_info(device_id):
             pass
 
 
+def add_unit(data):
+    temperature = 'temperature'
+    if temperature in data:
+        data[temperature] = '{} C'.format(data[temperature])
+
+    fan = 'fan'
+    if fan in data:
+        data[fan] = '{} %'.format(data[fan])
+
+    power_draw = 'power_draw'
+    if power_draw in data:
+        data[power_draw] = '{:.2f} W'.format(float(data[power_draw]) / pow(10, 3))
+
+    power_limit = 'power_limit'
+    if power_limit in data:
+        data[power_limit] = '{:.2f} W'.format(float(data[power_limit]) / pow(10, 3))
+
+    memory_total = 'memory_total'
+    if memory_total in data:
+        data[memory_total] = '{} MiB'.format(data[memory_total] / pow(2, 20))
+
+    memory_used = 'memory_used'
+    if memory_used in data:
+        data[memory_used] = '{} MiB'.format(data[memory_used] / pow(2, 20))
+
+    gpu_util = 'gpu_util'
+    if gpu_util in data:
+        data[gpu_util] = '{} %'.format(data[gpu_util])
+
+
 def get_devices_info():
     if not len(get_devices()):
         return None
@@ -320,8 +351,10 @@ def get_devices_info():
         if info:
             gpus.append(info)
 
+    for gpu in gpus:
+        add_unit(gpu)
+
     return {
         'gpus': gpus,
         'driver_version': version
     }
-
