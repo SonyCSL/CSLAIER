@@ -1,6 +1,9 @@
 #!/usr/bin/env python2
 import ctypes
 import platform
+from logging import getLogger
+
+logger = getLogger(__name__)
 
 
 class c_cudaDeviceProp(ctypes.Structure):
@@ -83,8 +86,6 @@ class struct_c_nvmlDevice_t(ctypes.Structure):
     Handle to a device in NVML
     """
     pass  # opaque handle
-
-
 c_nvmlDevice_t = ctypes.POINTER(struct_c_nvmlDevice_t)
 
 
@@ -170,7 +171,6 @@ def get_nvml():
                 return nvml
     return None
 
-
 devices = None
 
 
@@ -195,20 +195,17 @@ def get_devices(force_reload=False):
     cuda_version = ctypes.c_int()
     rc = cudart.cudaRuntimeGetVersion(ctypes.byref(cuda_version))
     if rc != 0:
-        print
-        'cudaRuntimeGetVersion() failed with error #%s' % rc
+        logger.error('cudaRuntimeGetVersion() failed with error #%s' % rc)
         return []
     if cuda_version.value < 6050:
-        print
-        'ERROR: Cuda version must be >= 6.5, not "%s"' % cuda_version.value
+        logger.error('ERROR: Cuda version must be >= 6.5, not "%s"' % cuda_version.valu)
         return []
 
     # get number of devices
     num_devices = ctypes.c_int()
     rc = cudart.cudaGetDeviceCount(ctypes.byref(num_devices))
     if rc != 0:
-        print
-        'cudaGetDeviceCount() failed with error #%s' % rc
+        logger.error('cudaGetDeviceCount() failed with error #%s' % rc)
         return []
 
     # query devices
@@ -223,8 +220,7 @@ def get_devices(force_reload=False):
                 properties.pciBusID_str = pciBusID_str
             devices.append(properties)
         else:
-            print
-            'cudaGetDeviceProperties() failed with error #%s' % rc
+            logger.error('cudaGetDeviceProperties() failed with error #%s' % rc)
         del properties
     return devices
 
@@ -296,7 +292,6 @@ def get_nvml_info(device_id):
         if rc == 0:
             info['memory_total'] = memory.total
             info['memory_used'] = memory.used
-            print(memory.total, memory.free, memory.used)
         utilization = c_nvmlUtilization_t()
         rc = nvml.nvmlDeviceGetUtilizationRates(handle, ctypes.byref(utilization))
         if rc == 0:
@@ -313,18 +308,20 @@ def get_devices_info():
     if not len(get_devices()):
         return None
 
-    cudart = get_cudart()
-    if cudart is None:
-        return None
-    cuda_version = ctypes.c_int()
-    cudart.cudaDriverGetVersion(ctypes.byref(cuda_version))
-
+    nvml = get_nvml()
+    nvml.nvmlInit()
+    version = ' ' * 80
+    nvml.nvmlSystemGetDriverVersion(ctypes.c_char_p(version), 80)
+    version = version.strip()[:-1]
     gpus = []
+
     for i, device in enumerate(get_devices()):
         info = get_nvml_info(i)
         if info:
             gpus.append(info)
+
     return {
         'gpus': gpus,
-        'driver_version': cuda_version.value
+        'driver_version': version
     }
+
