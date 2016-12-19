@@ -109,7 +109,7 @@ def run_imagenet_train(
     open(graph, 'w').close()
     train_logger.file_subscribe(model_id, train_log, graph)
     interruptable = Interruptable()
-    model.clean_old_models()
+    # model.clean_old_models()
     if model.framework == 'chainer':
         train_process = Process(
             target=deeplearning.train.train_imagenet.do_train_by_chainer,
@@ -220,7 +220,7 @@ def run_lstm_train(
     model.gpu = gpu_num
     model.enable_wakatigaki(use_wakatigaki)
     model.batchsize = batchsize
-    model.clean_old_models()
+    # model.clean_old_models()
     (input_data_path, pretrained_vocab, model) = deeplearning.prepare.prepare_for_lstm.do(
         model, prepared_data_root, pretrained_model, use_wakatigaki)
 
