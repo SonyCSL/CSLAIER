@@ -49,7 +49,8 @@ Minimum requirment:
 Requirements for some features:
 
 * NVIDIA CUDA Technology GPU and drivers / CUDA 7.5
-* TensorFlow 0.9.0 or higher https://www.tensorflow.org/
+* TensorFlow 0.11.0 https://www.tensorflow.org/
+  * 0.12 is not supported currently
 
 
 Setup
@@ -211,7 +212,8 @@ Minimum requirment:
 Requirements for some features:
 
 * NVIDIA CUDA Technology GPU and drivers / CUDA 7.5
-* TensorFlow 0.9.0 or higher https://www.tensorflow.org/
+* TensorFlow 0.11.0 https://www.tensorflow.org/
+  * 0.12は現在サポートしておりません
 
 #### LSTMで分かち書きを利用したい場合
 
