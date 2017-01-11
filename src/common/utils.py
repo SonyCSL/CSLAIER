@@ -61,37 +61,37 @@ def get_disk_info():
 
 
 def get_gpu_info(nvidia_smi_cmd='nvidia-smi'):
-    return get_devices_info()
-    # try:
-    #     xml = subprocess.check_output([nvidia_smi_cmd, '-q', '-x'])
-    # except:
-    #     return None
-    # ret = {}
-    # elem = ElementTree.fromstring(xml)
-    # ret['driver_version'] = elem.find('driver_version').text
-    # gpus = elem.findall('gpu')
-    # ret_gpus = []
-    # for g in gpus:
-    #     info = {
-    #         'product_name': g.find('product_name').text,
-    #         'uuid': g.find('uuid').text,
-    #         'fan': g.find('fan_speed').text,
-    #         'minor_number': g.find('minor_number').text
-    #     }
-    #     temperature = g.find('temperature')
-    #     info['temperature'] = temperature.find('gpu_temp').text
-    #     power = g.find('power_readings')
-    #     info['power_draw'] = power.find('power_draw').text
-    #     info['power_limit'] = power.find('power_limit').text
-    #     memory = g.find('fb_memory_usage')
-    #     info['memory_total'] = memory.find('total').text
-    #     info['memory_used'] = memory.find('used').text
-    #     utilization = g.find('utilization')
-    #     info['gpu_util'] = utilization.find('gpu_util').text
-    #     ret_gpus.append(info)
-    # ret_gpus.sort(cmp=lambda x, y: cmp(int(x['minor_number']), int(y['minor_number'])))
-    # ret['gpus'] = ret_gpus
-    # return ret
+    # return get_devices_info()
+    try:
+        xml = subprocess.check_output([nvidia_smi_cmd, '-q', '-x'])
+    except:
+        return None
+    ret = {}
+    elem = ElementTree.fromstring(xml)
+    ret['driver_version'] = elem.find('driver_version').text
+    gpus = elem.findall('gpu')
+    ret_gpus = []
+    for g in gpus:
+        info = {
+            'product_name': g.find('product_name').text,
+            'uuid': g.find('uuid').text,
+            'fan': g.find('fan_speed').text,
+            'minor_number': g.find('minor_number').text
+        }
+        temperature = g.find('temperature')
+        info['temperature'] = temperature.find('gpu_temp').text
+        power = g.find('power_readings')
+        info['power_draw'] = power.find('power_draw').text
+        info['power_limit'] = power.find('power_limit').text
+        memory = g.find('fb_memory_usage')
+        info['memory_total'] = memory.find('total').text
+        info['memory_used'] = memory.find('used').text
+        utilization = g.find('utilization')
+        info['gpu_util'] = utilization.find('gpu_util').text
+        ret_gpus.append(info)
+    ret_gpus.sort(cmp=lambda x, y: cmp(int(x['minor_number']), int(y['minor_number'])))
+    ret['gpus'] = ret_gpus
+    return ret
 
 
 def get_system_info():
