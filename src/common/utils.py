@@ -50,7 +50,8 @@ def get_disk_info():
     for disk in disks:
         row = disk.split()
         if row[filesystem_index].startswith('/'):
-            st = os.statvfs(row[mounted_on_index])
+            #st = os.statvfs(row[mounted_on_index]) causes an error with a disk name contining white spaces
+            st = os.statvfs(" ".join(row[mounted_on_index:])) 
             disk_info.append({
                 'mount': row[mounted_on_index],
                 'size': calculate_human_readable_filesize(st.f_frsize * st.f_blocks),
