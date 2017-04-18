@@ -54,7 +54,7 @@ def get_disk_info():
             disk_info.append({
                 'mount': row[mounted_on_index],
                 'size': calculate_human_readable_filesize(st.f_frsize * st.f_blocks),
-                'used': calculate_human_readable_filesize(st.f_frsize * (st.f_blocks-st.f_bfree)),
+                'used': calculate_human_readable_filesize(st.f_frsize * (st.f_blocks - st.f_bfree)),
                 'avail': calculate_human_readable_filesize(st.f_frsize * st.f_favail)
             })
     return disk_info
@@ -228,11 +228,14 @@ def get_images_in_random_order(path, num):
     return ret
 
 
-def get_text_sample(path, character_num=-1):
-    raw_text = open(path).read()
-    encoding = nkf.guess(raw_text)
-    text = raw_text.decode(encoding)
-    if character_num > -1:
-        return text[0:character_num]
-    else:
-        return text
+def get_text_sample(path, character_num=100):
+    text = ''
+    with open(path) as fp:
+        for row in fp:
+            text += row.strip()
+            if len(text) > character_num:
+                break
+        else:
+            text = text[:character_num]
+    encoding = nkf.guess(text)
+    return text.decode(encoding)
