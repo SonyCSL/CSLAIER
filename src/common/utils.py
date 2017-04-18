@@ -238,4 +238,4 @@ def get_text_sample(path, character_num=100):
         else:
             text = text[:character_num]
     encoding = nkf.guess(text)
-    text.decode(encoding)
+    return text.decode(encoding)
